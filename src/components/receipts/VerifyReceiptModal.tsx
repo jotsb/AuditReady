@@ -1,5 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Check } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+
+interface Category {
+  id: string;
+  name: string;
+}
 
 interface VerifyReceiptModalProps {
   receiptId: string;
@@ -41,6 +47,25 @@ export function VerifyReceiptModal({ receiptId, extractedData, onConfirm, onClos
     customer_name: extractedData.customer_name || '',
   });
   const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  const loadCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('expense_categories')
+        .select('*')
+        .order('display_order');
+
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (err) {
+      console.error('Error loading categories:', err);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -229,10 +254,11 @@ export function VerifyReceiptModal({ receiptId, extractedData, onConfirm, onClos
                 required
               >
                 <option value="">Select category</option>
-                <option value="Meals & Entertainment">Meals & Entertainment</option>
-                <option value="Transportation">Transportation</option>
-                <option value="Office Supplies">Office Supplies</option>
-                <option value="Miscellaneous">Miscellaneous</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.name}>
+                    {cat.name}
+                  </option>
+                ))}
               </select>
             </div>
 

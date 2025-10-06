@@ -30,8 +30,8 @@ export function ManualEntryForm({ onSubmit, onClose }: ManualEntryFormProps) {
   const loadCategories = async () => {
     const { data } = await supabase
       .from('expense_categories')
-      .select('name')
-      .order('sort_order');
+      .select('id, name')
+      .order('display_order');
     setCategories(data || []);
   };
 
@@ -131,7 +131,7 @@ export function ManualEntryForm({ onSubmit, onClose }: ManualEntryFormProps) {
               >
                 <option value="">Select category</option>
                 {categories.map((cat) => (
-                  <option key={cat.name} value={cat.name}>
+                  <option key={cat.id} value={cat.name}>
                     {cat.name}
                   </option>
                 ))}
