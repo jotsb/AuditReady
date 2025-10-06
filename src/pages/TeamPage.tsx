@@ -60,15 +60,7 @@ export default function TeamPage() {
       const [membersResult, invitationsResult] = await Promise.all([
         supabase
           .from('business_members')
-          .select(`
-            id,
-            user_id,
-            role,
-            joined_at,
-            profiles:user_id (
-              full_name
-            )
-          `)
+          .select('id, user_id, role, joined_at')
           .eq('business_id', memberData.business_id)
           .order('joined_at', { ascending: false }),
 
@@ -85,12 +77,22 @@ export default function TeamPage() {
 
       const enrichedMembers = await Promise.all(
         (membersResult.data || []).map(async (member: any) => {
-          const { data: authUser } = await supabase.auth.admin.getUserById(member.user_id);
+          const [profileResult, emailResult] = await Promise.all([
+            supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', member.user_id)
+              .maybeSingle(),
+            supabase.rpc('get_user_email', { user_id: member.user_id })
+          ]);
+
+          const email = emailResult?.data || 'Unknown';
+
           return {
             ...member,
             profiles: {
-              full_name: member.profiles?.full_name || 'Unknown',
-              email: authUser?.user?.email || 'Unknown'
+              full_name: profileResult?.data?.full_name || 'Unknown',
+              email: email
             }
           };
         })
@@ -112,18 +114,6 @@ export default function TeamPage() {
 
     try {
       setError('');
-
-      const { data: existingMember } = await supabase
-        .from('business_members')
-        .select('id')
-        .eq('business_id', businessId)
-        .eq('user_id', (await supabase.auth.admin.getUserByEmail(inviteEmail)).data.user?.id)
-        .maybeSingle();
-
-      if (existingMember) {
-        setError('This user is already a team member');
-        return;
-      }
 
       const { data: existingInvite } = await supabase
         .from('invitations')
