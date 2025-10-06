@@ -113,7 +113,7 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-2 md:px-0">
         <StatCard
           title="Total Expenses"
           value={`$${stats.totalExpenses.toFixed(2)}`}

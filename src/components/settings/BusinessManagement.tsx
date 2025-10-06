@@ -238,7 +238,7 @@ export function BusinessManagement() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-2 md:px-0">
         {businesses.map((business) => {
           const isOwner = business.owner_id === user?.id;
           return (

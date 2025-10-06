@@ -214,7 +214,7 @@ export function CollectionManagement() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-2 md:px-0">
         {collections.map((collection) => (
           <div
             key={collection.id}
