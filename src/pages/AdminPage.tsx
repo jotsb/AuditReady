@@ -520,9 +520,9 @@ function AuditLogsTab() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('audit_log')
+        .from('audit_logs')
         .select('*, profiles(full_name, email)')
-        .order('performed_at', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(100);
 
       if (error) throw error;
@@ -612,7 +612,7 @@ function AuditLogsTab() {
                 <tr key={log.id} className="hover:bg-slate-50 transition">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-slate-600">
-                      {new Date(log.performed_at).toLocaleString()}
+                      {new Date(log.created_at).toLocaleString()}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -634,7 +634,7 @@ function AuditLogsTab() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-slate-600 max-w-md truncate">
-                      {log.metadata ? JSON.stringify(log.metadata) : 'N/A'}
+                      {log.details ? JSON.stringify(log.details) : 'N/A'}
                     </div>
                   </td>
                 </tr>
