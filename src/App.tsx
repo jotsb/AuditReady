@@ -8,6 +8,7 @@ import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import TeamPage from './pages/TeamPage';
 import { AdminPage } from './pages/AdminPage';
+import { AuditLogsPage } from './pages/AuditLogsPage';
 import { MainLayout } from './components/layout/MainLayout';
 
 function AppContent() {
@@ -40,6 +41,8 @@ function AppContent() {
         return 'Team';
       case 'settings':
         return 'Settings';
+      case 'audit':
+        return 'Audit Logs';
       case 'admin':
         return 'System Administration';
       default:
@@ -61,6 +64,8 @@ function AppContent() {
         return <TeamPage />;
       case 'settings':
         return <SettingsPage />;
+      case 'audit':
+        return <AuditLogsPage />;
       case 'admin':
         return <AdminPage />;
       default:
