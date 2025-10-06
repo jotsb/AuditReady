@@ -98,17 +98,17 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
 
   return (
     <div>
-      <div className="p-6">
+      <div className="p-4 md:p-0 md:mb-6">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-slate-600 hover:text-slate-800 mb-6 transition"
+          className="flex items-center gap-2 text-slate-600 hover:text-slate-800 transition"
         >
           <ArrowLeft size={20} />
           <span>Back to Receipts</span>
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 px-6 pb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <div className="space-y-6">
           <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
             <h2 className="text-2xl font-bold text-slate-800 mb-6">Receipt Details</h2>
