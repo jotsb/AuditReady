@@ -116,7 +116,10 @@ export function ReceiptsPage() {
             'Authorization': `Bearer ${session?.access_token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ filePath: fileName }),
+          body: JSON.stringify({
+            filePath: fileName,
+            collectionId: selectedCollection
+          }),
         }
       );
 

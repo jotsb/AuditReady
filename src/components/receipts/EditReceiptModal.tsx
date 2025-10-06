@@ -24,16 +24,12 @@ interface EditReceiptModalProps {
   onSave: () => void;
 }
 
-const CATEGORIES = [
-  'Office Supplies',
-  'Travel',
-  'Meals & Entertainment',
-  'Utilities',
-  'Professional Services',
-  'Equipment',
-  'Marketing',
-  'Other',
-];
+interface Category {
+  id: string;
+  name: string;
+  business_id: string | null;
+  is_default: boolean;
+}
 
 const PAYMENT_METHODS = [
   'Cash',
@@ -48,10 +44,22 @@ export function EditReceiptModal({ receipt, onClose, onSave }: EditReceiptModalP
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+
+  const formatDateForInput = (dateString: string | null) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [formData, setFormData] = useState({
     vendor_name: receipt.vendor_name || '',
     vendor_address: receipt.vendor_address || '',
-    transaction_date: receipt.transaction_date || '',
+    transaction_date: formatDateForInput(receipt.transaction_date),
     subtotal: receipt.subtotal?.toString() || '',
     gst_amount: receipt.gst_amount.toString(),
     pst_amount: receipt.pst_amount.toString(),
@@ -60,6 +68,35 @@ export function EditReceiptModal({ receipt, onClose, onSave }: EditReceiptModalP
     category: receipt.category || '',
     notes: receipt.notes || '',
   });
+
+  useEffect(() => {
+    loadCategories();
+  }, [receipt.collection_id]);
+
+  const loadCategories = async () => {
+    try {
+      const { data: collection } = await supabase
+        .from('collections')
+        .select('business_id')
+        .eq('id', receipt.collection_id)
+        .maybeSingle();
+
+      if (!collection) return;
+
+      const { data, error } = await supabase
+        .from('expense_categories')
+        .select('*')
+        .or(`is_default.eq.true,business_id.eq.${collection.business_id}`)
+        .order('display_order');
+
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (err) {
+      console.error('Error loading categories:', err);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,11 +230,12 @@ export function EditReceiptModal({ receipt, onClose, onSave }: EditReceiptModalP
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                disabled={loadingCategories}
               >
                 <option value="">Select category</option>
-                {CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.name}>
+                    {cat.name}
                   </option>
                 ))}
               </select>

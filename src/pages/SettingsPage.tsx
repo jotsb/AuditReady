@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { User, Building2, Shield, Bell, FolderOpen } from 'lucide-react';
+import { User, Building2, Shield, Bell, FolderOpen, Tag } from 'lucide-react';
 import { BusinessManagement } from '../components/settings/BusinessManagement';
 import { CollectionManagement } from '../components/settings/CollectionManagement';
+import { CategoryManagement } from '../components/settings/CategoryManagement';
 
-type SettingsTab = 'profile' | '2fa' | 'businesses' | 'collections' | 'notifications';
+type SettingsTab = 'profile' | '2fa' | 'businesses' | 'collections' | 'categories' | 'notifications';
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('businesses');
@@ -66,6 +67,19 @@ export function SettingsPage() {
               </div>
             </button>
             <button
+              onClick={() => setActiveTab('categories')}
+              className={`px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap transition ${
+                activeTab === 'categories'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-600 hover:text-slate-800 hover:border-slate-300'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Tag size={18} />
+                Categories
+              </div>
+            </button>
+            <button
               onClick={() => setActiveTab('notifications')}
               className={`px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap transition ${
                 activeTab === 'notifications'
@@ -113,6 +127,8 @@ export function SettingsPage() {
           {activeTab === 'businesses' && <BusinessManagement />}
 
           {activeTab === 'collections' && <CollectionManagement />}
+
+          {activeTab === 'categories' && <CategoryManagement />}
 
           {activeTab === 'notifications' && (
             <div>
