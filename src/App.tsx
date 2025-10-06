@@ -6,6 +6,7 @@ import { CollectionsPage } from './pages/CollectionsPage';
 import { ReceiptsPage } from './pages/ReceiptsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import TeamPage from './pages/TeamPage';
 import { MainLayout } from './components/layout/MainLayout';
 
 function AppContent() {
@@ -34,6 +35,8 @@ function AppContent() {
         return 'Collections';
       case 'reports':
         return 'Reports';
+      case 'team':
+        return 'Team';
       case 'settings':
         return 'Settings';
       default:
@@ -51,6 +54,8 @@ function AppContent() {
         return <CollectionsPage />;
       case 'reports':
         return <ReportsPage />;
+      case 'team':
+        return <TeamPage />;
       case 'settings':
         return <SettingsPage />;
       default:

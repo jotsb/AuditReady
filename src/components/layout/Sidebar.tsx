@@ -1,4 +1,4 @@
-import { Home, Receipt, FolderOpen, Settings, LogOut, BarChart3 } from 'lucide-react';
+import { Home, Receipt, FolderOpen, Settings, LogOut, BarChart3, Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface SidebarProps {
@@ -15,6 +15,7 @@ export function Sidebar({ isOpen, currentView, onNavigate }: SidebarProps) {
     { id: 'receipts', label: 'Receipts', icon: Receipt },
     { id: 'collections', label: 'Collections', icon: FolderOpen },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
+    { id: 'team', label: 'Team', icon: Users },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 

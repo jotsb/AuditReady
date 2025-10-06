@@ -48,6 +48,8 @@ export interface Database {
           name: string;
           tax_id: string | null;
           currency: string;
+          require_approval_workflow: boolean;
+          created_by: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -57,6 +59,8 @@ export interface Database {
           name: string;
           tax_id?: string | null;
           currency?: string;
+          require_approval_workflow?: boolean;
+          created_by?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -66,6 +70,8 @@ export interface Database {
           name?: string;
           tax_id?: string | null;
           currency?: string;
+          require_approval_workflow?: boolean;
+          created_by?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -148,6 +154,7 @@ export interface Database {
           extraction_status: 'pending' | 'processing' | 'completed' | 'failed';
           extraction_data: Json | null;
           is_edited: boolean;
+          requires_approval: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -170,6 +177,7 @@ export interface Database {
           extraction_status?: 'pending' | 'processing' | 'completed' | 'failed';
           extraction_data?: Json | null;
           is_edited?: boolean;
+          requires_approval?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -192,6 +200,7 @@ export interface Database {
           extraction_status?: 'pending' | 'processing' | 'completed' | 'failed';
           extraction_data?: Json | null;
           is_edited?: boolean;
+          requires_approval?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -249,6 +258,134 @@ export interface Database {
           icon?: string | null;
           color?: string | null;
           sort_order?: number;
+        };
+      };
+      system_roles: {
+        Row: {
+          id: string;
+          user_id: string;
+          role: 'admin' | 'technical_support';
+          granted_by: string | null;
+          granted_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          role: 'admin' | 'technical_support';
+          granted_by?: string | null;
+          granted_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          role?: 'admin' | 'technical_support';
+          granted_by?: string | null;
+          granted_at?: string;
+          created_at?: string;
+        };
+      };
+      business_members: {
+        Row: {
+          id: string;
+          business_id: string;
+          user_id: string;
+          role: 'owner' | 'manager' | 'member';
+          invited_by: string | null;
+          joined_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          business_id: string;
+          user_id: string;
+          role?: 'owner' | 'manager' | 'member';
+          invited_by?: string | null;
+          joined_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          business_id?: string;
+          user_id?: string;
+          role?: 'owner' | 'manager' | 'member';
+          invited_by?: string | null;
+          joined_at?: string;
+          created_at?: string;
+        };
+      };
+      invitations: {
+        Row: {
+          id: string;
+          business_id: string;
+          email: string;
+          role: 'owner' | 'manager' | 'member';
+          invited_by: string;
+          token: string;
+          status: 'pending' | 'accepted' | 'rejected' | 'expired';
+          expires_at: string;
+          accepted_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          business_id: string;
+          email: string;
+          role?: 'owner' | 'manager' | 'member';
+          invited_by: string;
+          token?: string;
+          status?: 'pending' | 'accepted' | 'rejected' | 'expired';
+          expires_at?: string;
+          accepted_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          business_id?: string;
+          email?: string;
+          role?: 'owner' | 'manager' | 'member';
+          invited_by?: string;
+          token?: string;
+          status?: 'pending' | 'accepted' | 'rejected' | 'expired';
+          expires_at?: string;
+          accepted_at?: string | null;
+          created_at?: string;
+        };
+      };
+      receipt_approvals: {
+        Row: {
+          id: string;
+          receipt_id: string;
+          status: 'pending' | 'approved' | 'rejected';
+          submitted_by: string;
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          receipt_id: string;
+          status?: 'pending' | 'approved' | 'rejected';
+          submitted_by: string;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          receipt_id?: string;
+          status?: 'pending' | 'approved' | 'rejected';
+          submitted_by?: string;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
         };
       };
     };
