@@ -1,0 +1,464 @@
+import { useEffect, useState } from 'react';
+import { Plus, Upload, CreditCard as Edit, Search, Filter, Calendar, DollarSign, Trash2, Loader2, Eye } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
+import { ReceiptUpload } from '../components/receipts/ReceiptUpload';
+import { ManualEntryForm } from '../components/receipts/ManualEntryForm';
+import { VerifyReceiptModal } from '../components/receipts/VerifyReceiptModal';
+import { ReceiptDetailsPage } from './ReceiptDetailsPage';
+
+interface Receipt {
+  id: string;
+  vendor_name: string | null;
+  vendor_address: string | null;
+  transaction_date: string | null;
+  total_amount: number;
+  category: string | null;
+  payment_method: string | null;
+  extraction_status: string | null;
+  extracted_data: any | null;
+  file_path: string | null;
+  created_at: string;
+}
+
+export function ReceiptsPage() {
+  const { user } = useAuth();
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [collections, setCollections] = useState<any[]>([]);
+  const [selectedCollection, setSelectedCollection] = useState<string>('');
+  const [showUpload, setShowUpload] = useState(false);
+  const [showManualEntry, setShowManualEntry] = useState(false);
+  const [verifyReceipt, setVerifyReceipt] = useState<{filePath: string, data: any} | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [extracting, setExtracting] = useState(false);
+  const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadCollections();
+  }, []);
+
+  useEffect(() => {
+    if (selectedCollection) {
+      loadReceipts();
+    }
+  }, [selectedCollection]);
+
+
+  const loadCollections = async () => {
+    try {
+      const { data: collectionData, error } = await supabase
+        .from('collections')
+        .select('*, businesses(name)')
+        .order('created_at', { ascending: false });
+
+      if (!error && collectionData && collectionData.length > 0) {
+        setCollections(collectionData);
+        setSelectedCollection(collectionData[0].id);
+      }
+    } catch (error) {
+      console.error('Error loading collections:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadReceipts = async () => {
+    if (!selectedCollection) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('receipts')
+        .select('*')
+        .eq('collection_id', selectedCollection)
+        .eq('extraction_status', 'completed')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setReceipts(data || []);
+    } catch (error) {
+      console.error('Error loading receipts:', error);
+    }
+  };
+
+  const handleUpload = async (file: File) => {
+    if (!user || !selectedCollection) return;
+
+    setExtracting(true);
+    setShowUpload(false);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('receipts')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-receipt-data`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session?.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ filePath: fileName }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Edge function error:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('Extraction result:', result);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Extraction failed');
+      }
+
+      setVerifyReceipt({
+        filePath: fileName,
+        data: result.data,
+      });
+    } catch (error) {
+      console.error('Upload/extraction error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to process receipt: ${errorMessage}`);
+
+      await supabase.storage.from('receipts').remove([fileName]);
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  const handleManualEntry = async (data: any) => {
+    if (!user || !selectedCollection) return;
+
+    const { data: receipt, error } = await supabase
+      .from('receipts')
+      .insert({
+        collection_id: selectedCollection,
+        uploaded_by: user.id,
+        ...data,
+        extraction_status: 'completed',
+        is_edited: true,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    setReceipts([receipt, ...receipts]);
+  };
+
+  const handleDelete = async (receiptId: string, filePath: string | null) => {
+    if (!confirm('Are you sure you want to delete this receipt?')) return;
+
+    try {
+      if (filePath) {
+        await supabase.storage.from('receipts').remove([filePath]);
+      }
+
+      const { error } = await supabase
+        .from('receipts')
+        .delete()
+        .eq('id', receiptId);
+
+      if (error) throw error;
+
+      setReceipts(receipts.filter(r => r.id !== receiptId));
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert('Failed to delete receipt');
+    }
+  };
+
+  const handleConfirmExtraction = async (filePath: string, data: any) => {
+    if (!user || !selectedCollection) return;
+
+    const { error } = await supabase
+      .from('receipts')
+      .insert({
+        collection_id: selectedCollection,
+        uploaded_by: user.id,
+        file_path: filePath,
+        file_type: 'image',
+        vendor_name: data.vendor_name,
+        vendor_address: data.vendor_address,
+        transaction_date: data.transaction_date,
+        total_amount: parseFloat(data.total_amount || 0),
+        subtotal: data.subtotal ? parseFloat(data.subtotal) : null,
+        gst_amount: data.gst_amount ? parseFloat(data.gst_amount) : null,
+        pst_amount: data.pst_amount ? parseFloat(data.pst_amount) : null,
+        category: data.category,
+        payment_method: data.payment_method,
+        extraction_status: 'completed',
+        extraction_data: {
+          transaction_time: data.transaction_time,
+          gst_percent: data.gst_percent,
+          pst_percent: data.pst_percent,
+          card_last_digits: data.card_last_digits,
+          customer_name: data.customer_name,
+        },
+      });
+
+    if (error) throw error;
+
+    setVerifyReceipt(null);
+    await loadReceipts();
+  };
+
+  const handleCancelExtraction = async (filePath: string) => {
+    await supabase.storage.from('receipts').remove([filePath]);
+    setVerifyReceipt(null);
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'No date';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const filteredReceipts = receipts.filter((receipt) => {
+    const matchesSearch =
+      !searchQuery ||
+      receipt.vendor_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      receipt.category?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = !filterCategory || receipt.category === filterCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  if (selectedReceiptId) {
+    return (
+      <ReceiptDetailsPage
+        receiptId={selectedReceiptId}
+        onBack={() => setSelectedReceiptId(null)}
+      />
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-slate-600">Loading receipts...</div>
+      </div>
+    );
+  }
+
+  if (collections.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <p className="text-slate-600 mb-4">No collections found. Create a collection first!</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-6">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-slate-700 mb-2">Collection</label>
+            <select
+              value={selectedCollection}
+              onChange={(e) => setSelectedCollection(e.target.value)}
+              className="w-full md:w-auto px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              {collections.map((col) => (
+                <option key={col.id} value={col.id}>
+                  {col.businesses?.name} - {col.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowUpload(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            >
+              <Upload size={20} />
+              <span>Upload</span>
+            </button>
+            <button
+              onClick={() => setShowManualEntry(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition"
+            >
+              <Edit size={20} />
+              <span>Manual Entry</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search receipts..."
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div className="relative">
+            <Filter size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="w-full md:w-auto pl-10 pr-8 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">All Categories</option>
+              <option value="Meals & Entertainment">Meals & Entertainment</option>
+              <option value="Transportation">Transportation</option>
+              <option value="Office Supplies">Office Supplies</option>
+              <option value="Miscellaneous">Miscellaneous</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm border border-slate-200">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                  Vendor
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                  Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                  Category
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                  Payment
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-slate-600 uppercase tracking-wider">
+                  Amount
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-slate-600 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {filteredReceipts.map((receipt) => (
+                <tr
+                  key={receipt.id}
+                  className="hover:bg-slate-50 transition cursor-pointer"
+                  onClick={() => setSelectedReceiptId(receipt.id)}
+                >
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-slate-800">
+                      {receipt.vendor_name || 'Unknown Vendor'}
+                    </div>
+                    {receipt.vendor_address && (
+                      <div className="text-xs text-slate-500">{receipt.vendor_address}</div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-1 text-sm text-slate-600">
+                      <Calendar size={14} />
+                      <span>{formatDate(receipt.transaction_date)}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {receipt.category ? (
+                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                        {receipt.category}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400">Uncategorized</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="text-sm text-slate-600 capitalize">
+                      {receipt.payment_method || '-'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <div className="flex items-center justify-end gap-1 text-sm font-semibold text-slate-800">
+                      <DollarSign size={16} />
+                      <span>{receipt.total_amount.toFixed(2)}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedReceiptId(receipt.id);
+                        }}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                        title="View details"
+                      >
+                        <Eye size={16} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(receipt.id, receipt.file_path);
+                        }}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                        title="Delete receipt"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {filteredReceipts.length === 0 && (
+          <div className="text-center py-12 text-slate-500">
+            {receipts.length === 0 ? 'No receipts yet. Upload your first receipt!' : 'No receipts match your filters.'}
+          </div>
+        )}
+      </div>
+
+      {showUpload && !extracting && (
+        <ReceiptUpload onUpload={handleUpload} onClose={() => setShowUpload(false)} />
+      )}
+
+      {extracting && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 flex flex-col items-center gap-4">
+            <Loader2 size={48} className="text-blue-600 animate-spin" />
+            <p className="text-lg font-medium text-slate-800">Extracting receipt data...</p>
+            <p className="text-sm text-slate-600">This may take a moment</p>
+          </div>
+        </div>
+      )}
+
+      {showManualEntry && (
+        <ManualEntryForm onSubmit={handleManualEntry} onClose={() => setShowManualEntry(false)} />
+      )}
+
+      {verifyReceipt && (
+        <VerifyReceiptModal
+          receiptId={verifyReceipt.filePath}
+          extractedData={verifyReceipt.data}
+          onConfirm={(filePath, data) => handleConfirmExtraction(filePath, data)}
+          onClose={() => handleCancelExtraction(verifyReceipt.filePath)}
+        />
+      )}
+    </div>
+  );
+}
