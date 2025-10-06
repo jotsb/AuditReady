@@ -27,8 +27,6 @@ interface EditReceiptModalProps {
 interface Category {
   id: string;
   name: string;
-  business_id: string | null;
-  is_default: boolean;
 }
 
 const PAYMENT_METHODS = [
@@ -71,22 +69,13 @@ export function EditReceiptModal({ receipt, onClose, onSave }: EditReceiptModalP
 
   useEffect(() => {
     loadCategories();
-  }, [receipt.collection_id]);
+  }, []);
 
   const loadCategories = async () => {
     try {
-      const { data: collection } = await supabase
-        .from('collections')
-        .select('business_id')
-        .eq('id', receipt.collection_id)
-        .maybeSingle();
-
-      if (!collection) return;
-
       const { data, error } = await supabase
         .from('expense_categories')
         .select('*')
-        .or(`is_default.eq.true,business_id.eq.${collection.business_id}`)
         .order('display_order');
 
       if (error) throw error;

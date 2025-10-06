@@ -1,26 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Plus, Trash2, Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
 
 interface Category {
   id: string;
-  business_id: string | null;
   name: string;
   description: string | null;
-  is_default: boolean;
   display_order: number;
 }
 
-interface Business {
-  id: string;
-  name: string;
-}
-
 export function CategoryManagement() {
-  const { user } = useAuth();
-  const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [selectedBusiness, setSelectedBusiness] = useState<string>('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -29,43 +18,16 @@ export function CategoryManagement() {
   const [showAddForm, setShowAddForm] = useState(false);
 
   useEffect(() => {
-    loadBusinesses();
+    loadCategories();
   }, []);
-
-  useEffect(() => {
-    if (selectedBusiness) {
-      loadCategories();
-    }
-  }, [selectedBusiness]);
-
-  const loadBusinesses = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('businesses')
-        .select('id, name')
-        .eq('owner_id', user?.id)
-        .order('name');
-
-      if (error) throw error;
-
-      if (data && data.length > 0) {
-        setBusinesses(data);
-        setSelectedBusiness(data[0].id);
-      }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const loadCategories = async () => {
     try {
       setLoading(true);
+      setError(null);
       const { data, error } = await supabase
         .from('expense_categories')
         .select('*')
-        .or(`is_default.eq.true,business_id.eq.${selectedBusiness}`)
         .order('display_order');
 
       if (error) throw error;
@@ -79,29 +41,45 @@ export function CategoryManagement() {
 
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCategory.name.trim() || !selectedBusiness) return;
+    if (!newCategory.name.trim()) return;
 
     try {
       setSaving(true);
       setError(null);
 
+      const trimmedName = newCategory.name.trim();
+
+      const existingCategory = categories.find(
+        c => c.name.toLowerCase() === trimmedName.toLowerCase()
+      );
+
+      if (existingCategory) {
+        setError(`Category "${trimmedName}" already exists`);
+        setSaving(false);
+        return;
+      }
+
       const maxOrder = Math.max(...categories.map(c => c.display_order), 0);
 
-      const { error } = await supabase
+      const { error: insertError } = await supabase
         .from('expense_categories')
         .insert({
-          business_id: selectedBusiness,
-          name: newCategory.name.trim(),
+          name: trimmedName,
           description: newCategory.description.trim() || null,
-          is_default: false,
           display_order: maxOrder + 1,
         });
 
-      if (error) throw error;
-
-      setNewCategory({ name: '', description: '' });
-      setShowAddForm(false);
-      await loadCategories();
+      if (insertError) {
+        if (insertError.code === '23505') {
+          setError(`Category "${trimmedName}" already exists`);
+        } else {
+          throw insertError;
+        }
+      } else {
+        setNewCategory({ name: '', description: '' });
+        setShowAddForm(false);
+        await loadCategories();
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -109,19 +87,19 @@ export function CategoryManagement() {
     }
   };
 
-  const handleDeleteCategory = async (categoryId: string) => {
-    if (!confirm('Are you sure you want to delete this category?')) return;
+  const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
+    if (!confirm(`Are you sure you want to delete the category "${categoryName}"?`)) return;
 
     try {
       setSaving(true);
       setError(null);
 
-      const { error } = await supabase
+      const { error: deleteError } = await supabase
         .from('expense_categories')
         .delete()
         .eq('id', categoryId);
 
-      if (error) throw error;
+      if (deleteError) throw deleteError;
 
       await loadCategories();
     } catch (err: any) {
@@ -131,7 +109,7 @@ export function CategoryManagement() {
     }
   };
 
-  if (loading && businesses.length === 0) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
         <Loader2 size={24} className="animate-spin text-slate-600" />
@@ -139,19 +117,15 @@ export function CategoryManagement() {
     );
   }
 
-  if (businesses.length === 0) {
-    return (
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
-        <h3 className="text-lg font-semibold text-slate-800 mb-4">Expense Categories</h3>
-        <p className="text-slate-600">No businesses found. Create a business first to manage categories.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-slate-800">Expense Categories</h3>
+        <div>
+          <h3 className="text-lg font-semibold text-slate-800">Expense Categories</h3>
+          <p className="text-sm text-slate-600 mt-1">
+            Manage global expense categories for all receipts
+          </p>
+        </div>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
@@ -159,23 +133,6 @@ export function CategoryManagement() {
           <Plus size={16} />
           <span>Add Category</span>
         </button>
-      </div>
-
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-slate-700 mb-2">
-          Business
-        </label>
-        <select
-          value={selectedBusiness}
-          onChange={(e) => setSelectedBusiness(e.target.value)}
-          className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        >
-          {businesses.map((business) => (
-            <option key={business.id} value={business.id}>
-              {business.name}
-            </option>
-          ))}
-        </select>
       </div>
 
       {showAddForm && (
@@ -226,6 +183,7 @@ export function CategoryManagement() {
                 onClick={() => {
                   setShowAddForm(false);
                   setNewCategory({ name: '', description: '' });
+                  setError(null);
                 }}
                 className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition"
               >
@@ -243,66 +201,31 @@ export function CategoryManagement() {
         </div>
       )}
 
-      <div className="space-y-2">
-        {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 size={24} className="animate-spin text-slate-600" />
-          </div>
-        ) : categories.length === 0 ? (
+      <div className="space-y-1">
+        {categories.length === 0 ? (
           <p className="text-center text-slate-600 py-8">No categories found</p>
         ) : (
-          <>
-            <div className="mb-4">
-              <h4 className="text-sm font-medium text-slate-700 mb-2">System Default Categories</h4>
-              <div className="space-y-1">
-                {categories.filter(c => c.is_default).map((category) => (
-                  <div
-                    key={category.id}
-                    className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200"
-                  >
-                    <div className="flex-1">
-                      <div className="font-medium text-slate-800">{category.name}</div>
-                      {category.description && (
-                        <div className="text-sm text-slate-600">{category.description}</div>
-                      )}
-                    </div>
-                    <span className="text-xs text-slate-500 bg-slate-200 px-2 py-1 rounded">
-                      Default
-                    </span>
-                  </div>
-                ))}
+          categories.map((category) => (
+            <div
+              key={category.id}
+              className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:border-slate-300 transition"
+            >
+              <div className="flex-1">
+                <div className="font-medium text-slate-800">{category.name}</div>
+                {category.description && (
+                  <div className="text-sm text-slate-600">{category.description}</div>
+                )}
               </div>
+              <button
+                onClick={() => handleDeleteCategory(category.id, category.name)}
+                disabled={saving}
+                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition disabled:opacity-50"
+                title="Delete category"
+              >
+                <Trash2 size={16} />
+              </button>
             </div>
-
-            {categories.filter(c => !c.is_default).length > 0 && (
-              <div>
-                <h4 className="text-sm font-medium text-slate-700 mb-2">Custom Categories</h4>
-                <div className="space-y-1">
-                  {categories.filter(c => !c.is_default).map((category) => (
-                    <div
-                      key={category.id}
-                      className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:border-slate-300 transition"
-                    >
-                      <div className="flex-1">
-                        <div className="font-medium text-slate-800">{category.name}</div>
-                        {category.description && (
-                          <div className="text-sm text-slate-600">{category.description}</div>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => handleDeleteCategory(category.id)}
-                        disabled={saving}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition disabled:opacity-50"
-                        title="Delete category"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
+          ))
         )}
       </div>
     </div>

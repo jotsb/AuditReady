@@ -46,23 +46,14 @@ Deno.serve(async (req: Request) => {
 
     const { filePath, collectionId }: ExtractRequest = await req.json();
 
-    const { data: collection } = await supabase
-      .from("collections")
-      .select("business_id")
-      .eq("id", collectionId)
-      .maybeSingle();
-
     let categoryList = "Miscellaneous";
-    if (collection) {
-      const { data: categories } = await supabase
-        .from("expense_categories")
-        .select("name")
-        .or(`is_default.eq.true,business_id.eq.${collection.business_id}`)
-        .order("display_order");
+    const { data: categories } = await supabase
+      .from("expense_categories")
+      .select("name")
+      .order("display_order");
 
-      if (categories && categories.length > 0) {
-        categoryList = categories.map(c => c.name).join(", ");
-      }
+    if (categories && categories.length > 0) {
+      categoryList = categories.map(c => c.name).join(", ");
     }
 
     const { data: fileData, error: downloadError } = await supabase.storage
