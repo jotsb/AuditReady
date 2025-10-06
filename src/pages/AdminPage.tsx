@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Building2, Users, Receipt, TrendingUp, AlertCircle } from 'lucide-react';
+import { Building2, Users, Receipt, TrendingUp, AlertCircle, Activity, Database, BarChart3, UserCog } from 'lucide-react';
 
 interface AdminStats {
   totalUsers: number;
@@ -31,6 +31,7 @@ export function AdminPage() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'logs' | 'analytics'>('overview');
 
   useEffect(() => {
     if (isSystemAdmin) {
@@ -142,12 +143,65 @@ export function AdminPage() {
           <p className="text-slate-600">Manage all businesses and users across the platform</p>
         </div>
 
+        <div className="mb-6">
+          <div className="border-b border-slate-200">
+            <nav className="flex space-x-8">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition ${
+                  activeTab === 'overview'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                }`}
+              >
+                <Building2 className="inline mr-2" size={18} />
+                Overview
+              </button>
+              <button
+                onClick={() => setActiveTab('users')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition ${
+                  activeTab === 'users'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                }`}
+              >
+                <UserCog className="inline mr-2" size={18} />
+                Users Management
+              </button>
+              <button
+                onClick={() => setActiveTab('logs')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition ${
+                  activeTab === 'logs'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                }`}
+              >
+                <Activity className="inline mr-2" size={18} />
+                Audit Logs
+              </button>
+              <button
+                onClick={() => setActiveTab('analytics')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition ${
+                  activeTab === 'analytics'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                }`}
+              >
+                <BarChart3 className="inline mr-2" size={18} />
+                Analytics
+              </button>
+            </nav>
+          </div>
+        </div>
+
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
             {error}
           </div>
         )}
 
+        {activeTab === 'overview' && (
+          <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow-md p-6">
             <div className="flex items-center justify-between mb-4">
@@ -251,6 +305,534 @@ export function AdminPage() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+          </>
+        )}
+
+        {activeTab === 'users' && (
+          <UsersManagementTab />
+        )}
+
+        {activeTab === 'logs' && (
+          <AuditLogsTab />
+        )}
+
+        {activeTab === 'analytics' && (
+          <AnalyticsTab />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function UsersManagementTab() {
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      const [profilesResult, systemRolesResult] = await Promise.all([
+        supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+        supabase.from('system_roles').select('user_id, role')
+      ]);
+
+      if (profilesResult.error) throw profilesResult.error;
+      if (systemRolesResult.error) throw systemRolesResult.error;
+
+      const adminIds = new Set(
+        systemRolesResult.data?.filter(r => r.role === 'admin').map(r => r.user_id) || []
+      );
+
+      const enrichedUsers = profilesResult.data?.map(profile => ({
+        ...profile,
+        is_admin: adminIds.has(profile.id)
+      })) || [];
+
+      setUsers(enrichedUsers);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleAdminStatus = async (userId: string, currentStatus: boolean) => {
+    try {
+      if (currentStatus) {
+        const { error } = await supabase
+          .from('system_roles')
+          .delete()
+          .eq('user_id', userId)
+          .eq('role', 'admin');
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('system_roles')
+          .insert({ user_id: userId, role: 'admin' });
+        if (error) throw error;
+      }
+      await loadUsers();
+    } catch (err: any) {
+      alert('Error updating admin status: ' + err.message);
+    }
+  };
+
+  const filteredUsers = users.filter(user =>
+    user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="text-center text-slate-600">Loading users...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="px-6 py-4 border-b border-slate-200">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-bold text-slate-800">Users Management</h2>
+          <div className="flex items-center space-x-4">
+            <input
+              type="text"
+              placeholder="Search users..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div className="mx-6 mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
+
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-slate-50 border-b border-slate-200">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                User
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                Email
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                MFA
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                Created
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                Admin
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200">
+            {filteredUsers.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
+                  No users found
+                </td>
+              </tr>
+            ) : (
+              filteredUsers.map((user) => (
+                <tr key={user.id} className="hover:bg-slate-50 transition">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-slate-900">{user.full_name || 'N/A'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-slate-600">{user.email || 'N/A'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      user.mfa_enabled
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-slate-100 text-slate-800'
+                    }`}>
+                      {user.mfa_enabled ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-slate-600">
+                      {new Date(user.created_at).toLocaleDateString()}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      user.is_admin
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-slate-100 text-slate-800'
+                    }`}>
+                      {user.is_admin ? 'Admin' : 'User'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <button
+                      onClick={() => toggleAdminStatus(user.id, user.is_admin)}
+                      className={`px-3 py-1 rounded-lg font-medium transition ${
+                        user.is_admin
+                          ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                          : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                      }`}
+                    >
+                      {user.is_admin ? 'Revoke Admin' : 'Grant Admin'}
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function AuditLogsTab() {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [filterAction, setFilterAction] = useState<string>('all');
+
+  useEffect(() => {
+    loadLogs();
+  }, []);
+
+  const loadLogs = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('audit_log')
+        .select('*, profiles(full_name, email)')
+        .order('performed_at', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      setLogs(data || []);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const actionTypes = ['all', ...new Set(logs.map(log => log.action))];
+  const filteredLogs = filterAction === 'all'
+    ? logs
+    : logs.filter(log => log.action === filterAction);
+
+  const getActionColor = (action: string) => {
+    if (action.startsWith('create')) return 'bg-green-100 text-green-800';
+    if (action.startsWith('update')) return 'bg-blue-100 text-blue-800';
+    if (action.startsWith('delete')) return 'bg-red-100 text-red-800';
+    return 'bg-slate-100 text-slate-800';
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="text-center text-slate-600">Loading audit logs...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="px-6 py-4 border-b border-slate-200">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-bold text-slate-800">Audit Logs</h2>
+          <select
+            value={filterAction}
+            onChange={(e) => setFilterAction(e.target.value)}
+            className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            {actionTypes.map(action => (
+              <option key={action} value={action}>
+                {action === 'all' ? 'All Actions' : action}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {error && (
+        <div className="mx-6 mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
+
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-slate-50 border-b border-slate-200">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                Timestamp
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                User
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                Action
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                Resource
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                Details
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200">
+            {filteredLogs.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
+                  No audit logs found
+                </td>
+              </tr>
+            ) : (
+              filteredLogs.map((log) => (
+                <tr key={log.id} className="hover:bg-slate-50 transition">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-slate-600">
+                      {new Date(log.performed_at).toLocaleString()}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-slate-900">
+                      {log.profiles?.full_name || 'Unknown'}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {log.profiles?.email || log.user_id}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getActionColor(log.action)}`}>
+                      {log.action}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-slate-600">{log.resource_type}</div>
+                    <div className="text-xs text-slate-400 font-mono">{log.resource_id?.substring(0, 8)}...</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-slate-600 max-w-md truncate">
+                      {log.metadata ? JSON.stringify(log.metadata) : 'N/A'}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function AnalyticsTab() {
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadAnalytics();
+  }, []);
+
+  const loadAnalytics = async () => {
+    try {
+      setLoading(true);
+
+      const [
+        businessesResult,
+        receiptsResult,
+        usersResult,
+        categoriesResult,
+        collectionsResult
+      ] = await Promise.all([
+        supabase.from('businesses').select('created_at'),
+        supabase.from('receipts').select('created_at, amount'),
+        supabase.from('profiles').select('created_at'),
+        supabase.from('receipts').select('category'),
+        supabase.from('collections').select('id')
+      ]);
+
+      const now = new Date();
+      const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+      const recentBusinesses = businessesResult.data?.filter(
+        b => new Date(b.created_at) > last30Days
+      ).length || 0;
+
+      const recentUsers = usersResult.data?.filter(
+        u => new Date(u.created_at) > last30Days
+      ).length || 0;
+
+      const recentReceipts = receiptsResult.data?.filter(
+        r => new Date(r.created_at) > last7Days
+      ).length || 0;
+
+      const totalReceiptAmount = receiptsResult.data?.reduce(
+        (sum, r) => sum + (r.amount || 0), 0
+      ) || 0;
+
+      const categoryCounts = categoriesResult.data?.reduce((acc, r) => {
+        const cat = r.category || 'Uncategorized';
+        acc[cat] = (acc[cat] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>) || {};
+
+      const topCategories = Object.entries(categoryCounts)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5);
+
+      setAnalytics({
+        recentBusinesses,
+        recentUsers,
+        recentReceipts,
+        totalReceiptAmount,
+        topCategories,
+        totalBusinesses: businessesResult.data?.length || 0,
+        totalReceipts: receiptsResult.data?.length || 0,
+        totalUsers: usersResult.data?.length || 0,
+        totalCollections: collectionsResult.data?.length || 0
+      });
+    } catch (err: any) {
+      console.error('Error loading analytics:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="text-center text-slate-600">Loading analytics...</div>
+      </div>
+    );
+  }
+
+  if (!analytics) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="text-center text-slate-600">No analytics data available</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-xl font-bold text-slate-800 mb-6">Platform Analytics</h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
+            <div className="text-sm text-blue-600 font-medium mb-1">New Businesses (30d)</div>
+            <div className="text-3xl font-bold text-blue-700">{analytics.recentBusinesses}</div>
+            <div className="text-xs text-blue-500 mt-1">of {analytics.totalBusinesses} total</div>
+          </div>
+
+          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
+            <div className="text-sm text-green-600 font-medium mb-1">New Users (30d)</div>
+            <div className="text-3xl font-bold text-green-700">{analytics.recentUsers}</div>
+            <div className="text-xs text-green-500 mt-1">of {analytics.totalUsers} total</div>
+          </div>
+
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
+            <div className="text-sm text-purple-600 font-medium mb-1">New Receipts (7d)</div>
+            <div className="text-3xl font-bold text-purple-700">{analytics.recentReceipts}</div>
+            <div className="text-xs text-purple-500 mt-1">of {analytics.totalReceipts} total</div>
+          </div>
+
+          <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg p-4 border border-amber-200">
+            <div className="text-sm text-amber-600 font-medium mb-1">Total Receipt Value</div>
+            <div className="text-3xl font-bold text-amber-700">
+              ${analytics.totalReceiptAmount.toLocaleString()}
+            </div>
+            <div className="text-xs text-amber-500 mt-1">across all businesses</div>
+          </div>
+        </div>
+
+        <div className="border-t border-slate-200 pt-6">
+          <h3 className="text-lg font-semibold text-slate-800 mb-4">Top Categories</h3>
+          <div className="space-y-3">
+            {analytics.topCategories.map(([category, count]: [string, number], index: number) => {
+              const maxCount = analytics.topCategories[0][1];
+              const percentage = (count / maxCount) * 100;
+              const colors = [
+                'bg-blue-500',
+                'bg-green-500',
+                'bg-purple-500',
+                'bg-amber-500',
+                'bg-pink-500'
+              ];
+
+              return (
+                <div key={category}>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-sm font-medium text-slate-700">{category}</span>
+                    <span className="text-sm text-slate-600">{count} receipts</span>
+                  </div>
+                  <div className="w-full bg-slate-200 rounded-full h-2.5">
+                    <div
+                      className={`${colors[index]} h-2.5 rounded-full transition-all duration-500`}
+                      style={{ width: `${percentage}%` }}
+                    ></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-slate-800 mb-4">Growth Metrics</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+              <span className="text-slate-600">Avg Receipts per Business</span>
+              <span className="font-bold text-slate-800">
+                {(analytics.totalReceipts / analytics.totalBusinesses || 0).toFixed(1)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+              <span className="text-slate-600">Total Collections</span>
+              <span className="font-bold text-slate-800">{analytics.totalCollections}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-slate-800 mb-4">Activity Summary</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+              <span className="text-slate-600">Businesses Created Today</span>
+              <span className="font-bold text-slate-800">
+                {analytics.recentBusinesses > 0 ? '🔥' : '—'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+              <span className="text-slate-600">Platform Status</span>
+              <span className="font-bold text-green-600">Operational</span>
+            </div>
           </div>
         </div>
       </div>
