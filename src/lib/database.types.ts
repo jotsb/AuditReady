@@ -13,6 +13,7 @@ export interface Database {
         Row: {
           id: string;
           full_name: string;
+          email: string | null;
           phone_number: string | null;
           mfa_method: 'authenticator' | 'sms';
           mfa_enabled: boolean;
@@ -23,6 +24,7 @@ export interface Database {
         Insert: {
           id: string;
           full_name: string;
+          email?: string | null;
           phone_number?: string | null;
           mfa_method?: 'authenticator' | 'sms';
           mfa_enabled?: boolean;
@@ -33,6 +35,7 @@ export interface Database {
         Update: {
           id?: string;
           full_name?: string;
+          email?: string | null;
           phone_number?: string | null;
           mfa_method?: 'authenticator' | 'sms';
           mfa_enabled?: boolean;

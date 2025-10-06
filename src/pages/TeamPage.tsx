@@ -77,26 +77,17 @@ export default function TeamPage() {
 
       const enrichedMembers = await Promise.all(
         (membersResult.data || []).map(async (member: any) => {
-          const [profileResult, emailResult] = await Promise.all([
-            supabase
-              .from('profiles')
-              .select('full_name')
-              .eq('id', member.user_id)
-              .maybeSingle(),
-            supabase.rpc('get_user_email', { user_id: member.user_id }).single()
-          ]);
-
-          if (emailResult.error) {
-            console.error('Error fetching email for user:', member.user_id, emailResult.error);
-          }
-
-          const email = emailResult?.data || 'Unknown';
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('full_name, email')
+            .eq('id', member.user_id)
+            .maybeSingle();
 
           return {
             ...member,
             profiles: {
-              full_name: profileResult?.data?.full_name || 'Unknown',
-              email: email
+              full_name: profileData?.full_name || 'Unknown',
+              email: profileData?.email || 'Unknown'
             }
           };
         })

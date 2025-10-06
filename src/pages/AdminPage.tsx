@@ -82,9 +82,11 @@ export function AdminPage() {
               .then(res => res.count || 0),
 
             supabase
-              .rpc('get_user_email', { user_id: business.owner_id })
-              .single()
-              .then(res => res.data || 'Unknown')
+              .from('profiles')
+              .select('email')
+              .eq('id', business.owner_id)
+              .maybeSingle()
+              .then(res => res.data?.email || 'Unknown')
           ]);
 
           return {
