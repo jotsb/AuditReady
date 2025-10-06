@@ -193,7 +193,7 @@ export function YearEndSummaryReport() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 px-2 md:px-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 ">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
               Year
@@ -234,7 +234,7 @@ export function YearEndSummaryReport() {
 
       {summary && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-2 md:px-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 ">
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-blue-100 rounded-lg">
@@ -347,7 +347,7 @@ export function YearEndSummaryReport() {
           {summary.businessBreakdown.length > 0 && (
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
               <h4 className="text-lg font-semibold text-slate-800 mb-4">Business Breakdown</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-2 md:px-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ">
                 {summary.businessBreakdown.map((business, index) => (
                   <div key={index} className="p-4 bg-slate-50 rounded-lg">
                     <p className="font-semibold text-slate-800 mb-2">{business.business}</p>

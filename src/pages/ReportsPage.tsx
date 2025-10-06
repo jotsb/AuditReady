@@ -42,7 +42,7 @@ export function ReportsPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-2 md:px-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ">
           <button
             onClick={() => setSelectedReport('csv')}
             className="p-6 border-2 border-slate-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition text-left"

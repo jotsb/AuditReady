@@ -155,7 +155,7 @@ export function TaxSummaryReport() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 px-2 md:px-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 ">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
               Year
@@ -212,7 +212,7 @@ export function TaxSummaryReport() {
 
       {summary && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-2 md:px-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 ">
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-orange-100 rounded-lg">
