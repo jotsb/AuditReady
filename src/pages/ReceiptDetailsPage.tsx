@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Calendar, DollarSign, MapPin, CreditCard, Tag, FileText, Clock, Download, User, Percent } from 'lucide-react';
+import { ArrowLeft, Calendar, DollarSign, MapPin, CreditCard, Tag, FileText, Clock, Download, User, Percent, CreditCard as Edit2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { EditReceiptModal } from '../components/receipts/EditReceiptModal';
 import type { Database } from '../lib/database.types';
 
 type Receipt = Database['public']['Tables']['receipts']['Row'];
@@ -14,6 +15,7 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editingReceipt, setEditingReceipt] = useState<Receipt | null>(null);
 
   useEffect(() => {
     loadReceipt();
@@ -111,7 +113,23 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <div className="space-y-6">
           <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
-            <h2 className="text-2xl font-bold text-slate-800 mb-6">Receipt Details</h2>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <h2 className="text-2xl font-bold text-slate-800">Receipt Details</h2>
+                {receipt.is_edited && (
+                  <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs font-medium">
+                    Edited
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => setEditingReceipt(receipt)}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition"
+              >
+                <Edit2 size={16} />
+                <span>Edit</span>
+              </button>
+            </div>
 
             <div className="space-y-4">
               <div className="flex items-start gap-3">
@@ -323,6 +341,17 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
           )}
         </div>
       </div>
+
+      {editingReceipt && (
+        <EditReceiptModal
+          receipt={editingReceipt}
+          onClose={() => setEditingReceipt(null)}
+          onSave={() => {
+            setEditingReceipt(null);
+            loadReceipt();
+          }}
+        />
+      )}
     </div>
   );
 }

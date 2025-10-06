@@ -62,12 +62,12 @@
 - [x] Location: `src/components/settings/BusinessManagement.tsx` & `src/components/settings/CollectionManagement.tsx`
 
 #### Receipt Management
-- [ ] **Edit Receipt Functionality**
-  - Edit form for existing receipts
-  - Update all fields (vendor, date, amount, category)
-  - Track edit history in audit log
-  - Mark receipts as edited
-  - Location: Receipt editing not implemented
+- [x] **Edit Receipt Functionality**
+  - [x] Edit form for existing receipts
+  - [x] Update all fields (vendor, date, amount, category)
+  - [x] Track edit history in audit log
+  - [x] Mark receipts as edited
+  - [x] Location: `src/components/receipts/EditReceiptModal.tsx`
 
 - [ ] **Bulk Operations**
   - Multi-select checkboxes

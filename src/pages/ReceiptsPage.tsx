@@ -1,23 +1,30 @@
 import { useEffect, useState } from 'react';
-import { Plus, Upload, CreditCard as Edit, Search, Filter, Calendar, DollarSign, Trash2, Loader2, Eye } from 'lucide-react';
+import { Plus, Upload, CreditCard as Edit, Search, Filter, Calendar, DollarSign, Trash2, Loader2, Eye, CreditCard as Edit2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { ReceiptUpload } from '../components/receipts/ReceiptUpload';
 import { ManualEntryForm } from '../components/receipts/ManualEntryForm';
 import { VerifyReceiptModal } from '../components/receipts/VerifyReceiptModal';
+import { EditReceiptModal } from '../components/receipts/EditReceiptModal';
 import { ReceiptDetailsPage } from './ReceiptDetailsPage';
 
 interface Receipt {
   id: string;
+  collection_id: string;
   vendor_name: string | null;
   vendor_address: string | null;
   transaction_date: string | null;
+  subtotal: number | null;
+  gst_amount: number;
+  pst_amount: number;
   total_amount: number;
   category: string | null;
   payment_method: string | null;
+  notes: string | null;
   extraction_status: string | null;
   extracted_data: any | null;
   file_path: string | null;
+  is_edited: boolean;
   created_at: string;
 }
 
@@ -34,6 +41,7 @@ export function ReceiptsPage() {
   const [loading, setLoading] = useState(true);
   const [extracting, setExtracting] = useState(false);
   const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
+  const [editingReceipt, setEditingReceipt] = useState<Receipt | null>(null);
 
   useEffect(() => {
     loadCollections();
@@ -363,12 +371,21 @@ export function ReceiptsPage() {
                   onClick={() => setSelectedReceiptId(receipt.id)}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-slate-800">
-                      {receipt.vendor_name || 'Unknown Vendor'}
+                    <div className="flex items-center gap-2">
+                      <div>
+                        <div className="text-sm font-medium text-slate-800">
+                          {receipt.vendor_name || 'Unknown Vendor'}
+                        </div>
+                        {receipt.vendor_address && (
+                          <div className="text-xs text-slate-500">{receipt.vendor_address}</div>
+                        )}
+                      </div>
+                      {receipt.is_edited && (
+                        <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium" title="This receipt has been manually edited">
+                          Edited
+                        </span>
+                      )}
                     </div>
-                    {receipt.vendor_address && (
-                      <div className="text-xs text-slate-500">{receipt.vendor_address}</div>
-                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-1 text-sm text-slate-600">
@@ -407,6 +424,16 @@ export function ReceiptsPage() {
                         title="View details"
                       >
                         <Eye size={16} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingReceipt(receipt);
+                        }}
+                        className="p-2 text-slate-600 hover:bg-slate-50 rounded-lg transition"
+                        title="Edit receipt"
+                      >
+                        <Edit2 size={16} />
                       </button>
                       <button
                         onClick={(e) => {
@@ -457,6 +484,17 @@ export function ReceiptsPage() {
           extractedData={verifyReceipt.data}
           onConfirm={(filePath, data) => handleConfirmExtraction(filePath, data)}
           onClose={() => handleCancelExtraction(verifyReceipt.filePath)}
+        />
+      )}
+
+      {editingReceipt && (
+        <EditReceiptModal
+          receipt={editingReceipt}
+          onClose={() => setEditingReceipt(null)}
+          onSave={() => {
+            setEditingReceipt(null);
+            loadReceipts();
+          }}
         />
       )}
     </div>
