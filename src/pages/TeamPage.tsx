@@ -83,8 +83,12 @@ export default function TeamPage() {
               .select('full_name')
               .eq('id', member.user_id)
               .maybeSingle(),
-            supabase.rpc('get_user_email', { user_id: member.user_id })
+            supabase.rpc('get_user_email', { user_id: member.user_id }).single()
           ]);
+
+          if (emailResult.error) {
+            console.error('Error fetching email for user:', member.user_id, emailResult.error);
+          }
 
           const email = emailResult?.data || 'Unknown';
 

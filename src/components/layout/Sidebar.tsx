@@ -1,4 +1,4 @@
-import { Home, Receipt, FolderOpen, Settings, LogOut, BarChart3, Users } from 'lucide-react';
+import { Home, Receipt, FolderOpen, Settings, LogOut, BarChart3, Users, Shield } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface SidebarProps {
@@ -8,7 +8,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, currentView, onNavigate }: SidebarProps) {
-  const { signOut } = useAuth();
+  const { signOut, isSystemAdmin } = useAuth();
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
@@ -17,6 +17,10 @@ export function Sidebar({ isOpen, currentView, onNavigate }: SidebarProps) {
     { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'team', label: 'Team', icon: Users },
     { id: 'settings', label: 'Settings', icon: Settings },
+  ];
+
+  const adminMenuItems = [
+    { id: 'admin', label: 'System Admin', icon: Shield },
   ];
 
   return (
@@ -73,6 +77,40 @@ export function Sidebar({ isOpen, currentView, onNavigate }: SidebarProps) {
               );
             })}
           </ul>
+
+          {isSystemAdmin && (
+            <>
+              <div className="my-4 border-t border-slate-700"></div>
+              <div className="mb-2 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Admin Tools
+              </div>
+              <ul className="space-y-2">
+                {adminMenuItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = currentView === item.id;
+
+                  return (
+                    <li key={item.id}>
+                      <button
+                        onClick={() => onNavigate(item.id)}
+                        className={`
+                          w-full flex items-center gap-3 px-4 py-3 rounded-lg transition
+                          ${
+                            isActive
+                              ? 'bg-red-600 text-white'
+                              : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+                          }
+                        `}
+                      >
+                        <Icon size={20} />
+                        <span className="font-medium">{item.label}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
         </nav>
 
         <div className="p-4 border-t border-slate-700">

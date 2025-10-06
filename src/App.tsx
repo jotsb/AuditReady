@@ -7,6 +7,7 @@ import { ReceiptsPage } from './pages/ReceiptsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import TeamPage from './pages/TeamPage';
+import { AdminPage } from './pages/AdminPage';
 import { MainLayout } from './components/layout/MainLayout';
 
 function AppContent() {
@@ -39,6 +40,8 @@ function AppContent() {
         return 'Team';
       case 'settings':
         return 'Settings';
+      case 'admin':
+        return 'System Administration';
       default:
         return 'AuditReady';
     }
@@ -58,6 +61,8 @@ function AppContent() {
         return <TeamPage />;
       case 'settings':
         return <SettingsPage />;
+      case 'admin':
+        return <AdminPage />;
       default:
         return <DashboardPage />;
     }
