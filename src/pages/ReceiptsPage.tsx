@@ -103,8 +103,14 @@ export function ReceiptsPage() {
       const thumbnailName = `${user.id}/thumbnails/${timestamp}_thumb.webp`;
 
       const [uploadResult, thumbnailResult] = await Promise.all([
-        supabase.storage.from('receipts').upload(fileName, file),
-        supabase.storage.from('receipts').upload(thumbnailName, thumbnail),
+        supabase.storage.from('receipts').upload(fileName, file, {
+          contentType: 'image/webp',
+          upsert: false
+        }),
+        supabase.storage.from('receipts').upload(thumbnailName, thumbnail, {
+          contentType: 'image/webp',
+          upsert: false
+        }),
       ]);
 
       if (uploadResult.error) throw uploadResult.error;
