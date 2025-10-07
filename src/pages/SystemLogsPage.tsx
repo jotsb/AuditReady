@@ -40,10 +40,17 @@ export function SystemLogsPage() {
   const [filterSessionId, setFilterSessionId] = useState<string>('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const itemsPerPage = 50;
 
   useEffect(() => {
     loadSystemLogs();
   }, []);
+
+  useEffect(() => {
+    loadSystemLogs();
+  }, [currentPage]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -68,11 +75,18 @@ export function SystemLogsPage() {
         setError('');
       }
 
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage - 1;
+
+      const { count } = await supabase
+        .from('system_logs')
+        .select('*', { count: 'exact', head: true });
+
       const { data: logsData, error: fetchError } = await supabase
         .from('system_logs')
         .select('*')
         .order('timestamp', { ascending: false })
-        .limit(500);
+        .range(startIndex, endIndex);
 
       if (fetchError) throw fetchError;
 
@@ -102,6 +116,7 @@ export function SystemLogsPage() {
       })) || [];
 
       setLogs(logsWithProfiles);
+      setTotalCount(count || 0);
     } catch (err: any) {
       console.error('Error loading system logs:', err);
       setError(err.message);
@@ -194,6 +209,7 @@ export function SystemLogsPage() {
     setFilterSessionId('all');
     setStartDate('');
     setEndDate('');
+    setCurrentPage(1);
   };
 
   const levels = ['all', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL'];
@@ -387,7 +403,7 @@ export function SystemLogsPage() {
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
           <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
             <p className="text-sm text-slate-600">
-              Showing {filteredLogs.length} of {logs.length} total logs
+              Showing {filteredLogs.length} of {logs.length} logs on page {currentPage} (Total: {totalCount} logs)
             </p>
           </div>
 
@@ -406,6 +422,58 @@ export function SystemLogsPage() {
               ))
             )}
           </div>
+
+          {totalCount > itemsPerPage && (
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50">
+              <div className="text-sm text-slate-600">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} logs
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  Previous
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.ceil(totalCount / itemsPerPage) }, (_, i) => i + 1)
+                    .filter(page => {
+                      const totalPages = Math.ceil(totalCount / itemsPerPage);
+                      if (totalPages <= 7) return true;
+                      if (page === 1 || page === totalPages) return true;
+                      if (page >= currentPage - 1 && page <= currentPage + 1) return true;
+                      return false;
+                    })
+                    .map((page, index, array) => {
+                      const showEllipsis = index > 0 && page - array[index - 1] > 1;
+                      return (
+                        <div key={page} className="flex items-center gap-1">
+                          {showEllipsis && <span className="px-2 text-slate-400">...</span>}
+                          <button
+                            onClick={() => setCurrentPage(page)}
+                            className={`px-3 py-2 text-sm font-medium rounded-lg transition ${
+                              currentPage === page
+                                ? 'bg-blue-600 text-white'
+                                : 'text-slate-700 bg-white border border-slate-300 hover:bg-slate-50'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        </div>
+                      );
+                    })}
+                </div>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalCount / itemsPerPage), p + 1))}
+                  disabled={currentPage >= Math.ceil(totalCount / itemsPerPage)}
+                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -45,6 +45,9 @@ export function ReceiptsPage() {
   const [extracting, setExtracting] = useState(false);
   const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
   const [editingReceipt, setEditingReceipt] = useState<Receipt | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const itemsPerPage = 20;
 
   usePageTracking('Receipts', { section: 'receipts' });
   const logDataLoad = useDataLoadTracking('receipts');
@@ -55,9 +58,16 @@ export function ReceiptsPage() {
 
   useEffect(() => {
     if (selectedCollection) {
+      setCurrentPage(1);
       loadReceipts();
     }
   }, [selectedCollection]);
+
+  useEffect(() => {
+    if (selectedCollection) {
+      loadReceipts();
+    }
+  }, [currentPage]);
 
 
   const loadCollections = async () => {
@@ -82,16 +92,27 @@ export function ReceiptsPage() {
     if (!selectedCollection) return;
 
     try {
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage - 1;
+
+      const { count } = await supabase
+        .from('receipts')
+        .select('*', { count: 'exact', head: true })
+        .eq('collection_id', selectedCollection)
+        .eq('extraction_status', 'completed');
+
       const { data, error } = await supabase
         .from('receipts')
         .select('*')
         .eq('collection_id', selectedCollection)
         .eq('extraction_status', 'completed')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(startIndex, endIndex);
 
       if (error) throw error;
       setReceipts(data || []);
-      logDataLoad(data?.length || 0, { collectionId: selectedCollection });
+      setTotalCount(count || 0);
+      logDataLoad(data?.length || 0, { collectionId: selectedCollection, page: currentPage });
     } catch (error) {
       console.error('Error loading receipts:', error);
     }
@@ -274,6 +295,7 @@ export function ReceiptsPage() {
 
   const handleSearchChange = (query: string) => {
     setSearchQuery(query);
+    setCurrentPage(1);
     if (query.length >= 3) {
       actionTracker.searchPerformed(query, filteredReceipts.length, { context: 'receipts' });
     }
@@ -281,12 +303,14 @@ export function ReceiptsPage() {
 
   const handleCategoryFilterChange = (category: string) => {
     setFilterCategory(category);
+    setCurrentPage(1);
     actionTracker.filterApplied('category', category, { context: 'receipts' });
   };
 
   const handleCollectionChange = (collectionId: string) => {
     actionTracker.selectionChanged('collection', collectionId, selectedCollection, { context: 'receipts' });
     setSelectedCollection(collectionId);
+    setCurrentPage(1);
   };
 
   const handleUploadClick = () => {
@@ -539,6 +563,58 @@ export function ReceiptsPage() {
         {filteredReceipts.length === 0 && (
           <div className="text-center py-12 text-slate-500">
             {receipts.length === 0 ? 'No receipts yet. Upload your first receipt!' : 'No receipts match your filters.'}
+          </div>
+        )}
+
+        {totalCount > itemsPerPage && (
+          <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200">
+            <div className="text-sm text-slate-600">
+              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} receipts
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                Previous
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.ceil(totalCount / itemsPerPage) }, (_, i) => i + 1)
+                  .filter(page => {
+                    const totalPages = Math.ceil(totalCount / itemsPerPage);
+                    if (totalPages <= 7) return true;
+                    if (page === 1 || page === totalPages) return true;
+                    if (page >= currentPage - 1 && page <= currentPage + 1) return true;
+                    return false;
+                  })
+                  .map((page, index, array) => {
+                    const showEllipsis = index > 0 && page - array[index - 1] > 1;
+                    return (
+                      <div key={page} className="flex items-center gap-1">
+                        {showEllipsis && <span className="px-2 text-slate-400">...</span>}
+                        <button
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-3 py-2 text-sm font-medium rounded-lg transition ${
+                            currentPage === page
+                              ? 'bg-blue-600 text-white'
+                              : 'text-slate-700 bg-white border border-slate-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalCount / itemsPerPage), p + 1))}
+                disabled={currentPage >= Math.ceil(totalCount / itemsPerPage)}
+                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
       </div>
