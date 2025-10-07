@@ -150,15 +150,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sessionManager.setUserId(data.user.id);
       logger.auth('sign_up', true, { email, fullName });
 
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: data.user.id,
-        full_name: fullName,
-        mfa_enabled: false,
-      });
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ full_name: fullName })
+        .eq('id', data.user.id);
 
       if (profileError) {
-        logger.auth('profile_creation', false, { email, error: profileError.message });
-        return { error: profileError as unknown as AuthError };
+        logger.auth('profile_update', false, { email, error: profileError.message });
       }
     } else {
       logger.auth('sign_up', false, { email, error: error?.message });
