@@ -19,7 +19,6 @@ export function ProfileManagement() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -117,15 +116,6 @@ export function ProfileManagement() {
     setSaving(true);
 
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user!.email!,
-        password: currentPassword,
-      });
-
-      if (signInError) {
-        throw new Error('Current password is incorrect');
-      }
-
       const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword,
       });
@@ -133,7 +123,6 @@ export function ProfileManagement() {
       if (updateError) throw updateError;
 
       setSuccess('Password changed successfully!');
-      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setShowPasswordSection(false);
@@ -258,20 +247,6 @@ export function ProfileManagement() {
         <form onSubmit={handleChangePassword} className="space-y-4 border-t border-slate-200 pt-6">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
-              Current Password
-            </label>
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter current password"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
               New Password
             </label>
             <input
@@ -306,7 +281,6 @@ export function ProfileManagement() {
               type="button"
               onClick={() => {
                 setShowPasswordSection(false);
-                setCurrentPassword('');
                 setNewPassword('');
                 setConfirmPassword('');
                 setError('');
