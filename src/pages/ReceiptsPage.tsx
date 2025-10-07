@@ -7,6 +7,7 @@ import { ManualEntryForm } from '../components/receipts/ManualEntryForm';
 import { VerifyReceiptModal } from '../components/receipts/VerifyReceiptModal';
 import { EditReceiptModal } from '../components/receipts/EditReceiptModal';
 import { ReceiptDetailsPage } from './ReceiptDetailsPage';
+import { convertLocalDateToUTC } from '../lib/dateUtils';
 
 interface Receipt {
   id: string;
@@ -196,6 +197,10 @@ export function ReceiptsPage() {
   const handleConfirmExtraction = async (filePath: string, data: any) => {
     if (!user || !selectedCollection) return;
 
+    const transactionDateUTC = data.transaction_date
+      ? convertLocalDateToUTC(data.transaction_date)
+      : null;
+
     const { error } = await supabase
       .from('receipts')
       .insert({
@@ -205,7 +210,7 @@ export function ReceiptsPage() {
         file_type: 'image',
         vendor_name: data.vendor_name,
         vendor_address: data.vendor_address,
-        transaction_date: data.transaction_date,
+        transaction_date: transactionDateUTC,
         total_amount: parseFloat(data.total_amount || 0),
         subtotal: data.subtotal ? parseFloat(data.subtotal) : null,
         gst_amount: data.gst_amount ? parseFloat(data.gst_amount) : null,

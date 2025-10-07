@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { convertLocalDateToUTC } from '../../lib/dateUtils';
 
 interface ManualEntryFormProps {
   onSubmit: (data: any) => Promise<void>;
@@ -44,13 +45,17 @@ export function ManualEntryForm({ onSubmit, onClose }: ManualEntryFormProps) {
     e.preventDefault();
     setLoading(true);
     try {
+      const transactionDateUTC = formData.transaction_date
+        ? convertLocalDateToUTC(formData.transaction_date)
+        : new Date().toISOString();
+
       await onSubmit({
         ...formData,
         subtotal: parseFloat(formData.subtotal) || 0,
         gst_amount: parseFloat(formData.gst_amount) || 0,
         pst_amount: parseFloat(formData.pst_amount) || 0,
         total_amount: parseFloat(formData.total_amount) || 0,
-        transaction_date: formData.transaction_date || new Date().toISOString(),
+        transaction_date: transactionDateUTC,
       });
       onClose();
     } catch (error) {

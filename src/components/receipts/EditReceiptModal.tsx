@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Save, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { formatDateForInput, convertLocalDateToUTC } from '../../lib/dateUtils';
 
 interface Receipt {
   id: string;
@@ -44,15 +45,6 @@ export function EditReceiptModal({ receipt, onClose, onSave }: EditReceiptModalP
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
-
-  const formatDateForInput = (dateString: string | null) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(date.getUTCDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
 
   const [formData, setFormData] = useState({
     vendor_name: receipt.vendor_name || '',
@@ -104,12 +96,16 @@ export function EditReceiptModal({ receipt, onClose, onSave }: EditReceiptModalP
         throw new Error('Total amount must be a valid number');
       }
 
+      const transactionDateUTC = formData.transaction_date
+        ? convertLocalDateToUTC(formData.transaction_date)
+        : null;
+
       const { error: updateError } = await supabase
         .from('receipts')
         .update({
           vendor_name: formData.vendor_name || null,
           vendor_address: formData.vendor_address || null,
-          transaction_date: formData.transaction_date || null,
+          transaction_date: transactionDateUTC,
           subtotal,
           gst_amount: gstAmount,
           pst_amount: pstAmount,
