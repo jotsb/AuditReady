@@ -20,6 +20,14 @@ export const convertLocalDateToUTC = (dateString: string): string | null => {
   return utcDate.toISOString();
 };
 
+export const areDatesEqual = (dbDate: string | null, formDate: string): boolean => {
+  if (!dbDate && !formDate) return true;
+  if (!dbDate || !formDate) return false;
+
+  const dbFormatted = formatDateForInput(dbDate);
+  return dbFormatted === formDate;
+};
+
 export const formatDateForDisplay = (dateString: string | null): string => {
   if (!dateString) return 'No date';
   const date = new Date(dateString);

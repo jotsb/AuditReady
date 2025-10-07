@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Save, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { formatDateForInput, convertLocalDateToUTC } from '../../lib/dateUtils';
+import { formatDateForInput, convertLocalDateToUTC, areDatesEqual } from '../../lib/dateUtils';
 
 interface Receipt {
   id: string;
@@ -96,9 +96,10 @@ export function EditReceiptModal({ receipt, onClose, onSave }: EditReceiptModalP
         throw new Error('Total amount must be a valid number');
       }
 
-      const transactionDateUTC = formData.transaction_date
+      const dateChanged = !areDatesEqual(receipt.transaction_date, formData.transaction_date);
+      const transactionDateUTC = dateChanged && formData.transaction_date
         ? convertLocalDateToUTC(formData.transaction_date)
-        : null;
+        : receipt.transaction_date;
 
       const { error: updateError } = await supabase
         .from('receipts')
