@@ -105,7 +105,9 @@ export function EnhancedAuditLogsPage() {
         log.resource_type.toLowerCase().includes(term) ||
         log.profiles?.full_name?.toLowerCase().includes(term) ||
         log.profiles?.email?.toLowerCase().includes(term) ||
-        JSON.stringify(log.details).toLowerCase().includes(term)
+        JSON.stringify(log.details).toLowerCase().includes(term) ||
+        JSON.stringify(log.snapshot_before).toLowerCase().includes(term) ||
+        JSON.stringify(log.snapshot_after).toLowerCase().includes(term)
       );
     }
 
