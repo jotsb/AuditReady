@@ -177,6 +177,12 @@ export function EnhancedAuditLogsPage() {
     setEndDate('');
   };
 
+  const formatActionName = (action: string) => {
+    return action.split('_').map(word =>
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+  };
+
   const actionTypes = ['all', ...new Set(logs.map(log => log.action))];
   const resourceTypes = ['all', ...new Set(logs.map(log => log.resource_type))];
   const statuses = ['all', 'success', 'failure', 'denied'];
