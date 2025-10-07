@@ -2,10 +2,23 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
+interface Business {
+  id: string;
+  name: string;
+  owner_id: string;
+  tax_id?: string;
+  currency?: string;
+  created_at: string;
+}
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   isSystemAdmin: boolean;
+  businesses: Business[];
+  selectedBusiness: Business | null;
+  selectBusiness: (business: Business | null) => void;
+  refreshBusinesses: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
@@ -13,10 +26,14 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const SELECTED_BUSINESS_KEY = 'selectedBusinessId';
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSystemAdmin, setIsSystemAdmin] = useState(false);
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
 
   const checkAdminStatus = async (userId: string) => {
     const { data } = await supabase
@@ -29,11 +46,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsSystemAdmin(!!data);
   };
 
+  const loadBusinesses = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('businesses')
+        .select('*')
+        .eq('owner_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setBusinesses(data || []);
+
+      // Restore selected business from localStorage
+      const savedBusinessId = localStorage.getItem(SELECTED_BUSINESS_KEY);
+      if (savedBusinessId && data) {
+        const savedBusiness = data.find(b => b.id === savedBusinessId);
+        if (savedBusiness) {
+          setSelectedBusiness(savedBusiness);
+        } else if (data.length > 0) {
+          // If saved business not found, select first one
+          setSelectedBusiness(data[0]);
+          localStorage.setItem(SELECTED_BUSINESS_KEY, data[0].id);
+        }
+      } else if (data && data.length > 0) {
+        // No saved selection, select first business
+        setSelectedBusiness(data[0]);
+        localStorage.setItem(SELECTED_BUSINESS_KEY, data[0].id);
+      }
+    } catch (error) {
+      console.error('Error loading businesses:', error);
+    }
+  };
+
+  const refreshBusinesses = async () => {
+    if (user) {
+      await loadBusinesses(user.id);
+    }
+  };
+
+  const selectBusiness = (business: Business | null) => {
+    setSelectedBusiness(business);
+    if (business) {
+      localStorage.setItem(SELECTED_BUSINESS_KEY, business.id);
+    } else {
+      localStorage.removeItem(SELECTED_BUSINESS_KEY);
+    }
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
         checkAdminStatus(session.user.id);
+        loadBusinesses(session.user.id);
       }
       setLoading(false);
     });
@@ -43,8 +109,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
         if (session?.user) {
           await checkAdminStatus(session.user.id);
+          await loadBusinesses(session.user.id);
         } else {
           setIsSystemAdmin(false);
+          setBusinesses([]);
+          setSelectedBusiness(null);
+          localStorage.removeItem(SELECTED_BUSINESS_KEY);
         }
       })();
     });
@@ -83,10 +153,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    setBusinesses([]);
+    setSelectedBusiness(null);
+    localStorage.removeItem(SELECTED_BUSINESS_KEY);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isSystemAdmin, signIn, signUp, signOut }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        isSystemAdmin,
+        businesses,
+        selectedBusiness,
+        selectBusiness,
+        refreshBusinesses,
+        signIn,
+        signUp,
+        signOut
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

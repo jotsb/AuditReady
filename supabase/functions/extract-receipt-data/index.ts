@@ -26,6 +26,8 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 }
 
 Deno.serve(async (req: Request) => {
+  const startTime = Date.now();
+
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 200,
@@ -33,18 +35,35 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  let requestData: ExtractRequest | null = null;
+
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
 
     if (!openaiApiKey) {
       throw new Error("OPENAI_API_KEY not configured");
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    requestData = await req.json();
+    const { filePath, collectionId } = requestData;
 
-    const { filePath, collectionId }: ExtractRequest = await req.json();
+    // Log edge function start
+    await supabase.rpc('log_system_event', {
+      p_level: 'INFO',
+      p_category: 'EDGE_FUNCTION',
+      p_message: 'Receipt extraction started',
+      p_metadata: { filePath, collectionId, function: 'extract-receipt-data' },
+      p_user_id: null,
+      p_session_id: null,
+      p_ip_address: null,
+      p_user_agent: req.headers.get('user-agent'),
+      p_stack_trace: null,
+      p_execution_time_ms: null
+    });
 
     let categoryList = "Miscellaneous";
     const { data: categories } = await supabase
@@ -126,6 +145,27 @@ Deno.serve(async (req: Request) => {
     
     const extractedData = JSON.parse(jsonMatch[0]);
 
+    const executionTime = Date.now() - startTime;
+
+    // Log successful extraction
+    await supabase.rpc('log_system_event', {
+      p_level: 'INFO',
+      p_category: 'EDGE_FUNCTION',
+      p_message: 'Receipt extraction completed successfully',
+      p_metadata: {
+        filePath: requestData?.filePath,
+        collectionId: requestData?.collectionId,
+        function: 'extract-receipt-data',
+        extractedVendor: extractedData.vendor_name
+      },
+      p_user_id: null,
+      p_session_id: null,
+      p_ip_address: null,
+      p_user_agent: req.headers.get('user-agent'),
+      p_stack_trace: null,
+      p_execution_time_ms: executionTime
+    });
+
     return new Response(
       JSON.stringify({ success: true, data: extractedData }),
       {
@@ -137,11 +177,34 @@ Deno.serve(async (req: Request) => {
     );
   } catch (error) {
     console.error("Extraction error:", error);
-    
+
+    const executionTime = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const stackTrace = error instanceof Error ? error.stack : null;
+
+    // Log error
+    await supabase.rpc('log_system_event', {
+      p_level: 'ERROR',
+      p_category: 'EDGE_FUNCTION',
+      p_message: `Receipt extraction failed: ${errorMessage}`,
+      p_metadata: {
+        filePath: requestData?.filePath,
+        collectionId: requestData?.collectionId,
+        function: 'extract-receipt-data',
+        error: errorMessage
+      },
+      p_user_id: null,
+      p_session_id: null,
+      p_ip_address: null,
+      p_user_agent: req.headers.get('user-agent'),
+      p_stack_trace: stackTrace,
+      p_execution_time_ms: executionTime
+    });
+
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error instanceof Error ? error.message : "Unknown error" 
+      JSON.stringify({
+        success: false,
+        error: errorMessage
       }),
       {
         status: 500,
