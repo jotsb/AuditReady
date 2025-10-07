@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Database, Filter, Search, Download, AlertCircle, RefreshCw } from 'lucide-react';
-import { SystemLogEntry } from '../components/logs/SystemLogEntry';
+import { LogEntry } from '../components/shared/LogEntry';
 
 interface SystemLog {
   id: string;
@@ -350,7 +350,7 @@ export function SystemLogsPage() {
               </div>
             ) : (
               filteredLogs.map((log) => (
-                <SystemLogEntry key={log.id} log={log} />
+                <LogEntry key={log.id} log={{ ...log, type: 'system' as const }} />
               ))
             )}
           </div>

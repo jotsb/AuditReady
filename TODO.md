@@ -138,12 +138,15 @@
 - [x] ✅ Export audit logs (CSV)
 - [x] ✅ Full-text search in audit logs
 - [x] ✅ Date range filtering
-- [ ] 🔴 **Audit Log UI Improvements**
-  - Single-line collapsed view for log entries
+- [ ] 🔴 **Unified Log UI Design**
+  - Create unified LogEntry component for both Audit Logs and System Logs
+  - Single-line collapsed view for all log types
   - Expand on click to show full details
-  - Highlight changed fields in snapshot comparison
-  - Consistent UI between Business Audit Logs and System Admin Audit Logs
-  - Location: `src/pages/EnhancedAuditLogsPage.tsx`
+  - Audit logs: Show before/after table comparison
+  - System logs: Show parsed metadata and stack traces
+  - Highlight changed fields in audit log comparisons
+  - Consistent UI across Business Audit Logs, System Admin Audit Logs, and System Logs
+  - Locations: `src/pages/EnhancedAuditLogsPage.tsx`, `src/pages/AuditLogsPage.tsx`, `src/pages/SystemLogsPage.tsx`
 - [ ] 🟡 Audit log retention policies
 - [ ] 🟢 Audit log alerts/notifications
 
@@ -162,11 +165,6 @@
 - [x] ✅ System Logs page with filtering
 - [x] ✅ Client-side error capture and logging
 - [x] ✅ Edge function execution logging
-- [ ] 🔴 **System Logs UI Improvements**
-  - Single-line collapsed view for log entries
-  - Expand on click to show full details and metadata
-  - Better visual hierarchy for log levels
-  - Location: `src/pages/SystemLogsPage.tsx`
 - [ ] 🔴 **System Logs Generation Issues**
   - Verify system logs are being generated correctly
   - Test client error logging

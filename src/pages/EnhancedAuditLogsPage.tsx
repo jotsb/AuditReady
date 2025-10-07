@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Activity, Filter, Search, Download, AlertCircle } from 'lucide-react';
-import { AuditLogEntry } from '../components/audit/AuditLogEntry';
+import { LogEntry } from '../components/shared/LogEntry';
 
 interface AuditLog {
   id: string;
@@ -364,7 +364,7 @@ export function EnhancedAuditLogsPage() {
               </div>
             ) : (
               filteredLogs.map((log) => (
-                <AuditLogEntry key={log.id} log={log} />
+                <LogEntry key={log.id} log={{ ...log, type: 'audit' as const }} />
               ))
             )}
           </div>
