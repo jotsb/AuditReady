@@ -206,22 +206,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          full_name: fullName,
+        },
+      },
     });
 
     if (!error && data.user) {
       sessionManager.setUserId(data.user.id);
       logger.auth('sign_up', true, { email, fullName });
-
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ full_name: fullName })
-        .eq('id', data.user.id);
-
-      if (profileError) {
-        logger.auth('profile_update', false, { email, error: profileError.message });
-      }
+      // The trigger automatically creates the profile with full_name from metadata
     } else {
       logger.auth('sign_up', false, { email, error: error?.message });
     }
