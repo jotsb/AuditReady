@@ -5,9 +5,10 @@ import { logger } from '../../lib/logger';
 
 interface LoginFormProps {
   onToggleMode: () => void;
+  onForgotPassword: () => void;
 }
 
-export function LoginForm({ onToggleMode }: LoginFormProps) {
+export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -91,7 +92,13 @@ export function LoginForm({ onToggleMode }: LoginFormProps) {
         </button>
       </form>
 
-      <div className="mt-6 text-center">
+      <div className="mt-6 text-center space-y-3">
+        <button
+          onClick={onForgotPassword}
+          className="text-blue-600 hover:text-blue-700 font-medium text-sm"
+        >
+          Forgot your password?
+        </button>
         <p className="text-slate-600">
           Don't have an account?{' '}
           <button

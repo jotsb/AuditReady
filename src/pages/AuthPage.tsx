@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Receipt } from 'lucide-react';
 import { LoginForm } from '../components/auth/LoginForm';
 import { RegisterForm } from '../components/auth/RegisterForm';
+import { ForgotPasswordForm } from '../components/auth/ForgotPasswordForm';
 
 export function AuthPage() {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 flex items-center justify-center p-4">
@@ -54,10 +55,17 @@ export function AuthPage() {
         </div>
 
         <div>
-          {mode === 'login' ? (
-            <LoginForm onToggleMode={() => setMode('register')} />
-          ) : (
+          {mode === 'login' && (
+            <LoginForm
+              onToggleMode={() => setMode('register')}
+              onForgotPassword={() => setMode('forgot')}
+            />
+          )}
+          {mode === 'register' && (
             <RegisterForm onToggleMode={() => setMode('login')} />
+          )}
+          {mode === 'forgot' && (
+            <ForgotPasswordForm onBack={() => setMode('login')} />
           )}
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthPage } from './pages/AuthPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -12,11 +12,19 @@ import { AdminPage } from './pages/AdminPage';
 import { EnhancedAuditLogsPage } from './pages/EnhancedAuditLogsPage';
 import { SystemLogsPage } from './pages/SystemLogsPage';
 import { MainLayout } from './components/layout/MainLayout';
+import { ResetPasswordForm } from './components/auth/ResetPasswordForm';
 
 function AppContent() {
   const { user, loading } = useAuth();
   const [currentView, setCurrentView] = useState('dashboard');
   const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path === '/reset-password') {
+      setCurrentView('reset-password');
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -24,6 +32,10 @@ function AppContent() {
         <div className="text-slate-600">Loading...</div>
       </div>
     );
+  }
+
+  if (currentView === 'reset-password') {
+    return <ResetPasswordForm />;
   }
 
   if (!user) {

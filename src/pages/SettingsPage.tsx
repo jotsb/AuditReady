@@ -3,6 +3,7 @@ import { User, Building2, Shield, Bell, FolderOpen, Tag } from 'lucide-react';
 import { BusinessManagement } from '../components/settings/BusinessManagement';
 import { CollectionManagement } from '../components/settings/CollectionManagement';
 import { CategoryManagement } from '../components/settings/CategoryManagement';
+import { ProfileManagement } from '../components/settings/ProfileManagement';
 import { usePageTracking } from '../hooks/usePageTracking';
 import { actionTracker } from '../lib/actionTracker';
 
@@ -10,7 +11,7 @@ type SettingsTab = 'profile' | '2fa' | 'businesses' | 'collections' | 'categorie
 
 export function SettingsPage() {
   usePageTracking('Settings', { section: 'settings' });
-  const [activeTab, setActiveTab] = useState<SettingsTab>('businesses');
+  const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
 
   return (
     <div className="space-y-6">
@@ -99,19 +100,7 @@ export function SettingsPage() {
         </div>
 
         <div className="p-6">
-          {activeTab === 'profile' && (
-            <div>
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">Profile Information</h3>
-              <p className="text-sm text-slate-600 mb-4">
-                Update your name, email, and contact details
-              </p>
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  Profile editing will be implemented in the next phase.
-                </p>
-              </div>
-            </div>
-          )}
+          {activeTab === 'profile' && <ProfileManagement />}
 
           {activeTab === '2fa' && (
             <div>
