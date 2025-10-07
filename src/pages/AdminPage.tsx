@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Building2, Users, Receipt, TrendingUp, AlertCircle, Activity, Database, BarChart3, UserCog } from 'lucide-react';
+import { Building2, Users, Receipt, TrendingUp, AlertCircle, Activity, Database, BarChart3, UserCog, Search, Filter as FilterIcon, Download } from 'lucide-react';
+import { LogEntry } from '../components/shared/LogEntry';
 
 interface AdminStats {
   totalUsers: number;
@@ -508,13 +509,26 @@ function UsersManagementTab() {
 
 function AuditLogsTab() {
   const [logs, setLogs] = useState<any[]>([]);
+  const [filteredLogs, setFilteredLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState('');
   const [filterAction, setFilterAction] = useState<string>('all');
+  const [filterResource, setFilterResource] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterRole, setFilterRole] = useState<string>('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
     loadLogs();
   }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [logs, searchTerm, filterAction, filterResource, filterStatus, filterRole, startDate, endDate]);
 
   const loadLogs = async () => {
     try {
@@ -523,7 +537,7 @@ function AuditLogsTab() {
         .from('audit_logs')
         .select('*, profiles(full_name, email)')
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(500);
 
       if (error) throw error;
       setLogs(data || []);
@@ -534,17 +548,99 @@ function AuditLogsTab() {
     }
   };
 
-  const actionTypes = ['all', ...new Set(logs.map(log => log.action))];
-  const filteredLogs = filterAction === 'all'
-    ? logs
-    : logs.filter(log => log.action === filterAction);
+  const applyFilters = () => {
+    let filtered = [...logs];
 
-  const getActionColor = (action: string) => {
-    if (action.startsWith('create')) return 'bg-green-100 text-green-800';
-    if (action.startsWith('update')) return 'bg-blue-100 text-blue-800';
-    if (action.startsWith('delete')) return 'bg-red-100 text-red-800';
-    return 'bg-slate-100 text-slate-800';
+    // Search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(log =>
+        log.action.toLowerCase().includes(term) ||
+        log.resource_type.toLowerCase().includes(term) ||
+        log.profiles?.full_name?.toLowerCase().includes(term) ||
+        log.profiles?.email?.toLowerCase().includes(term) ||
+        JSON.stringify(log.details).toLowerCase().includes(term)
+      );
+    }
+
+    // Action filter
+    if (filterAction !== 'all') {
+      filtered = filtered.filter(log => log.action === filterAction);
+    }
+
+    // Resource filter
+    if (filterResource !== 'all') {
+      filtered = filtered.filter(log => log.resource_type === filterResource);
+    }
+
+    // Status filter
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(log => log.status === filterStatus);
+    }
+
+    // Role filter
+    if (filterRole !== 'all') {
+      filtered = filtered.filter(log => log.actor_role === filterRole);
+    }
+
+    // Date range filter
+    if (startDate) {
+      filtered = filtered.filter(log => new Date(log.created_at) >= new Date(startDate));
+    }
+    if (endDate) {
+      filtered = filtered.filter(log => new Date(log.created_at) <= new Date(endDate + 'T23:59:59'));
+    }
+
+    setFilteredLogs(filtered);
   };
+
+  const exportToCSV = () => {
+    const headers = ['Timestamp', 'User', 'Email', 'Role', 'Action', 'Resource Type', 'Status', 'Details'];
+    const rows = filteredLogs.map(log => [
+      new Date(log.created_at).toLocaleString(),
+      log.profiles?.full_name || 'Unknown',
+      log.profiles?.email || 'N/A',
+      log.actor_role || 'N/A',
+      log.action,
+      log.resource_type,
+      log.status,
+      JSON.stringify(log.details)
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setFilterAction('all');
+    setFilterResource('all');
+    setFilterStatus('all');
+    setFilterRole('all');
+    setStartDate('');
+    setEndDate('');
+  };
+
+  const formatActionName = (action: string) => {
+    return action.split('_').map(word =>
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+  };
+
+  const actionTypes = ['all', ...new Set(logs.map(log => log.action))];
+  const resourceTypes = ['all', ...new Set(logs.map(log => log.resource_type))];
+  const statuses = ['all', 'success', 'failure', 'denied'];
+  const roles = ['all', ...new Set(logs.map(log => log.actor_role).filter(Boolean))];
 
   if (loading) {
     return (
@@ -555,93 +651,160 @@ function AuditLogsTab() {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-200">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold text-slate-800">Audit Logs</h2>
-          <select
-            value={filterAction}
-            onChange={(e) => setFilterAction(e.target.value)}
-            className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            {actionTypes.map(action => (
-              <option key={action} value={action}>
-                {action === 'all' ? 'All Actions' : action}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
+    <div className="space-y-6">
       {error && (
-        <div className="mx-6 mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center">
+          <AlertCircle className="mr-2" size={20} />
           {error}
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-slate-50 border-b border-slate-200">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Timestamp
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                User
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Action
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Resource
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Details
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-200">
-            {filteredLogs.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
-                  No audit logs found
-                </td>
-              </tr>
-            ) : (
-              filteredLogs.map((log) => (
-                <tr key={log.id} className="hover:bg-slate-50 transition">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-slate-600">
-                      {new Date(log.created_at).toLocaleString()}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-slate-900">
-                      {log.profiles?.full_name || 'Unknown'}
-                    </div>
-                    <div className="text-xs text-slate-500">
-                      {log.profiles?.email || log.user_id}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getActionColor(log.action)}`}>
-                      {log.action}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-slate-600">{log.resource_type}</div>
-                    <div className="text-xs text-slate-400 font-mono">{log.resource_id?.substring(0, 8)}...</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-slate-600 max-w-md truncate">
-                      {log.details ? JSON.stringify(log.details) : 'N/A'}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      {/* Advanced Filters */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center">
+            <FilterIcon className="text-slate-500 mr-2" size={20} />
+            <h3 className="font-semibold text-slate-800">Filters</h3>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={clearFilters}
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+              Clear All
+            </button>
+            <button
+              onClick={exportToCSV}
+              disabled={filteredLogs.length === 0}
+              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            >
+              <Download size={16} className="mr-2" />
+              Export CSV
+            </button>
+          </div>
+        </div>
+
+        {/* Search */}
+        <div className="mb-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
+            <input
+              type="text"
+              placeholder="Search logs..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        </div>
+
+        {/* Filter Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Action</label>
+            <select
+              value={filterAction}
+              onChange={(e) => setFilterAction(e.target.value)}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              {actionTypes.map(action => (
+                <option key={action} value={action}>
+                  {action === 'all' ? 'All Actions' : formatActionName(action)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Resource Type</label>
+            <select
+              value={filterResource}
+              onChange={(e) => setFilterResource(e.target.value)}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              {resourceTypes.map(resource => (
+                <option key={resource} value={resource}>
+                  {resource === 'all' ? 'All Resources' : resource}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              {statuses.map(status => (
+                <option key={status} value={status}>
+                  {status === 'all' ? 'All Statuses' : status}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
+            <select
+              value={filterRole}
+              onChange={(e) => setFilterRole(e.target.value)}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              {roles.map(role => (
+                <option key={role} value={role}>
+                  {role === 'all' ? 'All Roles' : role}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">End Date</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Logs Display */}
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
+          <p className="text-sm text-slate-600">
+            Showing {filteredLogs.length} of {logs.length} total logs
+          </p>
+        </div>
+
+        <div>
+          {filteredLogs.length === 0 ? (
+            <div className="px-6 py-12 text-center">
+              <Activity className="mx-auto mb-3 text-slate-300" size={48} />
+              <p className="text-slate-500 font-medium">No audit logs found</p>
+              <p className="text-slate-400 text-sm mt-1">
+                Try adjusting your filters or search criteria
+              </p>
+            </div>
+          ) : (
+            filteredLogs.map((log) => (
+              <LogEntry key={log.id} log={{ ...log, type: 'audit' as const }} />
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
