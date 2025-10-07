@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Upload, Camera, X } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
+import { optimizeImage, type OptimizedImages } from '../../lib/imageOptimizer';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 interface ReceiptUploadProps {
-  onUpload: (file: File) => Promise<void>;
+  onUpload: (file: File, thumbnail: File) => Promise<void>;
   onClose: () => void;
 }
 
@@ -41,9 +42,11 @@ async function convertPdfToImage(pdfFile: File): Promise<File> {
 
 export function ReceiptUpload({ onUpload, onClose }: ReceiptUploadProps) {
   const [file, setFile] = useState<File | null>(null);
+  const [thumbnail, setThumbnail] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [converting, setConverting] = useState(false);
+  const [optimizing, setOptimizing] = useState(false);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -63,22 +66,34 @@ export function ReceiptUpload({ onUpload, onClose }: ReceiptUploadProps) {
         setConverting(false);
       }
 
-      setFile(fileToUse);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result as string);
-      };
-      reader.readAsDataURL(fileToUse);
+      setOptimizing(true);
+      try {
+        const optimized = await optimizeImage(fileToUse);
+
+        setFile(optimized.full);
+        setThumbnail(optimized.thumbnail);
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPreview(reader.result as string);
+        };
+        reader.readAsDataURL(optimized.full);
+      } catch (error) {
+        console.error('Image optimization error:', error);
+        alert('Failed to optimize image. Please try a different file.');
+      } finally {
+        setOptimizing(false);
+      }
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file) return;
+    if (!file || !thumbnail) return;
 
     setLoading(true);
     try {
-      await onUpload(file);
+      await onUpload(file, thumbnail);
       onClose();
     } catch (error) {
       console.error('Upload error:', error);
@@ -110,10 +125,12 @@ export function ReceiptUpload({ onUpload, onClose }: ReceiptUploadProps) {
               <div className="space-y-4">
                 <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition">
                   <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    {converting ? (
+                    {converting || optimizing ? (
                       <>
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-                        <p className="text-sm text-slate-600">Converting PDF...</p>
+                        <p className="text-sm text-slate-600">
+                          {converting ? 'Converting PDF...' : 'Optimizing image...'}
+                        </p>
                       </>
                     ) : (
                       <>
@@ -130,7 +147,7 @@ export function ReceiptUpload({ onUpload, onClose }: ReceiptUploadProps) {
                     className="hidden"
                     accept="image/*,.pdf"
                     onChange={handleFileChange}
-                    disabled={converting}
+                    disabled={converting || optimizing}
                   />
                 </label>
 

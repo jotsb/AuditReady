@@ -36,7 +36,7 @@ export function ReceiptsPage() {
   const [selectedCollection, setSelectedCollection] = useState<string>('');
   const [showUpload, setShowUpload] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
-  const [verifyReceipt, setVerifyReceipt] = useState<{filePath: string, data: any} | null>(null);
+  const [verifyReceipt, setVerifyReceipt] = useState<{filePath: string, thumbnailPath: string, data: any} | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [loading, setLoading] = useState(true);
@@ -91,21 +91,24 @@ export function ReceiptsPage() {
     }
   };
 
-  const handleUpload = async (file: File) => {
+  const handleUpload = async (file: File, thumbnail: File) => {
     if (!user || !selectedCollection) return;
 
     setExtracting(true);
     setShowUpload(false);
 
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      const timestamp = Date.now();
+      const fileName = `${user.id}/${timestamp}.webp`;
+      const thumbnailName = `${user.id}/thumbnails/${timestamp}_thumb.webp`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('receipts')
-        .upload(fileName, file);
+      const [uploadResult, thumbnailResult] = await Promise.all([
+        supabase.storage.from('receipts').upload(fileName, file),
+        supabase.storage.from('receipts').upload(thumbnailName, thumbnail),
+      ]);
 
-      if (uploadError) throw uploadError;
+      if (uploadResult.error) throw uploadResult.error;
+      if (thumbnailResult.error) throw thumbnailResult.error;
 
       const { data: { session } } = await supabase.auth.getSession();
 
@@ -139,6 +142,7 @@ export function ReceiptsPage() {
 
       setVerifyReceipt({
         filePath: fileName,
+        thumbnailPath: thumbnailName,
         data: result.data,
       });
     } catch (error) {
@@ -194,7 +198,7 @@ export function ReceiptsPage() {
     }
   };
 
-  const handleConfirmExtraction = async (filePath: string, data: any) => {
+  const handleConfirmExtraction = async (filePath: string, thumbnailPath: string, data: any) => {
     if (!user || !selectedCollection) return;
 
     const transactionDateUTC = data.transaction_date
@@ -207,6 +211,7 @@ export function ReceiptsPage() {
         collection_id: selectedCollection,
         uploaded_by: user.id,
         file_path: filePath,
+        thumbnail_path: thumbnailPath,
         file_type: 'image',
         vendor_name: data.vendor_name,
         vendor_address: data.vendor_address,
@@ -490,7 +495,7 @@ export function ReceiptsPage() {
         <VerifyReceiptModal
           receiptId={verifyReceipt.filePath}
           extractedData={verifyReceipt.data}
-          onConfirm={(filePath, data) => handleConfirmExtraction(filePath, data)}
+          onConfirm={(filePath, data) => handleConfirmExtraction(verifyReceipt.filePath, verifyReceipt.thumbnailPath, data)}
           onClose={() => handleCancelExtraction(verifyReceipt.filePath)}
         />
       )}
