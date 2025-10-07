@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { LogIn } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { logger } from '../../lib/logger';
 
 interface LoginFormProps {
   onToggleMode: () => void;
@@ -22,6 +23,9 @@ export function LoginForm({ onToggleMode }: LoginFormProps) {
 
     if (error) {
       setError(error.message);
+      logger.auth('login_failed', false, { email, error: error.message });
+    } else {
+      logger.auth('login_success', true, { email });
     }
 
     setLoading(false);

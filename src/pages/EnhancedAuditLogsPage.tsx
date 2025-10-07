@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Activity, Filter, Search, Download, X, ChevronDown, ChevronRight, AlertCircle } from 'lucide-react';
+import { Activity, Filter, Search, Download, AlertCircle } from 'lucide-react';
+import { AuditLogEntry } from '../components/audit/AuditLogEntry';
 
 interface AuditLog {
   id: string;
@@ -39,9 +40,6 @@ export function EnhancedAuditLogsPage() {
   const [filterRole, setFilterRole] = useState<string>('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-
-  // Expanded log state for snapshot comparison
-  const [expandedLog, setExpandedLog] = useState<string | null>(null);
 
   useEffect(() => {
     if (selectedBusiness) {
@@ -177,78 +175,6 @@ export function EnhancedAuditLogsPage() {
     setFilterRole('all');
     setStartDate('');
     setEndDate('');
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'success': return 'bg-green-100 text-green-800';
-      case 'failure': return 'bg-red-100 text-red-800';
-      case 'denied': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-slate-100 text-slate-800';
-    }
-  };
-
-  const getActionColor = (action: string) => {
-    if (action.startsWith('create')) return 'bg-blue-100 text-blue-800';
-    if (action.startsWith('update')) return 'bg-yellow-100 text-yellow-800';
-    if (action.startsWith('delete')) return 'bg-red-100 text-red-800';
-    if (action.includes('approve')) return 'bg-green-100 text-green-800';
-    if (action.includes('reject')) return 'bg-red-100 text-red-800';
-    return 'bg-slate-100 text-slate-800';
-  };
-
-  const formatActionName = (action: string) => {
-    return action.split('_').map(word =>
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ');
-  };
-
-  const renderSnapshotComparison = (log: AuditLog) => {
-    if (!log.snapshot_before && !log.snapshot_after) {
-      return <div className="text-sm text-slate-500 italic">No snapshot data available</div>;
-    }
-
-    const before = log.snapshot_before || {};
-    const after = log.snapshot_after || {};
-    const allKeys = new Set([...Object.keys(before), ...Object.keys(after)]);
-
-    return (
-      <div className="mt-4 border border-slate-200 rounded-lg overflow-hidden">
-        <div className="bg-slate-50 px-4 py-2 border-b border-slate-200">
-          <h4 className="font-semibold text-slate-700">Snapshot Comparison</h4>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-100">
-              <tr>
-                <th className="px-4 py-2 text-left font-medium text-slate-600">Field</th>
-                <th className="px-4 py-2 text-left font-medium text-slate-600">Before</th>
-                <th className="px-4 py-2 text-left font-medium text-slate-600">After</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {Array.from(allKeys).map(key => {
-                const beforeValue = before[key];
-                const afterValue = after[key];
-                const isChanged = JSON.stringify(beforeValue) !== JSON.stringify(afterValue);
-
-                return (
-                  <tr key={key} className={isChanged ? 'bg-yellow-50' : ''}>
-                    <td className="px-4 py-2 font-medium text-slate-700">{key}</td>
-                    <td className="px-4 py-2 text-slate-600">
-                      {beforeValue !== undefined ? JSON.stringify(beforeValue) : <span className="text-slate-400">—</span>}
-                    </td>
-                    <td className="px-4 py-2 text-slate-600">
-                      {afterValue !== undefined ? JSON.stringify(afterValue) : <span className="text-slate-400">—</span>}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
   };
 
   const actionTypes = ['all', ...new Set(logs.map(log => log.action))];
@@ -427,7 +353,7 @@ export function EnhancedAuditLogsPage() {
             </p>
           </div>
 
-          <div className="divide-y divide-slate-200">
+          <div>
             {filteredLogs.length === 0 ? (
               <div className="px-6 py-12 text-center">
                 <Activity className="mx-auto mb-3 text-slate-300" size={48} />
@@ -438,53 +364,7 @@ export function EnhancedAuditLogsPage() {
               </div>
             ) : (
               filteredLogs.map((log) => (
-                <div key={log.id} className="px-6 py-4 hover:bg-slate-50 transition">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center mb-2">
-                        <button
-                          onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
-                          className="mr-2 text-slate-400 hover:text-slate-600"
-                        >
-                          {expandedLog === log.id ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-                        </button>
-                        <span className={`px-3 py-1 text-xs font-medium rounded-full ${getActionColor(log.action)} mr-2`}>
-                          {formatActionName(log.action)}
-                        </span>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(log.status)}`}>
-                          {log.status}
-                        </span>
-                        {log.actor_role && (
-                          <span className="ml-2 px-2 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-700">
-                            {log.actor_role}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="ml-8">
-                        <div className="text-sm font-medium text-slate-900 mb-1">
-                          {log.profiles?.full_name || 'Unknown User'}
-                          <span className="text-slate-500 font-normal"> • {log.resource_type}</span>
-                        </div>
-                        <div className="text-xs text-slate-500 mb-1">
-                          {log.profiles?.email || log.user_id}
-                        </div>
-                        <div className="text-xs text-slate-400">
-                          {new Date(log.created_at).toLocaleString()}
-                          {log.ip_address && <span className="ml-2">• IP: {log.ip_address}</span>}
-                        </div>
-
-                        {log.error_message && (
-                          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
-                            <span className="font-medium">Error:</span> {log.error_message}
-                          </div>
-                        )}
-
-                        {expandedLog === log.id && renderSnapshotComparison(log)}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <AuditLogEntry key={log.id} log={log} />
               ))
             )}
           </div>

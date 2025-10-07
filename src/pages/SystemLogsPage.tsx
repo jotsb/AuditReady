@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Database, Filter, Search, Download, AlertCircle, X, RefreshCw } from 'lucide-react';
+import { Database, Filter, Search, Download, AlertCircle, RefreshCw } from 'lucide-react';
+import { SystemLogEntry } from '../components/logs/SystemLogEntry';
 
 interface SystemLog {
   id: string;
@@ -37,9 +38,6 @@ export function SystemLogsPage() {
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-
-  // Expanded log state
-  const [expandedLog, setExpandedLog] = useState<string | null>(null);
 
   useEffect(() => {
     loadSystemLogs();
@@ -182,30 +180,6 @@ export function SystemLogsPage() {
     setFilterCategory('all');
     setStartDate('');
     setEndDate('');
-  };
-
-  const getLevelColor = (level: string) => {
-    switch (level) {
-      case 'DEBUG': return 'bg-slate-100 text-slate-800';
-      case 'INFO': return 'bg-blue-100 text-blue-800';
-      case 'WARN': return 'bg-yellow-100 text-yellow-800';
-      case 'ERROR': return 'bg-red-100 text-red-800';
-      case 'CRITICAL': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-slate-100 text-slate-800';
-    }
-  };
-
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'AUTH': return 'bg-green-100 text-green-800';
-      case 'DATABASE': return 'bg-blue-100 text-blue-800';
-      case 'API': return 'bg-cyan-100 text-cyan-800';
-      case 'EDGE_FUNCTION': return 'bg-indigo-100 text-indigo-800';
-      case 'CLIENT_ERROR': return 'bg-red-100 text-red-800';
-      case 'SECURITY': return 'bg-orange-100 text-orange-800';
-      case 'PERFORMANCE': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-slate-100 text-slate-800';
-    }
   };
 
   const levels = ['all', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL'];
@@ -365,7 +339,7 @@ export function SystemLogsPage() {
             </p>
           </div>
 
-          <div className="divide-y divide-slate-200 max-h-[600px] overflow-y-auto">
+          <div className="max-h-[600px] overflow-y-auto">
             {filteredLogs.length === 0 ? (
               <div className="px-6 py-12 text-center">
                 <Database className="mx-auto mb-3 text-slate-300" size={48} />
@@ -376,62 +350,7 @@ export function SystemLogsPage() {
               </div>
             ) : (
               filteredLogs.map((log) => (
-                <div key={log.id} className="px-6 py-4 hover:bg-slate-50 transition">
-                  <div className="flex items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center mb-2">
-                        <span className={`px-2 py-1 text-xs font-bold rounded ${getLevelColor(log.level)} mr-2`}>
-                          {log.level}
-                        </span>
-                        <span className={`px-2 py-1 text-xs font-medium rounded ${getCategoryColor(log.category)}`}>
-                          {log.category}
-                        </span>
-                        {log.execution_time_ms && (
-                          <span className="ml-2 text-xs text-slate-500">
-                            {log.execution_time_ms}ms
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="text-sm font-medium text-slate-900 mb-1">
-                        {log.message}
-                      </div>
-
-                      <div className="text-xs text-slate-500 mb-2">
-                        {new Date(log.timestamp).toLocaleString()}
-                        {log.profiles && <span className="ml-2">• {log.profiles.full_name}</span>}
-                        {log.ip_address && <span className="ml-2">• {log.ip_address}</span>}
-                      </div>
-
-                      {(log.metadata && Object.keys(log.metadata).length > 0) && (
-                        <button
-                          onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
-                          className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                        >
-                          {expandedLog === log.id ? 'Hide Details' : 'Show Details'}
-                        </button>
-                      )}
-
-                      {expandedLog === log.id && (
-                        <div className="mt-3 p-3 bg-slate-50 rounded border border-slate-200">
-                          <div className="text-xs font-mono text-slate-700">
-                            <pre className="whitespace-pre-wrap overflow-x-auto">
-                              {JSON.stringify(log.metadata, null, 2)}
-                            </pre>
-                          </div>
-                          {log.stack_trace && (
-                            <div className="mt-2 pt-2 border-t border-slate-300">
-                              <div className="text-xs font-semibold text-slate-700 mb-1">Stack Trace:</div>
-                              <pre className="text-xs text-red-600 whitespace-pre-wrap overflow-x-auto">
-                                {log.stack_trace}
-                              </pre>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <SystemLogEntry key={log.id} log={log} />
               ))
             )}
           </div>

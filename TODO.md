@@ -134,9 +134,17 @@
 - [x] ✅ Filter by resource type
 - [x] ✅ RLS policies for business owners
 - [x] ✅ View activity in sidebar navigation
-- [ ] 🟡 Export audit logs
+- [x] ✅ Enhanced audit logs with before/after snapshots
+- [x] ✅ Export audit logs (CSV)
+- [x] ✅ Full-text search in audit logs
+- [x] ✅ Date range filtering
+- [ ] 🔴 **Audit Log UI Improvements**
+  - Single-line collapsed view for log entries
+  - Expand on click to show full details
+  - Highlight changed fields in snapshot comparison
+  - Consistent UI between Business Audit Logs and System Admin Audit Logs
+  - Location: `src/pages/EnhancedAuditLogsPage.tsx`
 - [ ] 🟡 Audit log retention policies
-- [ ] 🟢 Advanced audit log search
 - [ ] 🟢 Audit log alerts/notifications
 
 ### System Administration
@@ -150,6 +158,20 @@
 - [x] ✅ Analytics dashboard with charts
 - [x] ✅ User management (search, filter)
 - [x] ✅ MFA status visibility
+- [x] ✅ System Logs table and infrastructure
+- [x] ✅ System Logs page with filtering
+- [x] ✅ Client-side error capture and logging
+- [x] ✅ Edge function execution logging
+- [ ] 🔴 **System Logs UI Improvements**
+  - Single-line collapsed view for log entries
+  - Expand on click to show full details and metadata
+  - Better visual hierarchy for log levels
+  - Location: `src/pages/SystemLogsPage.tsx`
+- [ ] 🔴 **System Logs Generation Issues**
+  - Verify system logs are being generated correctly
+  - Test client error logging
+  - Test edge function logging
+  - Ensure logs appear in System Logs page
 - [ ] 🔴 **Admin Dashboard Enhancements**
   - User impersonation ("login as" for support)
   - Database browser/query tool
