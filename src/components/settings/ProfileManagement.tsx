@@ -8,7 +8,7 @@ interface Profile {
   id: string;
   full_name: string | null;
   email: string | null;
-  phone: string | null;
+  phone_number: string | null;
 }
 
 export function ProfileManagement() {
@@ -47,7 +47,7 @@ export function ProfileManagement() {
         setProfile(data);
         setFullName(data.full_name || '');
         setEmail(data.email || user.email || '');
-        setPhone(data.phone || '');
+        setPhone(data.phone_number || '');
       }
     } catch (err: any) {
       console.error('Error loading profile:', err);
@@ -68,7 +68,7 @@ export function ProfileManagement() {
         .from('profiles')
         .update({
           full_name: fullName,
-          phone: phone || null,
+          phone_number: phone || null,
         })
         .eq('id', user!.id);
 
