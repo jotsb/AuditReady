@@ -131,6 +131,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (!error && data.user) {
+      // Check if user is suspended or deleted
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('suspended, deleted_at, suspension_reason')
+        .eq('id', data.user.id)
+        .maybeSingle();
+
+      if (profileError) {
+        logger.auth('sign_in', false, { email, method: 'password', error: 'Failed to check user status' });
+        await supabase.auth.signOut();
+        return {
+          error: {
+            message: 'Failed to verify account status',
+            name: 'AccountStatusError',
+            status: 403
+          } as AuthError
+        };
+      }
+
+      // Block suspended users
+      if (profile?.suspended) {
+        logger.auth('sign_in', false, {
+          email,
+          method: 'password',
+          error: 'Account suspended',
+          reason: profile.suspension_reason
+        });
+        await supabase.auth.signOut();
+        return {
+          error: {
+            message: profile.suspension_reason
+              ? `Account suspended: ${profile.suspension_reason}`
+              : 'Your account has been suspended. Please contact support.',
+            name: 'AccountSuspendedError',
+            status: 403
+          } as AuthError
+        };
+      }
+
+      // Block deleted users
+      if (profile?.deleted_at) {
+        logger.auth('sign_in', false, { email, method: 'password', error: 'Account deleted' });
+        await supabase.auth.signOut();
+        return {
+          error: {
+            message: 'This account has been deleted. Please contact support if you believe this is an error.',
+            name: 'AccountDeletedError',
+            status: 403
+          } as AuthError
+        };
+      }
+
+      // Update last login timestamp
+      await supabase
+        .from('profiles')
+        .update({ last_login_at: new Date().toISOString() })
+        .eq('id', data.user.id);
+
       sessionManager.setUserId(data.user.id);
       logger.auth('sign_in', true, { email, method: 'password' });
     } else {

@@ -212,19 +212,179 @@
   - Error log viewer
   - Performance metrics
   - Storage usage statistics
-- [ ] 🔴 **Admin Actions**
-  - Suspend/unsuspend users
-  - Suspend/unsuspend businesses
-  - Force password reset
-  - View user sessions
-  - Terminate user sessions
-  - Manual data cleanup/maintenance
 - [ ] 🟡 **Admin Reports**
   - User activity reports
   - Business growth reports
   - Revenue/usage metrics
   - Extraction accuracy reports
   - System performance reports
+
+### Phase 1: User Management (HIGH PRIORITY)
+- [ ] 🚨 **User Suspension System**
+  - Add suspension fields to profiles table (suspended, suspension_reason, suspended_at, suspended_by)
+  - Block login when user is suspended
+  - Suspend user action in admin UI
+  - Unsuspend user action in admin UI
+  - Display suspension status and reason
+  - Audit logging for suspension actions
+- [ ] 🚨 **User Password Management**
+  - Force password reset (send reset email)
+  - Admin change user password directly (emergency access)
+  - Invalidate all user sessions on password change
+  - Audit logging for password operations
+- [ ] 🚨 **User Deletion System**
+  - Add soft delete fields (deleted_at, deleted_by, deletion_reason)
+  - Soft delete user (mark as deleted, retain data)
+  - Hard delete user (permanent removal, only for already soft-deleted users)
+  - Handle data reassignment/archival before deletion
+  - Cascade considerations (receipts, businesses, memberships)
+  - Confirmation dialogs for both soft and hard delete
+  - Audit logging for deletion operations
+- [ ] 🔴 **User Profile Management**
+  - Admin update user email address
+  - Admin update user full name
+  - Admin update user phone number
+  - Admin modify MFA settings
+  - View user profile details in modal
+- [ ] 🔴 **User Details & Analytics**
+  - View all businesses user owns
+  - View all businesses user is member of
+  - View user's receipt count
+  - Track and display last login date
+  - Show account creation date
+  - View active sessions list
+  - Session termination capability
+
+### Phase 2: Business Management (HIGH PRIORITY)
+- [ ] 🚨 **Business Suspension System**
+  - Add suspension fields to businesses table (suspended, suspension_reason, suspended_at, suspended_by)
+  - Block all business member access when suspended
+  - Suspend business action in admin UI
+  - Unsuspend business action in admin UI
+  - Display suspension status and reason
+  - Audit logging for business suspension
+- [ ] 🔴 **Business Administration**
+  - Edit business name
+  - Edit business tax ID
+  - Edit business currency
+  - Edit business settings (approval workflow, etc.)
+  - Transfer business ownership to different user
+  - Audit logging for all business modifications
+- [ ] 🔴 **Business Deletion System**
+  - Soft delete business (mark as deleted)
+  - Hard delete business (permanent removal, only for already soft-deleted)
+  - Handle collections and receipts on deletion
+  - Offer data export before deletion
+  - Confirmation dialogs for deletion
+  - Audit logging for deletion operations
+- [ ] 🟡 **Business Details & Analytics**
+  - View all collections in business
+  - View all members and their roles
+  - View all receipts in business
+  - Calculate and display total storage used
+  - View business settings and configuration
+
+### Phase 3: Data & Configuration Management (MEDIUM PRIORITY)
+- [ ] 🔴 **Storage Management**
+  - Create storage_stats table
+  - Add storage_limit_mb and storage_used_mb to businesses
+  - View total platform storage used
+  - View storage usage per business
+  - View storage usage per user
+  - List largest receipts by file size
+  - Set per-business storage limits
+  - Set per-user storage limits
+  - Alert system for approaching storage limits
+- [ ] 🔴 **Data Cleanup Operations**
+  - Delete orphaned files (files without database records)
+  - Delete failed extraction receipts (bulk operation)
+  - Compress old receipts (archive operation)
+  - Archive old data (configurable retention period)
+  - Manual cleanup tools with confirmation
+- [ ] 🟡 **Log Level Configuration UI**
+  - View all log level configurations
+  - Update min log level per category (DEBUG, INFO, WARN, ERROR, CRITICAL)
+  - Enable/disable log categories
+  - Bulk update log levels
+  - Add new log categories
+  - Set default levels for new categories
+  - Location: Admin page settings tab
+- [ ] 🟡 **Global Expense Categories Management**
+  - Admin override for default categories
+  - Add platform-wide default categories
+  - Edit global category names and colors
+  - Delete unused global categories
+  - Reorder global categories
+  - Set category visibility rules
+
+### Phase 4: Team & Invitation Management (MEDIUM PRIORITY)
+- [ ] 🟡 **Invitation Management**
+  - View all pending invitations (system-wide)
+  - Filter invitations by business
+  - Filter invitations by status (pending, expired, accepted, rejected)
+  - Cancel specific invitations
+  - Cancel expired invitations (bulk)
+  - Resend invitation emails
+  - Extend invitation expiry dates
+  - Delete old invitation records
+- [ ] 🟡 **Business Member Management**
+  - View all business memberships (system-wide)
+  - View who has access to which business
+  - View role assignments
+  - Force remove members from businesses
+  - Remove inactive members (bulk operation)
+  - Change member roles (admin override)
+  - Emergency access grants
+  - Audit logging for membership changes
+
+### Phase 5: Receipt & Approval Management (LOWER PRIORITY)
+- [ ] 🟡 **Receipt Management**
+  - Browse all receipts across all businesses
+  - Global receipt search
+  - View receipt details (cross-business)
+  - Delete individual receipts (with confirmation)
+  - Delete duplicate receipts (bulk operation)
+  - Delete invalid receipts (bulk operation)
+  - Change receipt collection assignment
+- [ ] 🟡 **Extraction Management**
+  - Retry failed extractions (single receipt)
+  - Bulk retry failed extractions
+  - Manually change extraction status
+  - View extraction error details
+  - Override extraction confidence thresholds
+- [ ] 🟢 **Approval Override**
+  - Force approve receipts (skip workflow)
+  - Force reject receipts (skip workflow)
+  - Override approval requirements for specific receipts
+  - Audit logging for approval overrides
+
+### Phase 6: System Configuration (LOWER PRIORITY)
+- [ ] 🟡 **Feature Flags System**
+  - Create feature_flags table
+  - Enable/disable features globally
+  - Rollout features to specific businesses (percentage-based)
+  - Feature flag management UI
+  - Test mode for feature flags
+- [ ] 🟡 **Rate Limit Configuration**
+  - Configure API rate limits
+  - Configure extraction rate limits
+  - Configure upload rate limits
+  - Per-business rate limit overrides
+  - Per-user rate limit overrides
+- [ ] 🟡 **System Settings Management**
+  - Create system_config table
+  - Configure email templates
+  - Test email delivery
+  - Configure OCR/AI settings (OpenAI API)
+  - Set extraction timeout values
+  - Configure extraction confidence thresholds
+  - System-wide configuration UI
+- [ ] 🟢 **Security Configuration**
+  - IP whitelisting for admin access
+  - Configure session timeout for admins
+  - Two-person rule for critical operations
+  - Admin action rate limiting
+  - MFA enforcement policies
 
 ### Category Management
 - [x] ✅ Expense categories table
