@@ -42,9 +42,11 @@ export function Sidebar({ isOpen, currentView, onNavigate }: SidebarProps) {
       >
         <div className="p-6 border-b border-slate-700">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-              <Receipt size={24} />
-            </div>
+            <img
+              src="/icon.svg"
+              alt="AuditReady"
+              className="w-10 h-10"
+            />
             <div>
               <h1 className="text-xl font-bold">AuditReady</h1>
               <p className="text-xs text-slate-400">Receipt Manager</p>
