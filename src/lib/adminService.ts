@@ -183,30 +183,35 @@ export async function changeUserPassword(
 ): Promise<void> {
   await ensureSystemAdmin(adminUserId);
 
-  // Use Supabase Admin API to update user password
-  // Note: This requires service role key which should be handled server-side
-  // For now, we'll use the auth admin API if available
-  const { error } = await supabase.auth.admin.updateUserById(targetUserId, {
-    password: newPassword,
+  // Call Edge Function to update password
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    throw new Error('No active session');
+  }
+
+  const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-user-management`;
+  const response = await fetch(functionUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'change_password',
+      targetUserId,
+      newPassword,
+    }),
   });
 
-  if (error) {
-    throw new Error(`Failed to change user password: ${error.message}`);
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to change password');
   }
 
   // Log the action (DO NOT log the password)
   logger.userAction('admin_change_password', 'change_password', {
     target_user_id: targetUserId,
     page: 'admin',
-  });
-
-  // Create audit log
-  await supabase.from('audit_logs').insert({
-    user_id: adminUserId,
-    action: 'change_user_password',
-    resource_type: 'auth',
-    resource_id: targetUserId,
-    details: { method: 'admin_override' },
   });
 }
 
@@ -278,33 +283,40 @@ export async function hardDeleteUser(
     .from('profiles')
     .select('deleted_at')
     .eq('id', targetUserId)
-    .single();
+    .maybeSingle();
 
   if (!profile?.deleted_at) {
     throw new Error('User must be soft deleted before hard delete. Soft delete first.');
   }
 
-  // This is a PERMANENT operation
-  // Delete from auth.users will cascade to profiles and other tables
-  const { error } = await supabase.auth.admin.deleteUser(targetUserId);
+  // Call Edge Function to hard delete user
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    throw new Error('No active session');
+  }
 
-  if (error) {
-    throw new Error(`Failed to hard delete user: ${error.message}`);
+  const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-user-management`;
+  const response = await fetch(functionUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'hard_delete',
+      targetUserId,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to hard delete user');
   }
 
   // Log the action
   logger.userAction('admin_hard_delete_user', 'hard_delete_user', {
     target_user_id: targetUserId,
     page: 'admin',
-  });
-
-  // Audit log will be created before deletion
-  await supabase.from('audit_logs').insert({
-    user_id: adminUserId,
-    action: 'hard_delete_user',
-    resource_type: 'profile',
-    resource_id: targetUserId,
-    details: { permanent: true },
   });
 }
 
@@ -379,22 +391,31 @@ export async function updateUserProfile(
     }
   }
 
-  // Update email if provided
-  // Note: Updating auth email requires admin API (service role)
-  // For now, we'll only update the profile email field
+  // Update email if provided (calls Edge Function)
   if (updates.email) {
-    // Update profile email (this is just for display purposes)
-    const { error: emailError } = await supabase
-      .from('profiles')
-      .update({ email: updates.email })
-      .eq('id', targetUserId);
-
-    if (emailError) {
-      throw new Error(`Failed to update profile email: ${emailError.message}`);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('No active session');
     }
 
-    // Note: To update the actual auth email, implement an Edge Function
-    console.warn('Auth email update requires Edge Function - only profile email was updated');
+    const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-user-management`;
+    const response = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'update_email',
+        targetUserId,
+        newEmail: updates.email,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update email');
+    }
   }
 
   // Log the action

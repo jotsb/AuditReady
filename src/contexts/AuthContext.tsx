@@ -184,10 +184,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Update last login timestamp
-      await supabase
+      const { error: loginUpdateError } = await supabase
         .from('profiles')
         .update({ last_login_at: new Date().toISOString() })
         .eq('id', data.user.id);
+
+      if (loginUpdateError) {
+        console.error('Failed to update last_login_at:', loginUpdateError);
+      }
 
       sessionManager.setUserId(data.user.id);
       logger.auth('sign_in', true, { email, method: 'password' });

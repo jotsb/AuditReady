@@ -176,14 +176,11 @@ export function UserManagement() {
     try {
       setActionLoading(true);
       setActionError('');
-      // Note: Direct password change requires service role key
-      // This would need to be implemented as an Edge Function
-      setActionError('Direct password change requires Edge Function. Use "Send Password Reset" instead.');
-      // await changeUserPassword(selectedUser.id, newPassword, currentUser!.id);
-      // setActionSuccess('Password changed successfully');
-      // setShowPasswordModal(false);
-      // setNewPassword('');
-      // setTimeout(() => setActionSuccess(''), 3000);
+      await changeUserPassword(selectedUser.id, newPassword, currentUser!.id);
+      setActionSuccess('Password changed successfully');
+      setShowPasswordModal(false);
+      setNewPassword('');
+      setTimeout(() => setActionSuccess(''), 3000);
     } catch (err: any) {
       setActionError(err.message);
     } finally {
@@ -211,25 +208,22 @@ export function UserManagement() {
   };
 
   const handleHardDelete = async (user: User) => {
-    alert('Hard delete requires service role key and must be implemented as an Edge Function. For now, users remain soft-deleted.');
-    return;
+    if (!confirm('PERMANENT DELETE: This will permanently delete the user and all their data. This action cannot be undone. Are you absolutely sure?')) {
+      return;
+    }
 
-    // if (!confirm('PERMANENT DELETE: This will permanently delete the user and all their data. This action cannot be undone. Are you absolutely sure?')) {
-    //   return;
-    // }
-
-    // try {
-    //   setActionLoading(true);
-    //   setActionError('');
-    //   await hardDeleteUser(user.id, currentUser!.id);
-    //   setActionSuccess('User permanently deleted');
-    //   await loadUsers();
-    //   setTimeout(() => setActionSuccess(''), 3000);
-    // } catch (err: any) {
-    //   setActionError(err.message);
-    // } finally {
-    //   setActionLoading(false);
-    // }
+    try {
+      setActionLoading(true);
+      setActionError('');
+      await hardDeleteUser(user.id, currentUser!.id);
+      setActionSuccess('User permanently deleted');
+      await loadUsers();
+      setTimeout(() => setActionSuccess(''), 3000);
+    } catch (err: any) {
+      setActionError(err.message);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleRestore = async (user: User) => {
@@ -405,6 +399,13 @@ export function UserManagement() {
                           title="Send Password Reset Email"
                         >
                           <Mail className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => { setSelectedUser(user); setShowPasswordModal(true); }}
+                          className="text-purple-600 hover:text-purple-700"
+                          title="Change Password"
+                        >
+                          <Key className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => { setSelectedUser(user); setShowDeleteModal(true); }}
