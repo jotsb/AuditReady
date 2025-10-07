@@ -115,8 +115,11 @@
 - [x] ✅ Year-end summary report
 - [x] ✅ CSV export
 - [x] ✅ PDF export
-- [ ] 🔴 Fix "View receipt" from dashboard (currently just logs to console)
-  - Location: `src/pages/DashboardPage.tsx:102-104`
+- [x] ✅ **Dashboard "View receipt" navigation**
+  - Integrated ReceiptDetailsPage into app navigation
+  - Dashboard "View receipt" now navigates to receipt details
+  - Added proper back navigation from receipt details to dashboard
+  - Location: `src/App.tsx`, `src/pages/DashboardPage.tsx`
 - [ ] 🟡 **Custom Reports**
   - Custom date range selection
   - Scheduled report generation
@@ -539,7 +542,7 @@
 
 ### Current Known Issues
 1. ✅ ~~Settings page shows placeholder buttons with no functionality~~ - Fixed
-2. ✅ ~~Dashboard "View receipt" only logs to console~~ - Still needs fixing
+2. ✅ ~~Dashboard "View receipt" only logs to console~~ - Fixed (2025-10-07)
 3. ✅ ~~Date timezone conversion causing unintended date changes in audit logs~~ - Fixed (2025-10-07)
 4. Bundle size is large (~900KB) - needs optimization
 5. No pagination causes performance issues with many receipts

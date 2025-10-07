@@ -4,6 +4,7 @@ import { AuthPage } from './pages/AuthPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { CollectionsPage } from './pages/CollectionsPage';
 import { ReceiptsPage } from './pages/ReceiptsPage';
+import { ReceiptDetailsPage } from './pages/ReceiptDetailsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import TeamPage from './pages/TeamPage';
@@ -15,6 +16,7 @@ import { MainLayout } from './components/layout/MainLayout';
 function AppContent() {
   const { user, loading } = useAuth();
   const [currentView, setCurrentView] = useState('dashboard');
+  const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
 
   if (loading) {
     return (
@@ -28,12 +30,23 @@ function AppContent() {
     return <AuthPage />;
   }
 
+  const handleNavigate = (view: string, receiptId?: string) => {
+    setCurrentView(view);
+    if (view === 'receipt-details' && receiptId) {
+      setSelectedReceiptId(receiptId);
+    } else {
+      setSelectedReceiptId(null);
+    }
+  };
+
   const getTitle = () => {
     switch (currentView) {
       case 'dashboard':
         return 'Dashboard';
       case 'receipts':
         return 'Receipts';
+      case 'receipt-details':
+        return 'Receipt Details';
       case 'collections':
         return 'Collections';
       case 'reports':
@@ -56,9 +69,18 @@ function AppContent() {
   const renderPage = () => {
     switch (currentView) {
       case 'dashboard':
-        return <DashboardPage />;
+        return <DashboardPage onViewReceipt={(id) => handleNavigate('receipt-details', id)} />;
       case 'receipts':
         return <ReceiptsPage />;
+      case 'receipt-details':
+        return selectedReceiptId ? (
+          <ReceiptDetailsPage
+            receiptId={selectedReceiptId}
+            onBack={() => handleNavigate('dashboard')}
+          />
+        ) : (
+          <DashboardPage onViewReceipt={(id) => handleNavigate('receipt-details', id)} />
+        );
       case 'collections':
         return <CollectionsPage />;
       case 'reports':
@@ -74,14 +96,14 @@ function AppContent() {
       case 'admin':
         return <AdminPage />;
       default:
-        return <DashboardPage />;
+        return <DashboardPage onViewReceipt={(id) => handleNavigate('receipt-details', id)} />;
     }
   };
 
   return (
     <MainLayout
       currentView={currentView}
-      onNavigate={setCurrentView}
+      onNavigate={handleNavigate}
       title={getTitle()}
     >
       {renderPage()}

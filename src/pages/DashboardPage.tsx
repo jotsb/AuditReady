@@ -18,7 +18,11 @@ interface CategoryData {
   color: string;
 }
 
-export function DashboardPage() {
+interface DashboardPageProps {
+  onViewReceipt?: (id: string) => void;
+}
+
+export function DashboardPage({ onViewReceipt }: DashboardPageProps) {
   const [stats, setStats] = useState<DashboardStats>({
     totalExpenses: 0,
     receiptCount: 0,
@@ -100,7 +104,9 @@ export function DashboardPage() {
   };
 
   const handleViewReceipt = (id: string) => {
-    console.log('View receipt:', id);
+    if (onViewReceipt) {
+      onViewReceipt(id);
+    }
   };
 
   if (loading) {
