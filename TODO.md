@@ -12,24 +12,34 @@
 - [x] ✅ User login with email/password
 - [x] ✅ User logout
 - [x] ✅ Session management
+- [x] ✅ **Password Reset Flow**
+  - "Forgot Password" functionality
+  - Email-based reset link
+  - Password complexity requirements
+- [x] ✅ **User Profile Management**
+  - Update full name
+  - Change email address
+  - Update phone number
+  - Change password
+  - Location: `src/components/settings/ProfileManagement.tsx`
+- [ ] 🚨 **Email Verification** (IN PROGRESS)
+  - Email confirmation before account activation
+  - Clear messaging for unverified users
+  - Resend verification email option
+  - Password strength indicator during signup
+  - Common password blocking
 - [ ] 🚨 **Multi-Factor Authentication (MFA)**
   - Setup wizard for authenticator apps
   - SMS-based 2FA option
   - Trusted device management
   - Recovery codes generation
   - Database fields exist, UI not implemented
-- [ ] 🚨 **Password Reset Flow**
-  - "Forgot Password" functionality
-  - Email-based reset link
-  - Password complexity requirements
-  - Password strength indicator
-- [ ] 🔴 **User Profile Management**
-  - Update full name
-  - Change email address
-  - Update phone number
-  - Change password
-  - Profile picture upload
-  - Location: `src/pages/SettingsPage.tsx`
+- [ ] 🟡 **Terms of Service & Privacy Policy**
+  - Terms acceptance checkbox during signup
+  - Privacy policy page
+  - Cookie consent management
+  - Legal compliance documentation
+  - Location: Future consideration for production
 
 ### Business Management
 - [x] ✅ Create business entities

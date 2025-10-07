@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { LogIn } from 'lucide-react';
+import { LogIn, Mail } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { logger } from '../../lib/logger';
+import { supabase } from '../../lib/supabase';
 
 interface LoginFormProps {
   onToggleMode: () => void;
@@ -13,18 +14,51 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showUnverifiedMessage, setShowUnverifiedMessage] = useState(false);
+  const [resendingEmail, setResendingEmail] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
   const { signIn } = useAuth();
+
+  const handleResendVerification = async () => {
+    setResendingEmail(true);
+    setResendSuccess(false);
+    setError('');
+
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+      });
+
+      if (error) throw error;
+
+      setResendSuccess(true);
+      logger.auth('verification_email_resent', true, { email });
+    } catch (err: any) {
+      setError(err.message || 'Failed to resend verification email');
+      logger.auth('verification_email_resent', false, { email, error: err.message });
+    } finally {
+      setResendingEmail(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setShowUnverifiedMessage(false);
+    setResendSuccess(false);
     setLoading(true);
 
     const { error } = await signIn(email, password);
 
     if (error) {
-      setError(error.message);
-      logger.auth('login_failed', false, { email, error: error.message });
+      if (error.message.includes('Email not confirmed') || error.message.includes('email_not_confirmed')) {
+        setShowUnverifiedMessage(true);
+        logger.auth('login_failed', false, { email, reason: 'email_not_verified' });
+      } else {
+        setError(error.message);
+        logger.auth('login_failed', false, { email, error: error.message });
+      }
     } else {
       logger.auth('login_success', true, { email });
     }
@@ -73,6 +107,37 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
             {error}
+          </div>
+        )}
+
+        {showUnverifiedMessage && (
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-3">
+            <div className="flex items-start gap-3">
+              <Mail size={20} className="text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-amber-800 mb-1">
+                  Email Not Verified
+                </p>
+                <p className="text-sm text-amber-700">
+                  Please verify your email address before signing in. Check your inbox for the verification link we sent to <strong>{email}</strong>.
+                </p>
+              </div>
+            </div>
+
+            {resendSuccess && (
+              <div className="p-2 bg-green-50 border border-green-200 rounded text-sm text-green-700">
+                Verification email sent! Check your inbox.
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={handleResendVerification}
+              disabled={resendingEmail}
+              className="w-full bg-amber-600 hover:bg-amber-700 text-white font-medium py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            >
+              {resendingEmail ? 'Sending...' : 'Resend Verification Email'}
+            </button>
           </div>
         )}
 
