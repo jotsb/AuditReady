@@ -78,28 +78,24 @@ export function UserManagement() {
       setLoading(true);
       setError('');
 
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-
-      if (authError) throw authError;
-
+      // Query profiles which are linked to auth.users
+      // System admins have permission to view all profiles
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
-        .select('id, full_name, suspended, deleted_at, last_login_at')
-        .in('id', authUsers.users.map(u => u.id));
+        .select('id, email, full_name, suspended, deleted_at, last_login_at, created_at')
+        .order('created_at', { ascending: false });
 
       if (profileError) throw profileError;
 
-      const profileMap = new Map(profiles?.map(p => [p.id, p]));
-
-      const enrichedUsers = authUsers.users.map(u => ({
-        id: u.id,
-        email: u.email || '',
-        full_name: profileMap.get(u.id)?.full_name || null,
-        created_at: u.created_at,
-        last_login_at: profileMap.get(u.id)?.last_login_at || null,
-        suspended: profileMap.get(u.id)?.suspended || false,
-        deleted_at: profileMap.get(u.id)?.deleted_at || null,
-      }));
+      const enrichedUsers = profiles?.map(p => ({
+        id: p.id,
+        email: p.email || '',
+        full_name: p.full_name || null,
+        created_at: p.created_at,
+        last_login_at: p.last_login_at || null,
+        suspended: p.suspended || false,
+        deleted_at: p.deleted_at || null,
+      })) || [];
 
       setUsers(enrichedUsers);
     } catch (err: any) {
@@ -180,11 +176,14 @@ export function UserManagement() {
     try {
       setActionLoading(true);
       setActionError('');
-      await changeUserPassword(selectedUser.id, newPassword, currentUser!.id);
-      setActionSuccess('Password changed successfully');
-      setShowPasswordModal(false);
-      setNewPassword('');
-      setTimeout(() => setActionSuccess(''), 3000);
+      // Note: Direct password change requires service role key
+      // This would need to be implemented as an Edge Function
+      setActionError('Direct password change requires Edge Function. Use "Send Password Reset" instead.');
+      // await changeUserPassword(selectedUser.id, newPassword, currentUser!.id);
+      // setActionSuccess('Password changed successfully');
+      // setShowPasswordModal(false);
+      // setNewPassword('');
+      // setTimeout(() => setActionSuccess(''), 3000);
     } catch (err: any) {
       setActionError(err.message);
     } finally {
@@ -212,22 +211,25 @@ export function UserManagement() {
   };
 
   const handleHardDelete = async (user: User) => {
-    if (!confirm('PERMANENT DELETE: This will permanently delete the user and all their data. This action cannot be undone. Are you absolutely sure?')) {
-      return;
-    }
+    alert('Hard delete requires service role key and must be implemented as an Edge Function. For now, users remain soft-deleted.');
+    return;
 
-    try {
-      setActionLoading(true);
-      setActionError('');
-      await hardDeleteUser(user.id, currentUser!.id);
-      setActionSuccess('User permanently deleted');
-      await loadUsers();
-      setTimeout(() => setActionSuccess(''), 3000);
-    } catch (err: any) {
-      setActionError(err.message);
-    } finally {
-      setActionLoading(false);
-    }
+    // if (!confirm('PERMANENT DELETE: This will permanently delete the user and all their data. This action cannot be undone. Are you absolutely sure?')) {
+    //   return;
+    // }
+
+    // try {
+    //   setActionLoading(true);
+    //   setActionError('');
+    //   await hardDeleteUser(user.id, currentUser!.id);
+    //   setActionSuccess('User permanently deleted');
+    //   await loadUsers();
+    //   setTimeout(() => setActionSuccess(''), 3000);
+    // } catch (err: any) {
+    //   setActionError(err.message);
+    // } finally {
+    //   setActionLoading(false);
+    // }
   };
 
   const handleRestore = async (user: User) => {
@@ -400,16 +402,9 @@ export function UserManagement() {
                         <button
                           onClick={() => handleSendPasswordReset(user)}
                           className="text-blue-600 hover:text-blue-700"
-                          title="Send Password Reset"
+                          title="Send Password Reset Email"
                         >
                           <Mail className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => { setSelectedUser(user); setShowPasswordModal(true); }}
-                          className="text-purple-600 hover:text-purple-700"
-                          title="Change Password"
-                        >
-                          <Key className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => { setSelectedUser(user); setShowDeleteModal(true); }}

@@ -379,21 +379,22 @@ export async function updateUserProfile(
     }
   }
 
-  // Update email if provided (requires auth update)
+  // Update email if provided
+  // Note: Updating auth email requires admin API (service role)
+  // For now, we'll only update the profile email field
   if (updates.email) {
-    const { error: emailError } = await supabase.auth.admin.updateUserById(targetUserId, {
-      email: updates.email,
-    });
-
-    if (emailError) {
-      throw new Error(`Failed to update email: ${emailError.message}`);
-    }
-
-    // Also update profile email
-    await supabase
+    // Update profile email (this is just for display purposes)
+    const { error: emailError } = await supabase
       .from('profiles')
       .update({ email: updates.email })
       .eq('id', targetUserId);
+
+    if (emailError) {
+      throw new Error(`Failed to update profile email: ${emailError.message}`);
+    }
+
+    // Note: To update the actual auth email, implement an Edge Function
+    console.warn('Auth email update requires Edge Function - only profile email was updated');
   }
 
   // Log the action
