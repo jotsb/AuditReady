@@ -1,7 +1,8 @@
 import { supabase } from './supabase';
+import { sessionManager } from './sessionManager';
 
 type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL';
-type LogCategory = 'AUTH' | 'DATABASE' | 'API' | 'EDGE_FUNCTION' | 'CLIENT_ERROR' | 'SECURITY' | 'PERFORMANCE';
+type LogCategory = 'AUTH' | 'DATABASE' | 'API' | 'EDGE_FUNCTION' | 'CLIENT_ERROR' | 'SECURITY' | 'PERFORMANCE' | 'USER_ACTION' | 'PAGE_VIEW' | 'NAVIGATION';
 
 interface LogOptions {
   level: LogLevel;
@@ -16,6 +17,7 @@ class Logger {
   private async sendToServer(options: LogOptions): Promise<void> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      const sessionId = sessionManager.getSessionId();
 
       await supabase.rpc('log_system_event', {
         p_level: options.level,
@@ -23,7 +25,7 @@ class Logger {
         p_message: options.message,
         p_metadata: options.metadata || {},
         p_user_id: user?.id || null,
-        p_session_id: null,
+        p_session_id: sessionId,
         p_ip_address: null,
         p_user_agent: navigator.userAgent,
         p_stack_trace: options.stackTrace || null,
@@ -99,6 +101,51 @@ class Logger {
       category: 'SECURITY',
       message: `Security event: ${eventType}`,
       metadata: { ...metadata, eventType }
+    });
+  }
+
+  pageView(pageName: string, metadata?: Record<string, any>): void {
+    this.sendToServer({
+      level: 'INFO',
+      category: 'PAGE_VIEW',
+      message: `Page view: ${pageName}`,
+      metadata: { ...metadata, pageName, path: window.location.pathname }
+    });
+  }
+
+  userAction(action: string, target: string, metadata?: Record<string, any>): void {
+    this.sendToServer({
+      level: 'INFO',
+      category: 'USER_ACTION',
+      message: `User action: ${action} on ${target}`,
+      metadata: { ...metadata, action, target }
+    });
+  }
+
+  navigation(from: string, to: string, metadata?: Record<string, any>): void {
+    this.sendToServer({
+      level: 'DEBUG',
+      category: 'NAVIGATION',
+      message: `Navigation: ${from} → ${to}`,
+      metadata: { ...metadata, from, to }
+    });
+  }
+
+  formSubmit(formName: string, data: Record<string, any>, metadata?: Record<string, any>): void {
+    this.sendToServer({
+      level: 'INFO',
+      category: 'USER_ACTION',
+      message: `Form submitted: ${formName}`,
+      metadata: { ...metadata, formName, formData: data }
+    });
+  }
+
+  dataLoad(resourceType: string, count: number, filters?: Record<string, any>): void {
+    this.sendToServer({
+      level: 'DEBUG',
+      category: 'PAGE_VIEW',
+      message: `Data loaded: ${count} ${resourceType}`,
+      metadata: { resourceType, count, filters: filters || {} }
     });
   }
 }

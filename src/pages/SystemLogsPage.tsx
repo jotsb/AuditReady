@@ -8,7 +8,7 @@ interface SystemLog {
   id: string;
   timestamp: string;
   level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL';
-  category: 'AUTH' | 'DATABASE' | 'API' | 'EDGE_FUNCTION' | 'CLIENT_ERROR' | 'SECURITY' | 'PERFORMANCE';
+  category: 'AUTH' | 'DATABASE' | 'API' | 'EDGE_FUNCTION' | 'CLIENT_ERROR' | 'SECURITY' | 'PERFORMANCE' | 'USER_ACTION' | 'PAGE_VIEW' | 'NAVIGATION';
   message: string;
   metadata: any;
   user_id: string | null;
@@ -36,6 +36,8 @@ export function SystemLogsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterLevel, setFilterLevel] = useState<string>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterUserId, setFilterUserId] = useState<string>('all');
+  const [filterSessionId, setFilterSessionId] = useState<string>('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -57,7 +59,7 @@ export function SystemLogsPage() {
 
   useEffect(() => {
     applyFilters();
-  }, [logs, searchTerm, filterLevel, filterCategory, startDate, endDate]);
+  }, [logs, searchTerm, filterLevel, filterCategory, filterUserId, filterSessionId, startDate, endDate]);
 
   const loadSystemLogs = async (silent = false) => {
     try {
@@ -136,6 +138,16 @@ export function SystemLogsPage() {
       filtered = filtered.filter(log => log.category === filterCategory);
     }
 
+    // User filter
+    if (filterUserId !== 'all') {
+      filtered = filtered.filter(log => log.user_id === filterUserId);
+    }
+
+    // Session filter
+    if (filterSessionId !== 'all') {
+      filtered = filtered.filter(log => log.session_id === filterSessionId);
+    }
+
     // Date range filter
     if (startDate) {
       filtered = filtered.filter(log => new Date(log.timestamp) >= new Date(startDate));
@@ -178,12 +190,17 @@ export function SystemLogsPage() {
     setSearchTerm('');
     setFilterLevel('all');
     setFilterCategory('all');
+    setFilterUserId('all');
+    setFilterSessionId('all');
     setStartDate('');
     setEndDate('');
   };
 
   const levels = ['all', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL'];
-  const categories = ['all', 'AUTH', 'DATABASE', 'API', 'EDGE_FUNCTION', 'CLIENT_ERROR', 'SECURITY', 'PERFORMANCE'];
+  const categories = ['all', 'AUTH', 'DATABASE', 'API', 'EDGE_FUNCTION', 'CLIENT_ERROR', 'SECURITY', 'PERFORMANCE', 'USER_ACTION', 'PAGE_VIEW', 'NAVIGATION'];
+
+  const uniqueUsers = ['all', ...new Set(logs.map(log => log.user_id).filter(Boolean) as string[])];
+  const uniqueSessions = ['all', ...new Set(logs.map(log => log.session_id).filter(Boolean) as string[])];
 
   if (!isSystemAdmin) {
     return (
@@ -304,6 +321,41 @@ export function SystemLogsPage() {
                 {categories.map(category => (
                   <option key={category} value={category}>
                     {category === 'all' ? 'All Categories' : category}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">User</label>
+              <select
+                value={filterUserId}
+                onChange={(e) => setFilterUserId(e.target.value)}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">All Users</option>
+                {uniqueUsers.slice(1).map(userId => {
+                  const profile = logs.find(log => log.user_id === userId)?.profiles;
+                  return (
+                    <option key={userId} value={userId}>
+                      {profile?.full_name || profile?.email || userId.substring(0, 8)}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Session</label>
+              <select
+                value={filterSessionId}
+                onChange={(e) => setFilterSessionId(e.target.value)}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">All Sessions</option>
+                {uniqueSessions.slice(1).map(sessionId => (
+                  <option key={sessionId} value={sessionId}>
+                    {sessionId.substring(0, 20)}...
                   </option>
                 ))}
               </select>
