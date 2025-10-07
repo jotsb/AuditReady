@@ -250,6 +250,32 @@ export function LogEntry({ log }: LogEntryProps) {
     }
   };
 
+  const getReceiptPreview = () => {
+    if (!isAuditLog) return null;
+
+    const auditLog = log as AuditLog;
+    if (auditLog.resource_type !== 'receipt') return null;
+
+    const snapshot = auditLog.snapshot_after || auditLog.snapshot_before;
+    if (!snapshot) return null;
+
+    const vendor = snapshot.vendor_name;
+    const category = snapshot.category;
+    const amount = snapshot.total_amount;
+    const date = snapshot.transaction_date;
+
+    if (!vendor && !category && !amount) return null;
+
+    return (
+      <div className="text-xs text-slate-600 mt-1">
+        {vendor && <span className="font-medium">{vendor}</span>}
+        {category && <span className="text-slate-500"> • {category}</span>}
+        {amount && <span className="text-slate-700 font-semibold"> • ${parseFloat(amount).toFixed(2)}</span>}
+        {date && <span className="text-slate-500"> • {new Date(date).toLocaleDateString()}</span>}
+      </div>
+    );
+  };
+
   const getMainText = () => {
     if (isAuditLog) {
       const auditLog = log as AuditLog;
@@ -326,6 +352,7 @@ export function LogEntry({ log }: LogEntryProps) {
                 {getTimestamp()}
                 {getSecondaryInfo()}
               </div>
+              {getReceiptPreview()}
             </div>
           </div>
 
