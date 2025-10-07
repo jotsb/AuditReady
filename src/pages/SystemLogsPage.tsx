@@ -68,15 +68,40 @@ export function SystemLogsPage() {
         setError('');
       }
 
-      const { data, error: fetchError } = await supabase
+      const { data: logsData, error: fetchError } = await supabase
         .from('system_logs')
-        .select('*, profiles(full_name, email)')
+        .select('*')
         .order('timestamp', { ascending: false })
         .limit(500);
 
       if (fetchError) throw fetchError;
 
-      setLogs(data || []);
+      // Fetch user profiles separately for logs that have user_id
+      const userIds = [...new Set(logsData?.map(log => log.user_id).filter(Boolean))];
+
+      let profilesMap: Record<string, { full_name: string; email: string }> = {};
+
+      if (userIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .in('id', userIds);
+
+        if (profilesData) {
+          profilesMap = profilesData.reduce((acc, profile) => {
+            acc[profile.id] = { full_name: profile.full_name, email: profile.email };
+            return acc;
+          }, {} as Record<string, { full_name: string; email: string }>);
+        }
+      }
+
+      // Merge profiles into logs
+      const logsWithProfiles = logsData?.map(log => ({
+        ...log,
+        profiles: log.user_id ? profilesMap[log.user_id] : undefined
+      })) || [];
+
+      setLogs(logsWithProfiles);
     } catch (err: any) {
       console.error('Error loading system logs:', err);
       setError(err.message);
