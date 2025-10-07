@@ -24,7 +24,12 @@ interface UpdateEmailRequest {
   newEmail: string;
 }
 
-type AdminRequest = ChangePasswordRequest | HardDeleteRequest | UpdateEmailRequest;
+interface ForceLogoutRequest {
+  action: 'force_logout';
+  targetUserId: string;
+}
+
+type AdminRequest = ChangePasswordRequest | HardDeleteRequest | UpdateEmailRequest | ForceLogoutRequest;
 
 async function checkSystemAdmin(supabase: any, userId: string): Promise<boolean> {
   const { data, error } = await supabase
@@ -190,6 +195,31 @@ Deno.serve(async (req: Request) => {
 
         return new Response(
           JSON.stringify({ success: true, message: 'Email updated successfully' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'force_logout': {
+        const { targetUserId } = requestData;
+
+        // Sign out user from all devices using admin API
+        const { error: logoutError } = await supabase.auth.admin.signOut(targetUserId);
+
+        if (logoutError) {
+          throw new Error(`Failed to force logout: ${logoutError.message}`);
+        }
+
+        // Log the action
+        await supabase.from('audit_logs').insert({
+          user_id: user.id,
+          action: 'force_logout_user',
+          resource_type: 'auth',
+          resource_id: targetUserId,
+          details: { via: 'edge_function' }
+        });
+
+        return new Response(
+          JSON.stringify({ success: true, message: 'User logged out from all devices' }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }

@@ -89,6 +89,14 @@ export async function suspendUser(
     throw new Error(`Failed to suspend user: ${error.message}`);
   }
 
+  // Force logout the suspended user from all devices
+  try {
+    await forceLogoutUser(targetUserId, adminUserId);
+  } catch (logoutError: any) {
+    console.error('Failed to force logout suspended user:', logoutError);
+    // Continue even if logout fails - suspension is more important
+  }
+
   // Log the action
   logger.userAction('admin_suspend_user', 'suspend_user', {
     target_user_id: targetUserId,
@@ -253,6 +261,14 @@ export async function softDeleteUser(
 
   if (error) {
     throw new Error(`Failed to soft delete user: ${error.message}`);
+  }
+
+  // Force logout the deleted user from all devices
+  try {
+    await forceLogoutUser(targetUserId, adminUserId);
+  } catch (logoutError: any) {
+    console.error('Failed to force logout deleted user:', logoutError);
+    // Continue even if logout fails - deletion is more important
   }
 
   // Log the action
@@ -432,6 +448,43 @@ export async function updateUserProfile(
     resource_type: 'profile',
     resource_id: targetUserId,
     details: { fields_updated: Object.keys(updates) },
+  });
+}
+
+export async function forceLogoutUser(
+  targetUserId: string,
+  adminUserId: string
+): Promise<void> {
+  await ensureSystemAdmin(adminUserId);
+
+  // Call Edge Function to force logout
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    throw new Error('No active session');
+  }
+
+  const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-user-management`;
+  const response = await fetch(functionUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'force_logout',
+      targetUserId,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to force logout user');
+  }
+
+  // Log the action
+  logger.userAction('admin_force_logout', 'force_logout', {
+    target_user_id: targetUserId,
+    page: 'admin',
   });
 }
 

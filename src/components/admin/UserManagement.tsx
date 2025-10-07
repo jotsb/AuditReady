@@ -12,6 +12,7 @@ import {
   updateUserProfile,
   getUserDetails,
   validatePassword,
+  forceLogoutUser,
   type UserDetails,
 } from '../../lib/adminService';
 import {
@@ -27,6 +28,7 @@ import {
   Check,
   Eye,
   EyeOff,
+  LogOut,
 } from 'lucide-react';
 
 interface User {
@@ -259,6 +261,24 @@ export function UserManagement() {
     }
   };
 
+  const handleForceLogout = async (user: User) => {
+    if (!confirm(`Force logout ${user.email} from all devices?`)) {
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      setActionError('');
+      await forceLogoutUser(user.id, currentUser!.id);
+      setActionSuccess('User logged out from all devices');
+      setTimeout(() => setActionSuccess(''), 3000);
+    } catch (err: any) {
+      setActionError(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const openEditModal = (user: User) => {
     setSelectedUser(user);
     setEditForm({
@@ -285,7 +305,7 @@ export function UserManagement() {
           onClick={loadUsers}
           className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw className="w-5 h-5" />
           Refresh
         </button>
       </div>
@@ -340,7 +360,7 @@ export function UserManagement() {
                       className="text-blue-600 hover:text-blue-700"
                       title="View Details"
                     >
-                      <Eye className="w-4 h-4" />
+                      <Eye className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => openEditModal(user)}
@@ -348,8 +368,17 @@ export function UserManagement() {
                       title="Edit Profile"
                       disabled={!!user.deleted_at}
                     >
-                      <Edit className="w-4 h-4" />
+                      <Edit className="w-5 h-5" />
                     </button>
+                    {!user.deleted_at && (
+                      <button
+                        onClick={() => handleForceLogout(user)}
+                        className="text-orange-600 hover:text-orange-700"
+                        title="Force Logout from All Devices"
+                      >
+                        <LogOut className="w-5 h-5" />
+                      </button>
+                    )}
                     {user.deleted_at ? (
                       <>
                         <button
@@ -357,14 +386,14 @@ export function UserManagement() {
                           className="text-green-600 hover:text-green-700"
                           title="Restore User"
                         >
-                          <RefreshCw className="w-4 h-4" />
+                          <RefreshCw className="w-5 h-5" />
                         </button>
                         <button
                           onClick={() => handleHardDelete(user)}
                           className="text-red-600 hover:text-red-700"
                           title="Permanent Delete"
                         >
-                          <AlertTriangle className="w-4 h-4" />
+                          <AlertTriangle className="w-5 h-5" />
                         </button>
                       </>
                     ) : user.suspended ? (
@@ -374,14 +403,14 @@ export function UserManagement() {
                           className="text-green-600 hover:text-green-700"
                           title="Unsuspend"
                         >
-                          <UserCheck className="w-4 h-4" />
+                          <UserCheck className="w-5 h-5" />
                         </button>
                         <button
                           onClick={() => { setSelectedUser(user); setShowDeleteModal(true); }}
                           className="text-red-600 hover:text-red-700"
                           title="Delete User"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-5 h-5" />
                         </button>
                       </>
                     ) : (
@@ -391,28 +420,28 @@ export function UserManagement() {
                           className="text-yellow-600 hover:text-yellow-700"
                           title="Suspend"
                         >
-                          <UserX className="w-4 h-4" />
+                          <UserX className="w-5 h-5" />
                         </button>
                         <button
                           onClick={() => handleSendPasswordReset(user)}
                           className="text-blue-600 hover:text-blue-700"
                           title="Send Password Reset Email"
                         >
-                          <Mail className="w-4 h-4" />
+                          <Mail className="w-5 h-5" />
                         </button>
                         <button
                           onClick={() => { setSelectedUser(user); setShowPasswordModal(true); }}
                           className="text-purple-600 hover:text-purple-700"
                           title="Change Password"
                         >
-                          <Key className="w-4 h-4" />
+                          <Key className="w-5 h-5" />
                         </button>
                         <button
                           onClick={() => { setSelectedUser(user); setShowDeleteModal(true); }}
                           className="text-red-600 hover:text-red-700"
                           title="Delete User"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-5 h-5" />
                         </button>
                       </>
                     )}
@@ -537,7 +566,7 @@ export function UserManagement() {
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
               >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
             <p className="text-xs text-gray-500 mb-4">
