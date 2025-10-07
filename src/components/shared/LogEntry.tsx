@@ -250,7 +250,7 @@ export function LogEntry({ log }: LogEntryProps) {
     }
   };
 
-  const getReceiptPreview = () => {
+  const getReceiptDetails = () => {
     if (!isAuditLog) return null;
 
     const auditLog = log as AuditLog;
@@ -266,14 +266,7 @@ export function LogEntry({ log }: LogEntryProps) {
 
     if (!vendor && !category && !amount) return null;
 
-    return (
-      <div className="text-xs text-slate-600 mt-1">
-        {vendor && <span className="font-medium">{vendor}</span>}
-        {category && <span className="text-slate-500"> • {category}</span>}
-        {amount && <span className="text-slate-700 font-semibold"> • ${parseFloat(amount).toFixed(2)}</span>}
-        {date && <span className="text-slate-500"> • {new Date(date).toLocaleDateString()}</span>}
-      </div>
-    );
+    return { vendor, category, amount, date };
   };
 
   const getMainText = () => {
@@ -328,7 +321,7 @@ export function LogEntry({ log }: LogEntryProps) {
         disabled={!hasExpandableContent}
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center flex-1 min-w-0">
+          <div className="flex items-center flex-1 min-w-0 gap-4">
             {hasExpandableContent ? (
               isExpanded ? (
                 <ChevronDown size={20} className="text-slate-400 mr-3 flex-shrink-0" />
@@ -339,7 +332,7 @@ export function LogEntry({ log }: LogEntryProps) {
               <div className="w-8 mr-3 flex-shrink-0" />
             )}
 
-            <div className="flex items-center flex-wrap gap-2 mr-4 flex-shrink-0">
+            <div className="flex items-center flex-wrap gap-2 flex-shrink-0">
               {getPrimaryBadge()}
               {getSecondaryBadges()}
             </div>
@@ -352,8 +345,36 @@ export function LogEntry({ log }: LogEntryProps) {
                 {getTimestamp()}
                 {getSecondaryInfo()}
               </div>
-              {getReceiptPreview()}
             </div>
+
+            {(() => {
+              const receiptDetails = getReceiptDetails();
+              if (receiptDetails) {
+                return (
+                  <div className="flex-shrink-0 min-w-0 max-w-xs">
+                    <div className="text-sm font-medium text-slate-900 truncate">
+                      {receiptDetails.vendor || 'N/A'}
+                    </div>
+                    <div className="text-xs text-slate-600 mt-1">
+                      {receiptDetails.category && <span className="text-slate-500">{receiptDetails.category}</span>}
+                      {receiptDetails.amount && (
+                        <>
+                          {receiptDetails.category && <span className="text-slate-400"> • </span>}
+                          <span className="text-slate-700 font-semibold">${parseFloat(receiptDetails.amount).toFixed(2)}</span>
+                        </>
+                      )}
+                      {receiptDetails.date && (
+                        <>
+                          {(receiptDetails.category || receiptDetails.amount) && <span className="text-slate-400"> • </span>}
+                          <span className="text-slate-500">{new Date(receiptDetails.date).toLocaleDateString()}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
           </div>
 
           {showWarningIcon() && (
