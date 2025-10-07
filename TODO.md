@@ -1,6 +1,6 @@
 # AuditReady - TODO & Implementation Status
 
-**Last Updated:** 2025-10-06
+**Last Updated:** 2025-10-07
 **Priority Legend:** 🚨 Critical | 🔴 High | 🟡 Medium | 🟢 Nice to Have | ✅ Completed
 
 ---
@@ -66,6 +66,13 @@
 - [x] ✅ Basic search by vendor name
 - [x] ✅ Filter by category
 - [x] ✅ Track extraction status
+- [x] ✅ **Date Handling & Timezone Management**
+  - Fixed timezone conversion issues in edit forms
+  - Dates display in local timezone across all views
+  - Dates stored as UTC in database
+  - Transaction dates remain unchanged when editing other fields
+  - Created shared date utility functions (`src/lib/dateUtils.ts`)
+  - Location: `src/components/receipts/EditReceiptModal.tsx`, `src/components/receipts/ManualEntryForm.tsx`, `src/pages/ReceiptsPage.tsx`
 - [ ] 🔴 **Bulk Operations**
   - Multi-select checkboxes
   - Bulk delete
@@ -533,12 +540,13 @@
 ### Current Known Issues
 1. ✅ ~~Settings page shows placeholder buttons with no functionality~~ - Fixed
 2. ✅ ~~Dashboard "View receipt" only logs to console~~ - Still needs fixing
-3. Bundle size is large (~900KB) - needs optimization
-4. No pagination causes performance issues with many receipts
-5. MFA database fields exist but no UI implementation
-6. Team management UI exists but backend integration incomplete
-7. Approval workflow database exists but no UI implementation
-8. Audit logs work but could use better filtering and export
+3. ✅ ~~Date timezone conversion causing unintended date changes in audit logs~~ - Fixed (2025-10-07)
+4. Bundle size is large (~900KB) - needs optimization
+5. No pagination causes performance issues with many receipts
+6. MFA database fields exist but no UI implementation
+7. Team management UI exists but backend integration incomplete
+8. Approval workflow database exists but no UI implementation
+9. Audit logs work but could use better filtering and export
 
 ### Performance Benchmarks
 - Target: First Contentful Paint < 1.5s
