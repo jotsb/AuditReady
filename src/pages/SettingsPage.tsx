@@ -3,10 +3,13 @@ import { User, Building2, Shield, Bell, FolderOpen, Tag } from 'lucide-react';
 import { BusinessManagement } from '../components/settings/BusinessManagement';
 import { CollectionManagement } from '../components/settings/CollectionManagement';
 import { CategoryManagement } from '../components/settings/CategoryManagement';
+import { usePageTracking } from '../hooks/usePageTracking';
+import { actionTracker } from '../lib/actionTracker';
 
 type SettingsTab = 'profile' | '2fa' | 'businesses' | 'collections' | 'categories' | 'notifications';
 
 export function SettingsPage() {
+  usePageTracking('Settings', { section: 'settings' });
   const [activeTab, setActiveTab] = useState<SettingsTab>('businesses');
 
   return (

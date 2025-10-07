@@ -8,6 +8,8 @@ import { VerifyReceiptModal } from '../components/receipts/VerifyReceiptModal';
 import { EditReceiptModal } from '../components/receipts/EditReceiptModal';
 import { ReceiptDetailsPage } from './ReceiptDetailsPage';
 import { convertLocalDateToUTC } from '../lib/dateUtils';
+import { usePageTracking, useDataLoadTracking } from '../hooks/usePageTracking';
+import { actionTracker } from '../lib/actionTracker';
 
 interface Receipt {
   id: string;
@@ -43,6 +45,9 @@ export function ReceiptsPage() {
   const [extracting, setExtracting] = useState(false);
   const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
   const [editingReceipt, setEditingReceipt] = useState<Receipt | null>(null);
+
+  usePageTracking('Receipts', { section: 'receipts' });
+  const logDataLoad = useDataLoadTracking('receipts');
 
   useEffect(() => {
     loadCollections();
@@ -86,6 +91,7 @@ export function ReceiptsPage() {
 
       if (error) throw error;
       setReceipts(data || []);
+      logDataLoad(data?.length || 0, { collectionId: selectedCollection });
     } catch (error) {
       console.error('Error loading receipts:', error);
     }
@@ -94,8 +100,12 @@ export function ReceiptsPage() {
   const handleUpload = async (file: File, thumbnail: File) => {
     if (!user || !selectedCollection) return;
 
+    actionTracker.uploadStarted('receipt', file.name, file.size, { collectionId: selectedCollection });
+
     setExtracting(true);
     setShowUpload(false);
+
+    const uploadStartTime = Date.now();
 
     try {
       const timestamp = Date.now();
@@ -151,6 +161,12 @@ export function ReceiptsPage() {
         thumbnailPath: thumbnailName,
         data: result.data,
       });
+
+      const uploadDuration = Date.now() - uploadStartTime;
+      actionTracker.uploadCompleted('receipt', file.name, uploadDuration, {
+        collectionId: selectedCollection,
+        vendor: result.data?.vendor_name
+      });
     } catch (error) {
       console.error('Upload/extraction error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -184,6 +200,13 @@ export function ReceiptsPage() {
 
   const handleDelete = async (receiptId: string, filePath: string | null) => {
     if (!confirm('Are you sure you want to delete this receipt?')) return;
+
+    const receipt = receipts.find(r => r.id === receiptId);
+    actionTracker.itemDeleted('receipt', receiptId, {
+      vendor: receipt?.vendor_name,
+      amount: receipt?.total_amount,
+      collectionId: selectedCollection
+    });
 
     try {
       if (filePath) {
@@ -249,6 +272,47 @@ export function ReceiptsPage() {
     setVerifyReceipt(null);
   };
 
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    if (query.length >= 3) {
+      actionTracker.searchPerformed(query, filteredReceipts.length, { context: 'receipts' });
+    }
+  };
+
+  const handleCategoryFilterChange = (category: string) => {
+    setFilterCategory(category);
+    actionTracker.filterApplied('category', category, { context: 'receipts' });
+  };
+
+  const handleCollectionChange = (collectionId: string) => {
+    actionTracker.selectionChanged('collection', collectionId, selectedCollection, { context: 'receipts' });
+    setSelectedCollection(collectionId);
+  };
+
+  const handleUploadClick = () => {
+    actionTracker.buttonClick('upload_receipt', { collectionId: selectedCollection });
+    setShowUpload(true);
+  };
+
+  const handleManualEntryClick = () => {
+    actionTracker.buttonClick('manual_entry', { collectionId: selectedCollection });
+    setShowManualEntry(true);
+  };
+
+  const handleEditClick = (receipt: Receipt) => {
+    actionTracker.buttonClick('edit_receipt', {
+      receiptId: receipt.id,
+      vendor: receipt.vendor_name,
+      amount: receipt.total_amount
+    });
+    setEditingReceipt(receipt);
+  };
+
+  const handleViewClick = (receiptId: string) => {
+    actionTracker.buttonClick('view_receipt_details', { receiptId });
+    setSelectedReceiptId(receiptId);
+  };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'No date';
     const date = new Date(dateString);
@@ -299,7 +363,7 @@ export function ReceiptsPage() {
             <label className="block text-sm font-medium text-slate-700 mb-2">Collection</label>
             <select
               value={selectedCollection}
-              onChange={(e) => setSelectedCollection(e.target.value)}
+              onChange={(e) => handleCollectionChange(e.target.value)}
               className="w-full md:w-auto px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               {collections.map((col) => (
@@ -312,14 +376,14 @@ export function ReceiptsPage() {
 
           <div className="flex gap-2">
             <button
-              onClick={() => setShowUpload(true)}
+              onClick={handleUploadClick}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
             >
               <Upload size={20} />
               <span>Upload</span>
             </button>
             <button
-              onClick={() => setShowManualEntry(true)}
+              onClick={handleManualEntryClick}
               className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition"
             >
               <Edit size={20} />
@@ -334,7 +398,7 @@ export function ReceiptsPage() {
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               placeholder="Search receipts..."
               className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
@@ -344,7 +408,7 @@ export function ReceiptsPage() {
             <Filter size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
             <select
               value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
+              onChange={(e) => handleCategoryFilterChange(e.target.value)}
               className="w-full md:w-auto pl-10 pr-8 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">All Categories</option>
@@ -387,7 +451,7 @@ export function ReceiptsPage() {
                 <tr
                   key={receipt.id}
                   className="hover:bg-slate-50 transition cursor-pointer"
-                  onClick={() => setSelectedReceiptId(receipt.id)}
+                  onClick={() => handleViewClick(receipt.id)}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
@@ -437,7 +501,7 @@ export function ReceiptsPage() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedReceiptId(receipt.id);
+                          handleViewClick(receipt.id);
                         }}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
                         title="View details"
@@ -447,7 +511,7 @@ export function ReceiptsPage() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          setEditingReceipt(receipt);
+                          handleEditClick(receipt);
                         }}
                         className="p-2 text-slate-600 hover:bg-slate-50 rounded-lg transition"
                         title="Edit receipt"

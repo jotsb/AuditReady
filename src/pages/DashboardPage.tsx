@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase';
 import { StatCard } from '../components/dashboard/StatCard';
 import { CategoryChart } from '../components/dashboard/CategoryChart';
 import { RecentReceipts } from '../components/dashboard/RecentReceipts';
+import { usePageTracking, useDataLoadTracking } from '../hooks/usePageTracking';
+import { actionTracker } from '../lib/actionTracker';
 
 interface DashboardStats {
   totalExpenses: number;
@@ -32,6 +34,9 @@ export function DashboardPage({ onViewReceipt }: DashboardPageProps) {
   const [categoryData, setCategoryData] = useState<CategoryData[]>([]);
   const [recentReceipts, setRecentReceipts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  usePageTracking('Dashboard', { section: 'dashboard' });
+  const logDataLoad = useDataLoadTracking('dashboard_stats');
 
   useEffect(() => {
     loadDashboardData();
@@ -95,6 +100,13 @@ export function DashboardPage({ onViewReceipt }: DashboardPageProps) {
 
         setCategoryData(chartData);
         setRecentReceipts(receipts.slice(0, 5));
+
+        logDataLoad(receipts.length, {
+          totalExpenses,
+          receiptCount: receipts.length,
+          monthlyTotal: monthlyReceipts.reduce((sum, r) => sum + Number(r.total_amount), 0),
+          categoriesShown: chartData.length
+        });
       }
     } catch (error) {
       console.error('Error loading dashboard:', error);
@@ -104,6 +116,7 @@ export function DashboardPage({ onViewReceipt }: DashboardPageProps) {
   };
 
   const handleViewReceipt = (id: string) => {
+    actionTracker.buttonClick('view_receipt_from_dashboard', { receiptId: id });
     if (onViewReceipt) {
       onViewReceipt(id);
     }

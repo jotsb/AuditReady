@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Building2, Users, Receipt, TrendingUp, AlertCircle, Activity, Database, BarChart3, UserCog, Search, Filter as FilterIcon, Download } from 'lucide-react';
 import { LogEntry } from '../components/shared/LogEntry';
+import { usePageTracking } from '../hooks/usePageTracking';
 
 interface AdminStats {
   totalUsers: number;
@@ -23,6 +24,9 @@ interface Business {
 
 export function AdminPage() {
   const { isSystemAdmin, user } = useAuth();
+
+  usePageTracking('Admin', { section: 'admin' });
+
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
     totalBusinesses: 0,

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Users, Mail, UserPlus, Shield, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { usePageTracking } from '../hooks/usePageTracking';
+import { actionTracker } from '../lib/actionTracker';
 
 interface TeamMember {
   id: string;
@@ -25,6 +27,9 @@ interface Invitation {
 
 export default function TeamPage() {
   const { user } = useAuth();
+
+  usePageTracking('Team', { section: 'team' });
+
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [businessId, setBusinessId] = useState<string | null>(null);

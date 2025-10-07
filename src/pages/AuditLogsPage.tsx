@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Activity, Filter, Search, Download, AlertCircle } from 'lucide-react';
 import { LogEntry } from '../components/shared/LogEntry';
+import { usePageTracking } from '../hooks/usePageTracking';
 
 interface AuditLog {
   id: string;
@@ -27,6 +28,9 @@ interface AuditLog {
 
 export function AuditLogsPage() {
   const { isSystemAdmin } = useAuth();
+
+  usePageTracking('Audit Logs', { section: 'audit_logs' });
+
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);

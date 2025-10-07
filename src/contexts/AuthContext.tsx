@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { logger } from '../lib/logger';
+import { sessionManager } from '../lib/sessionManager';
 
 interface Business {
   id: string;
@@ -123,10 +125,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error, data } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+
+    if (!error && data.user) {
+      sessionManager.setUserId(data.user.id);
+      logger.auth('sign_in', true, { email, method: 'password' });
+    } else {
+      logger.auth('sign_in', false, { email, method: 'password', error: error?.message });
+    }
+
     return { error };
   };
 
@@ -137,6 +147,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (!error && data.user) {
+      sessionManager.setUserId(data.user.id);
+      logger.auth('sign_up', true, { email, fullName });
+
       const { error: profileError } = await supabase.from('profiles').insert({
         id: data.user.id,
         full_name: fullName,
@@ -144,15 +157,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (profileError) {
+        logger.auth('profile_creation', false, { email, error: profileError.message });
         return { error: profileError as unknown as AuthError };
       }
+    } else {
+      logger.auth('sign_up', false, { email, error: error?.message });
     }
 
     return { error };
   };
 
   const signOut = async () => {
+    logger.auth('sign_out', true, { userId: user?.id });
     await supabase.auth.signOut();
+    sessionManager.clearSession();
     setBusinesses([]);
     setSelectedBusiness(null);
     localStorage.removeItem(SELECTED_BUSINESS_KEY);

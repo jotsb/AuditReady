@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Plus, FolderOpen, Users, Calendar, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { usePageTracking } from '../hooks/usePageTracking';
+import { actionTracker } from '../lib/actionTracker';
 
 interface Business {
   id: string;
@@ -19,6 +21,9 @@ interface Collection {
 
 export function CollectionsPage() {
   const { user } = useAuth();
+
+  usePageTracking('Collections', { section: 'collections' });
+
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [selectedBusiness, setSelectedBusiness] = useState<string>('');
