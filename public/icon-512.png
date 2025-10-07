@@ -1,1 +1,15 @@
-[Image file - using SVG as fallback]
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Receipt body with folded corner -->
+  <path d="M120 50C120 36.7452 130.745 26 144 26H396C409.255 26 420 36.7452 420 50V416L360 476H144C130.745 476 120 465.255 120 452V50Z" fill="#4A9B7F"/>
+
+  <!-- Folded corner shadow -->
+  <path d="M360 476V444C360 430.745 370.745 420 384 420H420L360 476Z" fill="#357A5E"/>
+
+  <!-- Receipt text lines -->
+  <rect x="165" y="100" width="182" height="20" rx="10" fill="white" fill-opacity="0.95"/>
+  <rect x="165" y="160" width="240" height="20" rx="10" fill="white" fill-opacity="0.95"/>
+  <rect x="165" y="220" width="130" height="20" rx="10" fill="white" fill-opacity="0.95"/>
+
+  <!-- Large checkmark -->
+  <path d="M280 310L325 355L410 270" stroke="white" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

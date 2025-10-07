@@ -1,10 +1,15 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" rx="115" fill="#E8F4F8"/>
-  <rect x="106" y="93" width="300" height="326" rx="24" fill="#4A9B7F"/>
-  <path d="M406 153C406 139.745 395.255 129 382 129H154C140.745 129 130 139.745 130 153V391C130 404.255 140.745 415 154 415H358L406 367V153Z" fill="#4A9B7F"/>
-  <path d="M358 415L406 367H382C368.745 367 358 377.745 358 391V415Z" fill="#3A7A62"/>
-  <rect x="165" y="180" width="130" height="20" rx="10" fill="white" opacity="0.9"/>
-  <rect x="165" y="230" width="180" height="20" rx="10" fill="white" opacity="0.9"/>
-  <rect x="165" y="280" width="90" height="20" rx="10" fill="white" opacity="0.9"/>
-  <path d="M320 315L355 350L405 300" stroke="white" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Receipt body with folded corner -->
+  <path d="M120 50C120 36.7452 130.745 26 144 26H396C409.255 26 420 36.7452 420 50V416L360 476H144C130.745 476 120 465.255 120 452V50Z" fill="#4A9B7F"/>
+
+  <!-- Folded corner shadow -->
+  <path d="M360 476V444C360 430.745 370.745 420 384 420H420L360 476Z" fill="#357A5E"/>
+
+  <!-- Receipt text lines -->
+  <rect x="165" y="100" width="182" height="20" rx="10" fill="white" fill-opacity="0.95"/>
+  <rect x="165" y="160" width="240" height="20" rx="10" fill="white" fill-opacity="0.95"/>
+  <rect x="165" y="220" width="130" height="20" rx="10" fill="white" fill-opacity="0.95"/>
+
+  <!-- Large checkmark -->
+  <path d="M280 310L325 355L410 270" stroke="white" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
