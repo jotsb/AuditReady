@@ -181,6 +181,20 @@
   - Test edge function logging
   - Ensure logs appear in System Logs page
   - Confirmed: System logs working, displaying INFO, WARN, ERROR levels across all categories
+- [x] ✅ **Comprehensive Activity Tracking & Observability System** (2025-10-07)
+  - **Session Management**: Unique session IDs for each user, 24-hour persistence
+  - **New Log Categories**: USER_ACTION (clicks, forms, filters), PAGE_VIEW (navigation), NAVIGATION (routes)
+  - **Dynamic Log Levels**: Database-driven configuration per category (DEBUG, INFO, WARN, ERROR, CRITICAL)
+  - **Action Tracking Library**: Pre-built functions for all common user actions
+  - **Page View Tracking**: Automatic page load logging with time-on-page metrics
+  - **Enhanced System Logs Page**: Filter by user, session, level, category, and date range
+  - **Application-Wide Logging**: All pages instrumented (Receipts, Dashboard, Reports, Collections, Settings, Team, Admin, Audit)
+  - **Receipt Operations Logging**: Upload start/complete, search, filters, CRUD operations with full context
+  - **Authentication Logging**: Sign in/up/out with success/failure tracking
+  - **Complete User Journey Tracking**: Filter by session ID to see timeline of all user actions
+  - **Session-User Linking**: Session IDs tied to user IDs for complete activity context
+  - Locations: `src/lib/logger.ts`, `src/lib/sessionManager.ts`, `src/lib/actionTracker.ts`, `src/hooks/usePageTracking.ts`, `src/contexts/AuthContext.tsx`, all page components
+  - Database: `log_level_config` table for runtime log level control, updated `system_logs` categories
 - [ ] 🔴 **Admin Dashboard Enhancements**
   - User impersonation ("login as" for support)
   - Database browser/query tool
@@ -544,12 +558,12 @@
 1. ✅ ~~Settings page shows placeholder buttons with no functionality~~ - Fixed
 2. ✅ ~~Dashboard "View receipt" only logs to console~~ - Fixed (2025-10-07)
 3. ✅ ~~Date timezone conversion causing unintended date changes in audit logs~~ - Fixed (2025-10-07)
-4. Bundle size is large (~900KB) - needs optimization
-5. No pagination causes performance issues with many receipts
-6. MFA database fields exist but no UI implementation
-7. Team management UI exists but backend integration incomplete
-8. Approval workflow database exists but no UI implementation
-9. Audit logs work but could use better filtering and export
+4. ✅ ~~WebP image uploads failing due to MIME type restrictions~~ - Fixed (2025-10-07)
+5. Bundle size is large (~937KB) - needs optimization
+6. No pagination causes performance issues with many receipts
+7. MFA database fields exist but no UI implementation
+8. Team management UI exists but backend integration incomplete
+9. Approval workflow database exists but no UI implementation
 
 ### Performance Benchmarks
 - Target: First Contentful Paint < 1.5s
@@ -579,7 +593,14 @@
 - ✅ Category management complete
 - ✅ Audit logging complete
 - ✅ System admin dashboard complete
+- ✅ **Comprehensive activity tracking and observability system** (NEW - 2025-10-07)
 - 🔄 Team management (partial - database done, UI needs backend integration)
 - 🔄 Approval workflow (database done, UI not implemented)
 - ⏳ MFA (database ready, UI not implemented)
 - ⏳ Advanced features and integrations (not started)
+
+**Recent Major Updates (2025-10-07):**
+1. **Comprehensive Logging System**: Session tracking, user action logging, page view tracking across entire app
+2. **WebP Image Support**: Fixed storage bucket configuration to accept WebP format
+3. **Enhanced System Logs**: User and session filtering for complete activity timeline reconstruction
+4. **Dynamic Log Levels**: Database-controlled logging verbosity for investigation mode
