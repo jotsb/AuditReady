@@ -39,10 +39,21 @@ export default function TeamPage() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'owner' | 'manager' | 'member'>('member');
   const [error, setError] = useState('');
+  const [currentMembersPage, setCurrentMembersPage] = useState(1);
+  const [currentInvitesPage, setCurrentInvitesPage] = useState(1);
+  const [totalMembers, setTotalMembers] = useState(0);
+  const [totalInvites, setTotalInvites] = useState(0);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     loadTeamData();
   }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      loadTeamData();
+    }
+  }, [currentMembersPage, currentInvitesPage]);
 
   const loadTeamData = async () => {
     if (!user) return;
@@ -62,12 +73,29 @@ export default function TeamPage() {
       setBusinessId(memberData.business_id);
       setUserRole(memberData.role);
 
-      const [membersResult, invitationsResult] = await Promise.all([
+      const membersStartIndex = (currentMembersPage - 1) * itemsPerPage;
+      const membersEndIndex = membersStartIndex + itemsPerPage - 1;
+      const invitesStartIndex = (currentInvitesPage - 1) * itemsPerPage;
+      const invitesEndIndex = invitesStartIndex + itemsPerPage - 1;
+
+      const [membersCountResult, membersResult, invitationsCountResult, invitationsResult] = await Promise.all([
+        supabase
+          .from('business_members')
+          .select('*', { count: 'exact', head: true })
+          .eq('business_id', memberData.business_id),
+
         supabase
           .from('business_members')
           .select('id, user_id, role, joined_at')
           .eq('business_id', memberData.business_id)
-          .order('joined_at', { ascending: false }),
+          .order('joined_at', { ascending: false })
+          .range(membersStartIndex, membersEndIndex),
+
+        supabase
+          .from('invitations')
+          .select('*', { count: 'exact', head: true })
+          .eq('business_id', memberData.business_id)
+          .eq('status', 'pending'),
 
         supabase
           .from('invitations')
@@ -75,6 +103,7 @@ export default function TeamPage() {
           .eq('business_id', memberData.business_id)
           .eq('status', 'pending')
           .order('created_at', { ascending: false })
+          .range(invitesStartIndex, invitesEndIndex)
       ]);
 
       if (membersResult.error) throw membersResult.error;
@@ -100,6 +129,8 @@ export default function TeamPage() {
 
       setMembers(enrichedMembers as TeamMember[]);
       setInvitations(invitationsResult.data || []);
+      setTotalMembers(membersCountResult.count || 0);
+      setTotalInvites(invitationsCountResult.count || 0);
     } catch (err: any) {
       console.error('Error loading team data:', err);
       setError(err.message);
@@ -246,7 +277,7 @@ export default function TeamPage() {
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-8">
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Team Members ({members.length})</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Team Members ({totalMembers})</h2>
         </div>
         <div className="divide-y divide-gray-200">
           {members.map((member) => (
@@ -296,12 +327,36 @@ export default function TeamPage() {
             </div>
           ))}
         </div>
+
+        {totalMembers > itemsPerPage && (
+          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
+            <div className="text-sm text-gray-600">
+              Showing {((currentMembersPage - 1) * itemsPerPage) + 1} to {Math.min(currentMembersPage * itemsPerPage, totalMembers)} of {totalMembers} members
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentMembersPage(p => Math.max(1, p - 1))}
+                disabled={currentMembersPage === 1}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setCurrentMembersPage(p => Math.min(Math.ceil(totalMembers / itemsPerPage), p + 1))}
+                disabled={currentMembersPage >= Math.ceil(totalMembers / itemsPerPage)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {invitations.length > 0 && (
+      {totalInvites > 0 && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Pending Invitations ({invitations.length})</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Pending Invitations ({totalInvites})</h2>
           </div>
           <div className="divide-y divide-gray-200">
             {invitations.map((invitation) => (
@@ -331,6 +386,30 @@ export default function TeamPage() {
               </div>
             ))}
           </div>
+
+          {totalInvites > itemsPerPage && (
+            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
+              <div className="text-sm text-gray-600">
+                Showing {((currentInvitesPage - 1) * itemsPerPage) + 1} to {Math.min(currentInvitesPage * itemsPerPage, totalInvites)} of {totalInvites} invitations
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCurrentInvitesPage(p => Math.max(1, p - 1))}
+                  disabled={currentInvitesPage === 1}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setCurrentInvitesPage(p => Math.min(Math.ceil(totalInvites / itemsPerPage), p + 1))}
+                  disabled={currentInvitesPage >= Math.ceil(totalInvites / itemsPerPage)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

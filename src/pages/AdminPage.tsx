@@ -37,6 +37,9 @@ export function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'logs' | 'analytics'>('overview');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalBusinesses, setTotalBusinesses] = useState(0);
+  const itemsPerPage = 20;
 
   useEffect(() => {
     if (isSystemAdmin) {
@@ -44,16 +47,30 @@ export function AdminPage() {
     }
   }, [isSystemAdmin]);
 
+  useEffect(() => {
+    if (isSystemAdmin) {
+      loadAdminData();
+    }
+  }, [currentPage]);
+
   const loadAdminData = async () => {
     try {
       setLoading(true);
       setError('');
 
-      const [businessesResult, receiptsResult, systemRolesResult] = await Promise.all([
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage - 1;
+
+      const [businessesCountResult, businessesResult, receiptsResult, systemRolesResult, allBusinessesResult] = await Promise.all([
+        supabase
+          .from('businesses')
+          .select('*', { count: 'exact', head: true }),
+
         supabase
           .from('businesses')
           .select('id, name, created_at, owner_id')
-          .order('created_at', { ascending: false }),
+          .order('created_at', { ascending: false })
+          .range(startIndex, endIndex),
 
         supabase
           .from('receipts')
@@ -62,7 +79,11 @@ export function AdminPage() {
         supabase
           .from('system_roles')
           .select('id', { count: 'exact', head: true })
-          .eq('role', 'admin')
+          .eq('role', 'admin'),
+
+        supabase
+          .from('businesses')
+          .select('owner_id')
       ]);
 
       if (businessesResult.error) throw businessesResult.error;
@@ -70,7 +91,8 @@ export function AdminPage() {
       if (systemRolesResult.error) throw systemRolesResult.error;
 
       const businessesData = businessesResult.data || [];
-      const uniqueOwners = new Set(businessesData.map(b => b.owner_id)).size;
+      const uniqueOwners = new Set(allBusinessesResult.data?.map(b => b.owner_id) || []).size;
+      setTotalBusinesses(businessesCountResult.count || 0);
 
       const enrichedBusinesses = await Promise.all(
         businessesData.map(async (business) => {
@@ -106,7 +128,7 @@ export function AdminPage() {
 
       setStats({
         totalUsers: uniqueOwners,
-        totalBusinesses: businessesData.length,
+        totalBusinesses: businessesCountResult.count || 0,
         totalReceipts: receiptsResult.count || 0,
         systemAdmins: systemRolesResult.count || 0,
       });
@@ -311,6 +333,58 @@ export function AdminPage() {
               </tbody>
             </table>
           </div>
+
+          {totalBusinesses > itemsPerPage && (
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200">
+              <div className="text-sm text-slate-600">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalBusinesses)} of {totalBusinesses} businesses
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  Previous
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.ceil(totalBusinesses / itemsPerPage) }, (_, i) => i + 1)
+                    .filter(page => {
+                      const totalPages = Math.ceil(totalBusinesses / itemsPerPage);
+                      if (totalPages <= 7) return true;
+                      if (page === 1 || page === totalPages) return true;
+                      if (page >= currentPage - 1 && page <= currentPage + 1) return true;
+                      return false;
+                    })
+                    .map((page, index, array) => {
+                      const showEllipsis = index > 0 && page - array[index - 1] > 1;
+                      return (
+                        <div key={page} className="flex items-center gap-1">
+                          {showEllipsis && <span className="px-2 text-slate-400">...</span>}
+                          <button
+                            onClick={() => setCurrentPage(page)}
+                            className={`px-3 py-2 text-sm font-medium rounded-lg transition ${
+                              currentPage === page
+                                ? 'bg-blue-600 text-white'
+                                : 'text-slate-700 bg-white border border-slate-300 hover:bg-slate-50'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        </div>
+                      );
+                    })}
+                </div>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalBusinesses / itemsPerPage), p + 1))}
+                  disabled={currentPage >= Math.ceil(totalBusinesses / itemsPerPage)}
+                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
           </>
         )}
@@ -336,16 +410,27 @@ function UsersManagementTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const itemsPerPage = 20;
 
   useEffect(() => {
     loadUsers();
   }, []);
 
+  useEffect(() => {
+    loadUsers();
+  }, [currentPage]);
+
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const [profilesResult, systemRolesResult] = await Promise.all([
-        supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage - 1;
+
+      const [profilesCountResult, profilesResult, systemRolesResult] = await Promise.all([
+        supabase.from('profiles').select('*', { count: 'exact', head: true }),
+        supabase.from('profiles').select('*').order('created_at', { ascending: false }).range(startIndex, endIndex),
         supabase.from('system_roles').select('user_id, role')
       ]);
 
@@ -362,6 +447,7 @@ function UsersManagementTab() {
       })) || [];
 
       setUsers(enrichedUsers);
+      setTotalUsers(profilesCountResult.count || 0);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -390,10 +476,12 @@ function UsersManagementTab() {
     }
   };
 
-  const filteredUsers = users.filter(user =>
-    user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = searchTerm
+    ? users.filter(user =>
+        user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : users;
 
   if (loading) {
     return (
@@ -507,6 +595,58 @@ function UsersManagementTab() {
           </tbody>
         </table>
       </div>
+
+      {totalUsers > itemsPerPage && (
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200">
+          <div className="text-sm text-slate-600">
+            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalUsers)} of {totalUsers} users
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              Previous
+            </button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.ceil(totalUsers / itemsPerPage) }, (_, i) => i + 1)
+                .filter(page => {
+                  const totalPages = Math.ceil(totalUsers / itemsPerPage);
+                  if (totalPages <= 7) return true;
+                  if (page === 1 || page === totalPages) return true;
+                  if (page >= currentPage - 1 && page <= currentPage + 1) return true;
+                  return false;
+                })
+                .map((page, index, array) => {
+                  const showEllipsis = index > 0 && page - array[index - 1] > 1;
+                  return (
+                    <div key={page} className="flex items-center gap-1">
+                      {showEllipsis && <span className="px-2 text-slate-400">...</span>}
+                      <button
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-2 text-sm font-medium rounded-lg transition ${
+                          currentPage === page
+                            ? 'bg-blue-600 text-white'
+                            : 'text-slate-700 bg-white border border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    </div>
+                  );
+                })}
+            </div>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalUsers / itemsPerPage), p + 1))}
+              disabled={currentPage >= Math.ceil(totalUsers / itemsPerPage)}
+              className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

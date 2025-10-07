@@ -16,22 +16,39 @@ export function CategoryManagement() {
   const [error, setError] = useState<string | null>(null);
   const [newCategory, setNewCategory] = useState({ name: '', description: '' });
   const [showAddForm, setShowAddForm] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCategories, setTotalCategories] = useState(0);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     loadCategories();
   }, []);
 
+  useEffect(() => {
+    loadCategories();
+  }, [currentPage]);
+
   const loadCategories = async () => {
     try {
       setLoading(true);
       setError(null);
+
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage - 1;
+
+      const { count } = await supabase
+        .from('expense_categories')
+        .select('*', { count: 'exact', head: true });
+
       const { data, error } = await supabase
         .from('expense_categories')
         .select('*')
-        .order('display_order');
+        .order('display_order')
+        .range(startIndex, endIndex);
 
       if (error) throw error;
       setCategories(data || []);
+      setTotalCategories(count || 0);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -228,6 +245,30 @@ export function CategoryManagement() {
           ))
         )}
       </div>
+
+      {totalCategories > itemsPerPage && (
+        <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-200">
+          <div className="text-sm text-slate-600">
+            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCategories)} of {totalCategories} categories
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalCategories / itemsPerPage), p + 1))}
+              disabled={currentPage >= Math.ceil(totalCategories / itemsPerPage)}
+              className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

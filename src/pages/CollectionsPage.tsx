@@ -36,6 +36,9 @@ export function CollectionsPage() {
   const [newCollectionYear, setNewCollectionYear] = useState(new Date().getFullYear());
   const [newCollectionDesc, setNewCollectionDesc] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCollections, setTotalCollections] = useState(0);
+  const itemsPerPage = 12;
 
   useEffect(() => {
     loadData();
@@ -43,9 +46,16 @@ export function CollectionsPage() {
 
   useEffect(() => {
     if (selectedBusiness) {
+      setCurrentPage(1);
       loadCollections(selectedBusiness);
     }
   }, [selectedBusiness]);
+
+  useEffect(() => {
+    if (selectedBusiness) {
+      loadCollections(selectedBusiness);
+    }
+  }, [currentPage]);
 
   const loadData = async () => {
     try {
@@ -69,14 +79,24 @@ export function CollectionsPage() {
 
   const loadCollections = async (businessId: string) => {
     try {
-      const { data, error } = await supabase
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage - 1;
+
+      const { count } = await supabase
+        .from('collections')
+        .select('*', { count: 'exact', head: true })
+        .eq('business_id', businessId);
+
+      const { data, error} = await supabase
         .from('collections')
         .select('*')
         .eq('business_id', businessId)
-        .order('year', { ascending: false });
+        .order('year', { ascending: false })
+        .range(startIndex, endIndex);
 
       if (error) throw error;
       setCollections(data || []);
+      setTotalCollections(count || 0);
     } catch (error) {
       console.error('Error loading collections:', error);
     }
@@ -428,6 +448,30 @@ export function CollectionsPage() {
           {collections.length === 0 && !showNewCollectionForm && (
             <div className="text-center py-8 text-slate-500">
               No collections yet. Create your first collection to organize receipts!
+            </div>
+          )}
+
+          {totalCollections > itemsPerPage && (
+            <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-200">
+              <div className="text-sm text-slate-600">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCollections)} of {totalCollections} collections
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalCollections / itemsPerPage), p + 1))}
+                  disabled={currentPage >= Math.ceil(totalCollections / itemsPerPage)}
+                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </div>
