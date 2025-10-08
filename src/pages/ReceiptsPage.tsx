@@ -418,7 +418,7 @@ export function ReceiptsPage() {
 
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
-            <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
+            <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-gray-500" />
             <input
               type="text"
               value={searchQuery}
@@ -429,7 +429,7 @@ export function ReceiptsPage() {
           </div>
 
           <div className="relative">
-            <Filter size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
+            <Filter size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-gray-500" />
             <select
               value={filterCategory}
               onChange={(e) => handleCategoryFilterChange(e.target.value)}
@@ -561,7 +561,7 @@ export function ReceiptsPage() {
         </div>
 
         {filteredReceipts.length === 0 && (
-          <div className="text-center py-12 text-slate-500">
+          <div className="text-center py-12 text-slate-500 dark:text-gray-400">
             {receipts.length === 0 ? 'No receipts yet. Upload your first receipt!' : 'No receipts match your filters.'}
           </div>
         )}
@@ -592,7 +592,7 @@ export function ReceiptsPage() {
                     const showEllipsis = index > 0 && page - array[index - 1] > 1;
                     return (
                       <div key={page} className="flex items-center gap-1">
-                        {showEllipsis && <span className="px-2 text-slate-400">...</span>}
+                        {showEllipsis && <span className="px-2 text-slate-400 dark:text-gray-500">...</span>}
                         <button
                           onClick={() => setCurrentPage(page)}
                           className={`px-3 py-2 text-sm font-medium rounded-lg transition ${

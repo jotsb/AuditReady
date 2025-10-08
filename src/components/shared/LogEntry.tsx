@@ -135,7 +135,7 @@ export function LogEntry({ log }: LogEntryProps) {
                 const isChanged = JSON.stringify(beforeValue) !== JSON.stringify(afterValue);
 
                 const formatValue = (val: any) => {
-                  if (val === null || val === undefined) return <span className="text-slate-400">—</span>;
+                  if (val === null || val === undefined) return <span className="text-slate-400 dark:text-gray-500">—</span>;
                   if (typeof val === 'boolean') return val ? 'true' : 'false';
                   if (typeof val === 'object') return JSON.stringify(val);
                   return String(val);
@@ -356,17 +356,17 @@ export function LogEntry({ log }: LogEntryProps) {
                       {receiptDetails.vendor || 'N/A'}
                     </div>
                     <div className="text-xs text-slate-600 mt-1">
-                      {receiptDetails.category && <span className="text-slate-500">{receiptDetails.category}</span>}
+                      {receiptDetails.category && <span className="text-slate-500 dark:text-gray-400">{receiptDetails.category}</span>}
                       {receiptDetails.amount && (
                         <>
-                          {receiptDetails.category && <span className="text-slate-400"> • </span>}
+                          {receiptDetails.category && <span className="text-slate-400 dark:text-gray-500"> • </span>}
                           <span className="text-slate-700 dark:text-gray-300 font-semibold">${parseFloat(receiptDetails.amount).toFixed(2)}</span>
                         </>
                       )}
                       {receiptDetails.date && (
                         <>
-                          {(receiptDetails.category || receiptDetails.amount) && <span className="text-slate-400"> • </span>}
-                          <span className="text-slate-500">{new Date(receiptDetails.date).toLocaleDateString()}</span>
+                          {(receiptDetails.category || receiptDetails.amount) && <span className="text-slate-400 dark:text-gray-500"> • </span>}
+                          <span className="text-slate-500 dark:text-gray-400">{new Date(receiptDetails.date).toLocaleDateString()}</span>
                         </>
                       )}
                     </div>

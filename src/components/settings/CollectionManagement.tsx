@@ -227,7 +227,7 @@ export function CollectionManagement() {
                 </div>
                 <div>
                   <h4 className="font-semibold text-slate-800 dark:text-white">{collection.name}</h4>
-                  <p className="text-sm text-slate-500">Year: {collection.year}</p>
+                  <p className="text-sm text-slate-500 dark:text-gray-400">Year: {collection.year}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">

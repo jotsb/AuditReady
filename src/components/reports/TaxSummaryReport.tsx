@@ -291,7 +291,7 @@ export function TaxSummaryReport() {
       {!summary && !loading && (
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-12 text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 dark:bg-gray-700 rounded-full mb-4">
-            <TrendingUp size={32} className="text-slate-400" />
+            <TrendingUp size={32} className="text-slate-400 dark:text-gray-500" />
           </div>
           <h3 className="text-lg font-semibold text-slate-800 mb-2">No Report Generated</h3>
           <p className="text-slate-600 dark:text-gray-400">

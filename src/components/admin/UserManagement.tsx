@@ -338,7 +338,7 @@ export function UserManagement() {
                 <td className="px-6 py-4">
                   <div>
                     <div className="font-medium text-gray-900">{user.full_name || 'No name'}</div>
-                    <div className="text-sm text-gray-500">{user.email}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">{user.email}</div>
                   </div>
                 </td>
                 <td className="px-6 py-4">
@@ -350,7 +350,7 @@ export function UserManagement() {
                     <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">Active</span>
                   )}
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-500">
+                <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                   {user.last_login_at ? new Date(user.last_login_at).toLocaleDateString() : 'Never'}
                 </td>
                 <td className="px-6 py-4">
@@ -467,35 +467,35 @@ export function UserManagement() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-gray-500">Email</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Email</p>
                     <p className="font-medium">{userDetails.email}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Full Name</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Full Name</p>
                     <p className="font-medium">{userDetails.full_name || 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Phone</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Phone</p>
                     <p className="font-medium">{userDetails.phone_number || 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">MFA Enabled</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">MFA Enabled</p>
                     <p className="font-medium">{userDetails.mfa_enabled ? 'Yes' : 'No'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Businesses Owned</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Businesses Owned</p>
                     <p className="font-medium">{userDetails.business_count || 0}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Business Memberships</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Business Memberships</p>
                     <p className="font-medium">{userDetails.member_count || 0}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Receipts Uploaded</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Receipts Uploaded</p>
                     <p className="font-medium">{userDetails.receipt_count || 0}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Last Login</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Last Login</p>
                     <p className="font-medium">
                       {userDetails.last_login_at
                         ? new Date(userDetails.last_login_at).toLocaleString()
@@ -564,7 +564,7 @@ export function UserManagement() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400"
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>

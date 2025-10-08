@@ -119,7 +119,7 @@ export function ResetPasswordForm() {
               className="w-full px-4 py-3 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
               placeholder="Enter new password"
             />
-            <p className="mt-1 text-xs text-slate-500">Minimum 8 characters</p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">Minimum 8 characters</p>
           </div>
 
           <div>

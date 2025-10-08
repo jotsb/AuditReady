@@ -304,7 +304,7 @@ export function AdminPage() {
               <tbody className="divide-y divide-slate-200">
                 {businesses.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
+                    <td colSpan={5} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">
                       No businesses found
                     </td>
                   </tr>
@@ -361,7 +361,7 @@ export function AdminPage() {
                       const showEllipsis = index > 0 && page - array[index - 1] > 1;
                       return (
                         <div key={page} className="flex items-center gap-1">
-                          {showEllipsis && <span className="px-2 text-slate-400">...</span>}
+                          {showEllipsis && <span className="px-2 text-slate-400 dark:text-gray-500">...</span>}
                           <button
                             onClick={() => setCurrentPage(page)}
                             className={`px-3 py-2 text-sm font-medium rounded-lg transition ${
@@ -586,7 +586,7 @@ function AuditLogsTab() {
         {/* Search */}
         <div className="mb-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-gray-500" size={20} />
             <input
               type="text"
               placeholder="Search logs..."

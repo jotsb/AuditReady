@@ -333,7 +333,7 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
             </div>
           ) : (
             <div className="flex items-center justify-center h-96 bg-slate-50 dark:bg-gray-800 rounded-lg border border-slate-200">
-              <div className="text-center text-slate-500">
+              <div className="text-center text-slate-500 dark:text-gray-400">
                 <FileText size={48} className="mx-auto mb-2 opacity-50" />
                 <p>No image available</p>
               </div>

@@ -198,7 +198,7 @@ export function ProfileManagement() {
             placeholder="you@example.com"
             required
           />
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">
             You'll receive a confirmation email if you change this
           </p>
         </div>
@@ -258,7 +258,7 @@ export function ProfileManagement() {
               required
               minLength={8}
             />
-            <p className="mt-1 text-xs text-slate-500">Minimum 8 characters</p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">Minimum 8 characters</p>
           </div>
 
           <div>

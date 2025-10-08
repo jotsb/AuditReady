@@ -253,7 +253,7 @@ export function BusinessManagement() {
                   </div>
                   <div>
                     <h4 className="font-semibold text-slate-800 dark:text-white">{business.name}</h4>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-slate-500 dark:text-gray-400">
                       {business.currency} • {isOwner ? 'Owner' : 'Member'}
                     </p>
                   </div>
@@ -290,7 +290,7 @@ export function BusinessManagement() {
               )}
 
               <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                <div className="text-sm text-slate-500">
+                <div className="text-sm text-slate-500 dark:text-gray-400">
                   Currency: {CURRENCIES.find(c => c.code === business.currency)?.name || business.currency}
                 </div>
               </div>

@@ -329,7 +329,7 @@ export function CollectionsPage() {
         </div>
 
         {businesses.length === 0 && !showNewBusinessForm && (
-          <div className="text-center py-8 text-slate-500">
+          <div className="text-center py-8 text-slate-500 dark:text-gray-400">
             No businesses yet. Create your first business to get started!
           </div>
         )}
@@ -429,7 +429,7 @@ export function CollectionsPage() {
                     {collection.description && (
                       <p className="text-sm text-slate-600 dark:text-gray-400 mb-3">{collection.description}</p>
                     )}
-                    <div className="flex items-center gap-4 text-sm text-slate-500">
+                    <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-gray-400">
                       <div className="flex items-center gap-1">
                         <Calendar size={14} />
                         <span>{collection.year}</span>
@@ -446,7 +446,7 @@ export function CollectionsPage() {
           </div>
 
           {collections.length === 0 && !showNewCollectionForm && (
-            <div className="text-center py-8 text-slate-500">
+            <div className="text-center py-8 text-slate-500 dark:text-gray-400">
               No collections yet. Create your first collection to organize receipts!
             </div>
           )}

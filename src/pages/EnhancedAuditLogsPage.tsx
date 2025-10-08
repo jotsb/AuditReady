@@ -208,7 +208,7 @@ export function EnhancedAuditLogsPage() {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-gray-800 flex items-center justify-center">
         <div className="text-center">
-          <Activity className="mx-auto mb-4 text-slate-400" size={48} />
+          <Activity className="mx-auto mb-4 text-slate-400 dark:text-gray-500" size={48} />
           <h2 className="text-xl font-semibold text-slate-700 dark:text-gray-300 mb-2">No Business Selected</h2>
           <p className="text-slate-600 dark:text-gray-400">Please select a business to view audit logs</p>
         </div>
@@ -272,7 +272,7 @@ export function EnhancedAuditLogsPage() {
           {/* Search */}
           <div className="mb-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-gray-500" size={20} />
               <input
                 type="text"
                 placeholder="Search logs..."
@@ -417,7 +417,7 @@ export function EnhancedAuditLogsPage() {
                       const showEllipsis = index > 0 && page - array[index - 1] > 1;
                       return (
                         <div key={page} className="flex items-center gap-1">
-                          {showEllipsis && <span className="px-2 text-slate-400">...</span>}
+                          {showEllipsis && <span className="px-2 text-slate-400 dark:text-gray-500">...</span>}
                           <button
                             onClick={() => setCurrentPage(page)}
                             className={`px-3 py-2 text-sm font-medium rounded-lg transition ${

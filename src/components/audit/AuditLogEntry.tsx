@@ -87,7 +87,7 @@ export function AuditLogEntry({ log }: AuditLogEntryProps) {
 
                 // Format values for display
                 const formatValue = (val: any) => {
-                  if (val === null || val === undefined) return <span className="text-slate-400">—</span>;
+                  if (val === null || val === undefined) return <span className="text-slate-400 dark:text-gray-500">—</span>;
                   if (typeof val === 'boolean') return val ? 'true' : 'false';
                   if (typeof val === 'object') return JSON.stringify(val);
                   return String(val);

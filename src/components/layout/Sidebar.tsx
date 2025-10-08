@@ -50,7 +50,7 @@ export function Sidebar({ isOpen, currentView, onNavigate }: SidebarProps) {
             />
             <div>
               <h1 className="text-xl font-bold">AuditReady</h1>
-              <p className="text-xs text-slate-400">Receipt Manager</p>
+              <p className="text-xs text-slate-400 dark:text-gray-500">Receipt Manager</p>
             </div>
           </div>
         </div>

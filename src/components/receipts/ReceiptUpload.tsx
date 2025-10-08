@@ -138,7 +138,7 @@ export function ReceiptUpload({ onUpload, onClose }: ReceiptUploadProps) {
                         <p className="mb-2 text-sm text-slate-600 dark:text-gray-400">
                           <span className="font-semibold">Click to upload</span> or drag and drop
                         </p>
-                        <p className="text-xs text-slate-500">PNG, JPG, PDF up to 50MB</p>
+                        <p className="text-xs text-slate-500 dark:text-gray-400">PNG, JPG, PDF up to 50MB</p>
                       </>
                     )}
                   </div>
@@ -156,7 +156,7 @@ export function ReceiptUpload({ onUpload, onClose }: ReceiptUploadProps) {
                     <div className="w-full border-t border-slate-300"></div>
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-slate-500">or</span>
+                    <span className="px-2 bg-white text-slate-500 dark:text-gray-400">or</span>
                   </div>
                 </div>
 

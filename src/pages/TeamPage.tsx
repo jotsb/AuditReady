@@ -288,7 +288,7 @@ export default function TeamPage() {
                 </div>
                 <div>
                   <h3 className="font-medium text-gray-900 dark:text-white">{member.profiles.full_name}</h3>
-                  <p className="text-sm text-gray-500">{member.profiles.email}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{member.profiles.email}</p>
                   <p className="text-xs text-gray-400 mt-1">
                     Joined {new Date(member.joined_at).toLocaleDateString()}
                   </p>
@@ -367,7 +367,7 @@ export default function TeamPage() {
                   </div>
                   <div>
                     <h3 className="font-medium text-gray-900 dark:text-white">{invitation.email}</h3>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       Invited as {invitation.role}
                     </p>
                     <p className="text-xs text-gray-400 mt-1">
