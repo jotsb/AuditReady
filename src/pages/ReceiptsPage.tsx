@@ -31,7 +31,11 @@ interface Receipt {
   created_at: string;
 }
 
-export function ReceiptsPage() {
+interface ReceiptsPageProps {
+  quickCaptureAction?: 'upload' | 'manual' | null;
+}
+
+export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
   const { user } = useAuth();
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [collections, setCollections] = useState<any[]>([]);
@@ -68,6 +72,16 @@ export function ReceiptsPage() {
       loadReceipts();
     }
   }, [currentPage]);
+
+  useEffect(() => {
+    if (quickCaptureAction === 'upload') {
+      setShowUpload(true);
+      setShowManualEntry(false);
+    } else if (quickCaptureAction === 'manual') {
+      setShowManualEntry(true);
+      setShowUpload(false);
+    }
+  }, [quickCaptureAction]);
 
 
   const loadCollections = async () => {

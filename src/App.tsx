@@ -18,6 +18,7 @@ function AppContent() {
   const { user, loading } = useAuth();
   const [currentView, setCurrentView] = useState('dashboard');
   const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
+  const [quickCaptureAction, setQuickCaptureAction] = useState<'upload' | 'manual' | null>(null);
 
   useEffect(() => {
     const path = window.location.pathname;
@@ -49,6 +50,12 @@ function AppContent() {
     } else {
       setSelectedReceiptId(null);
     }
+    setQuickCaptureAction(null);
+  };
+
+  const handleQuickCapture = (type: 'upload' | 'manual') => {
+    setQuickCaptureAction(type);
+    setCurrentView('receipts');
   };
 
   const getTitle = () => {
@@ -83,7 +90,7 @@ function AppContent() {
       case 'dashboard':
         return <DashboardPage onViewReceipt={(id) => handleNavigate('receipt-details', id)} />;
       case 'receipts':
-        return <ReceiptsPage />;
+        return <ReceiptsPage quickCaptureAction={quickCaptureAction} />;
       case 'receipt-details':
         return selectedReceiptId ? (
           <ReceiptDetailsPage
@@ -117,6 +124,7 @@ function AppContent() {
       currentView={currentView}
       onNavigate={handleNavigate}
       title={getTitle()}
+      onQuickCapture={handleQuickCapture}
     >
       {renderPage()}
     </MainLayout>

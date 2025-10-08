@@ -1,20 +1,38 @@
 import { useState, ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { FloatingActionButton } from '../shared/FloatingActionButton';
 
 interface MainLayoutProps {
   children: ReactNode;
   currentView: string;
   onNavigate: (view: string) => void;
   title: string;
+  onQuickCapture?: (type: 'upload' | 'manual') => void;
 }
 
-export function MainLayout({ children, currentView, onNavigate, title }: MainLayoutProps) {
+export function MainLayout({ children, currentView, onNavigate, title, onQuickCapture }: MainLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleNavigate = (view: string) => {
     onNavigate(view);
     setSidebarOpen(false);
+  };
+
+  const handleUploadClick = () => {
+    if (onQuickCapture) {
+      onQuickCapture('upload');
+    } else {
+      onNavigate('receipts');
+    }
+  };
+
+  const handleManualEntryClick = () => {
+    if (onQuickCapture) {
+      onQuickCapture('manual');
+    } else {
+      onNavigate('receipts');
+    }
   };
 
   return (
@@ -28,6 +46,11 @@ export function MainLayout({ children, currentView, onNavigate, title }: MainLay
           {children}
         </main>
       </div>
+
+      <FloatingActionButton
+        onUploadClick={handleUploadClick}
+        onManualEntryClick={handleManualEntryClick}
+      />
     </div>
   );
 }
