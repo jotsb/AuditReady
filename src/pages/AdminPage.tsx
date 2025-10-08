@@ -312,7 +312,7 @@ export function AdminPage() {
                   businesses.map((business) => (
                     <tr key={business.id} className="hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 transition">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-slate-900">{business.name}</div>
+                        <div className="text-sm font-medium text-slate-900 dark:text-white">{business.name}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-slate-600 dark:text-gray-400">{business.owner_email}</div>
@@ -849,7 +849,7 @@ function AnalyticsTab() {
               return (
                 <div key={category}>
                   <div className="flex justify-between mb-1">
-                    <span className="text-sm font-medium text-slate-700">{category}</span>
+                    <span className="text-sm font-medium text-slate-700 dark:text-gray-300">{category}</span>
                     <span className="text-sm text-slate-600 dark:text-gray-400">{count} receipts</span>
                   </div>
                   <div className="w-full bg-slate-200 dark:bg-gray-700 rounded-full h-2.5">

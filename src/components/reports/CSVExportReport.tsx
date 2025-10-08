@@ -177,7 +177,7 @@ export function CSVExportReport() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
         <div className="mb-6">
           <h3 className="text-xl font-semibold text-slate-800 mb-2">Export to CSV</h3>
           <p className="text-sm text-slate-600 dark:text-gray-400">
@@ -188,7 +188,7 @@ export function CSVExportReport() {
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-4">
             <Filter size={18} className="text-slate-600 dark:text-gray-400" />
-            <span className="font-medium text-slate-700">Filter Options</span>
+            <span className="font-medium text-slate-700 dark:text-gray-300">Filter Options</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 ">

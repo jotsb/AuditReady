@@ -185,7 +185,7 @@ export function YearEndSummaryReport() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
         <div className="mb-6">
           <h3 className="text-xl font-semibold text-slate-800 mb-2">Year-End Summary Report</h3>
           <p className="text-sm text-slate-600 dark:text-gray-400">
@@ -235,7 +235,7 @@ export function YearEndSummaryReport() {
       {summary && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 ">
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <Calendar size={20} className="text-blue-600" />
@@ -245,7 +245,7 @@ export function YearEndSummaryReport() {
               <p className="text-2xl font-bold text-slate-800 dark:text-white">{summary.totalReceipts}</p>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-green-100 rounded-lg">
                   <DollarSign size={20} className="text-green-600" />
@@ -255,7 +255,7 @@ export function YearEndSummaryReport() {
               <p className="text-2xl font-bold text-slate-800 dark:text-white">${summary.totalAmount.toFixed(2)}</p>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-orange-100 rounded-lg">
                   <TrendingUp size={20} className="text-orange-600" />
@@ -265,7 +265,7 @@ export function YearEndSummaryReport() {
               <p className="text-2xl font-bold text-slate-800 dark:text-white">${summary.totalGST.toFixed(2)}</p>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-red-100 rounded-lg">
                   <TrendingUp size={20} className="text-red-600" />
@@ -277,13 +277,13 @@ export function YearEndSummaryReport() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
               <h4 className="text-lg font-semibold text-slate-800 mb-4">Category Breakdown</h4>
               <div className="space-y-3">
                 {summary.categoryBreakdown.map((item, index) => (
                   <div key={index}>
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-slate-700">{item.category}</span>
+                      <span className="text-sm font-medium text-slate-700 dark:text-gray-300">{item.category}</span>
                       <span className="text-sm text-slate-600 dark:text-gray-400">{item.percentage.toFixed(1)}%</span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -302,7 +302,7 @@ export function YearEndSummaryReport() {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
               <h4 className="text-lg font-semibold text-slate-800 mb-4">Top 10 Vendors</h4>
               <div className="space-y-2">
                 {summary.topVendors.map((vendor, index) => (
@@ -320,21 +320,21 @@ export function YearEndSummaryReport() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
             <h4 className="text-lg font-semibold text-slate-800 mb-4">Monthly Spending Trend</h4>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-200">
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">Month</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700">Amount</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700">Receipts</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-gray-300">Month</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700 dark:text-gray-300">Amount</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700 dark:text-gray-300">Receipts</th>
                   </tr>
                 </thead>
                 <tbody>
                   {summary.monthlyTrend.map((item, index) => (
                     <tr key={index} className="border-b border-slate-100 hover:bg-slate-50">
-                      <td className="py-3 px-4 text-sm text-slate-700">{item.month}</td>
+                      <td className="py-3 px-4 text-sm text-slate-700 dark:text-gray-300">{item.month}</td>
                       <td className="py-3 px-4 text-sm font-medium text-slate-800 text-right">${item.amount.toFixed(2)}</td>
                       <td className="py-3 px-4 text-sm text-slate-700 dark:text-gray-300 text-right">{item.count}</td>
                     </tr>
@@ -345,7 +345,7 @@ export function YearEndSummaryReport() {
           </div>
 
           {summary.businessBreakdown.length > 0 && (
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
               <h4 className="text-lg font-semibold text-slate-800 mb-4">Business Breakdown</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ">
                 {summary.businessBreakdown.map((business, index) => (
@@ -364,7 +364,7 @@ export function YearEndSummaryReport() {
       )}
 
       {!summary && !loading && (
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-12 text-center">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-12 text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 dark:bg-gray-700 rounded-full mb-4">
             <Calendar size={32} className="text-slate-400 dark:text-gray-500" />
           </div>

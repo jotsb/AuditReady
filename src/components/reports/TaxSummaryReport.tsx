@@ -147,7 +147,7 @@ export function TaxSummaryReport() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
         <div className="mb-6">
           <h3 className="text-xl font-semibold text-slate-800 mb-2">Tax Summary Report</h3>
           <p className="text-sm text-slate-600 dark:text-gray-400">
@@ -213,7 +213,7 @@ export function TaxSummaryReport() {
       {summary && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 ">
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-orange-100 rounded-lg">
                   <TrendingUp size={20} className="text-orange-600" />
@@ -223,7 +223,7 @@ export function TaxSummaryReport() {
               <p className="text-2xl font-bold text-slate-800 dark:text-white">${summary.totalGST.toFixed(2)}</p>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-red-100 rounded-lg">
                   <TrendingUp size={20} className="text-red-600" />
@@ -233,7 +233,7 @@ export function TaxSummaryReport() {
               <p className="text-2xl font-bold text-slate-800 dark:text-white">${summary.totalPST.toFixed(2)}</p>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-green-100 rounded-lg">
                   <DollarSign size={20} className="text-green-600" />
@@ -243,7 +243,7 @@ export function TaxSummaryReport() {
               <p className="text-2xl font-bold text-slate-800 dark:text-white">${summary.totalAmount.toFixed(2)}</p>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <Calendar size={20} className="text-blue-600" />
@@ -254,22 +254,22 @@ export function TaxSummaryReport() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
             <h4 className="text-lg font-semibold text-slate-800 mb-4">Monthly Breakdown</h4>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-200">
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">Month</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700">GST</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700">PST</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700">Total</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-gray-300">Month</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700 dark:text-gray-300">GST</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700 dark:text-gray-300">PST</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700 dark:text-gray-300">Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {summary.monthlyBreakdown.map((item, index) => (
                     <tr key={index} className="border-b border-slate-100 hover:bg-slate-50">
-                      <td className="py-3 px-4 text-sm text-slate-700">{item.month}</td>
+                      <td className="py-3 px-4 text-sm text-slate-700 dark:text-gray-300">{item.month}</td>
                       <td className="py-3 px-4 text-sm text-slate-700 dark:text-gray-300 text-right">${item.gst.toFixed(2)}</td>
                       <td className="py-3 px-4 text-sm text-slate-700 dark:text-gray-300 text-right">${item.pst.toFixed(2)}</td>
                       <td className="py-3 px-4 text-sm font-medium text-slate-800 text-right">${item.total.toFixed(2)}</td>
@@ -289,7 +289,7 @@ export function TaxSummaryReport() {
       )}
 
       {!summary && !loading && (
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-12 text-center">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-12 text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 dark:bg-gray-700 rounded-full mb-4">
             <TrendingUp size={32} className="text-slate-400 dark:text-gray-500" />
           </div>

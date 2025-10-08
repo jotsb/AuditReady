@@ -117,7 +117,7 @@ export function LogEntry({ log }: LogEntryProps) {
     return (
       <div className="mt-4 border border-slate-200 rounded-lg overflow-hidden">
         <div className="bg-slate-50 dark:bg-gray-800 px-4 py-2 border-b border-slate-200">
-          <h4 className="font-semibold text-slate-700">Changes</h4>
+          <h4 className="font-semibold text-slate-700 dark:text-gray-300">Changes</h4>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -143,7 +143,7 @@ export function LogEntry({ log }: LogEntryProps) {
 
                 return (
                   <tr key={key} className={isChanged ? 'bg-yellow-50' : ''}>
-                    <td className="px-4 py-2 font-medium text-slate-700">
+                    <td className="px-4 py-2 font-medium text-slate-700 dark:text-gray-300">
                       {key.replace(/_/g, ' ')}
                     </td>
                     <td className="px-4 py-2 text-slate-600 dark:text-gray-400">
@@ -227,7 +227,7 @@ export function LogEntry({ log }: LogEntryProps) {
             {auditLog.status}
           </span>
           {auditLog.actor_role && (
-            <span className="px-2 py-1 text-xs font-medium rounded-full bg-slate-100 dark:bg-gray-700 text-slate-700">
+            <span className="px-2 py-1 text-xs font-medium rounded-full bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-gray-300">
               {auditLog.actor_role}
             </span>
           )}
@@ -241,7 +241,7 @@ export function LogEntry({ log }: LogEntryProps) {
             {sysLog.category}
           </span>
           {sysLog.execution_time_ms && (
-            <span className="px-2 py-1 text-xs font-medium rounded bg-slate-100 dark:bg-gray-700 text-slate-700">
+            <span className="px-2 py-1 text-xs font-medium rounded bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-gray-300">
               {sysLog.execution_time_ms}ms
             </span>
           )}
@@ -338,7 +338,7 @@ export function LogEntry({ log }: LogEntryProps) {
             </div>
 
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-slate-900 truncate">
+              <div className="text-sm font-medium text-slate-900 dark:text-white truncate">
                 {getMainText()}
               </div>
               <div className="text-xs text-slate-500 dark:text-gray-400 mt-1">
@@ -352,7 +352,7 @@ export function LogEntry({ log }: LogEntryProps) {
               if (receiptDetails) {
                 return (
                   <div className="flex-shrink-0 min-w-0 max-w-xs">
-                    <div className="text-sm font-medium text-slate-900 truncate">
+                    <div className="text-sm font-medium text-slate-900 dark:text-white truncate">
                       {receiptDetails.vendor || 'N/A'}
                     </div>
                     <div className="text-xs text-slate-600 mt-1">

@@ -322,7 +322,7 @@ export function UserManagement() {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
@@ -456,7 +456,7 @@ export function UserManagement() {
       {/* User Details Modal */}
       {showDetails && selectedUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold">User Details</h3>
               <button onClick={() => setShowDetails(false)}>
@@ -518,7 +518,7 @@ export function UserManagement() {
       {/* Suspend Modal */}
       {showSuspendModal && selectedUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
             <h3 className="text-xl font-bold mb-4">Suspend User</h3>
             <p className="text-gray-600 mb-4">Suspending: {selectedUser.email}</p>
             <textarea
@@ -550,7 +550,7 @@ export function UserManagement() {
       {/* Change Password Modal */}
       {showPasswordModal && selectedUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
             <h3 className="text-xl font-bold mb-4">Change User Password</h3>
             <p className="text-gray-600 mb-4">User: {selectedUser.email}</p>
             <div className="relative mb-4">
@@ -594,7 +594,7 @@ export function UserManagement() {
       {/* Delete Modal */}
       {showDeleteModal && selectedUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
             <div className="flex items-center gap-2 mb-4">
               <AlertTriangle className="w-6 h-6 text-red-600" />
               <h3 className="text-xl font-bold text-red-600">Delete User</h3>
@@ -633,7 +633,7 @@ export function UserManagement() {
       {/* Edit Profile Modal */}
       {showEditModal && selectedUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
             <h3 className="text-xl font-bold mb-4">Edit User Profile</h3>
             <div className="space-y-4">
               <div>

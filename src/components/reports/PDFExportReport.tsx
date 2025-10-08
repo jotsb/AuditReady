@@ -387,7 +387,7 @@ export function PDFExportReport() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
         <div className="mb-6">
           <h3 className="text-xl font-semibold text-slate-800 mb-2">Export to PDF</h3>
           <p className="text-sm text-slate-600 dark:text-gray-400">
@@ -398,7 +398,7 @@ export function PDFExportReport() {
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-4">
             <Filter size={18} className="text-slate-600 dark:text-gray-400" />
-            <span className="font-medium text-slate-700">Filter Options</span>
+            <span className="font-medium text-slate-700 dark:text-gray-300">Filter Options</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 ">
@@ -485,7 +485,7 @@ export function PDFExportReport() {
               onChange={(e) => setIncludeImages(e.target.checked)}
               className="w-4 h-4 text-blue-600 border-slate-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500"
             />
-            <span className="text-sm text-slate-700">Include receipt images in PDF (if available)</span>
+            <span className="text-sm text-slate-700 dark:text-gray-300">Include receipt images in PDF (if available)</span>
           </label>
           <p className="text-xs text-slate-500 dark:text-gray-400 mt-1 ml-6">
             Note: Including images will significantly increase PDF file size
