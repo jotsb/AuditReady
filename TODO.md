@@ -1,6 +1,6 @@
 # AuditReady - TODO & Implementation Status
 
-**Last Updated:** 2025-10-07
+**Last Updated:** 2025-10-08
 **Priority Legend:** 🚨 Critical | 🔴 High | 🟡 Medium | 🟢 Nice to Have | ✅ Completed
 
 ---
@@ -12,6 +12,16 @@
 - [x] ✅ User login with email/password
 - [x] ✅ User logout
 - [x] ✅ Session management
+- [x] ✅ **Last Login Tracking** (Fixed 2025-10-08)
+  - Track last_login_at timestamp on user login
+  - Display "Never" for users who haven't logged in
+  - Error handling for failed timestamp updates
+  - Location: `src/contexts/AuthContext.tsx`
+- [x] ✅ **Full Name Capture During Signup** (Fixed 2025-10-08)
+  - Full name passed as user metadata during signup
+  - Database trigger extracts full_name from metadata
+  - Automatically populates profiles table on user creation
+  - Location: `src/contexts/AuthContext.tsx`, migration `fix_profile_creation_with_fullname`
 - [x] ✅ **Password Reset Flow**
   - "Forgot Password" functionality
   - Email-based reset link
@@ -185,6 +195,20 @@
 - [x] ✅ System Logs page with filtering
 - [x] ✅ Client-side error capture and logging
 - [x] ✅ Edge function execution logging
+- [x] ✅ **User Management Interface Enhancements** (Completed 2025-10-08)
+  - Icons increased from 16px to 20px for better visibility
+  - Force logout button added (orange icon)
+  - View details button for comprehensive user information
+  - Edit profile modal for admin updates
+  - Change password modal with strength validation
+  - Suspend/unsuspend with reason tracking
+  - Soft delete with reason tracking
+  - Hard delete for soft-deleted users only
+  - Restore deleted users capability
+  - Send password reset email
+  - Real-time status indicators (Active/Suspended/Deleted)
+  - Last login tracking
+  - Location: `src/components/admin/UserManagement.tsx`
 - [x] ✅ **System Logs Generation and Display**
   - Verify system logs are being generated correctly
   - Test client error logging
@@ -219,41 +243,53 @@
   - Extraction accuracy reports
   - System performance reports
 
-### Phase 1: User Management (HIGH PRIORITY)
-- [ ] 🚨 **User Suspension System**
+### Phase 1: User Management (HIGH PRIORITY) ✅ COMPLETED
+- [x] ✅ **User Suspension System** (Completed 2025-10-08)
   - Add suspension fields to profiles table (suspended, suspension_reason, suspended_at, suspended_by)
   - Block login when user is suspended
   - Suspend user action in admin UI
   - Unsuspend user action in admin UI
   - Display suspension status and reason
   - Audit logging for suspension actions
-- [ ] 🚨 **User Password Management**
+  - **Force logout on suspension** - Users automatically logged out from all devices when suspended
+- [x] ✅ **User Password Management** (Completed 2025-10-08)
   - Force password reset (send reset email)
-  - Admin change user password directly (emergency access)
+  - Admin change user password directly (emergency access) via Edge Function
   - Invalidate all user sessions on password change
   - Audit logging for password operations
-- [ ] 🚨 **User Deletion System**
+  - Password complexity validation with strength indicator
+- [x] ✅ **User Deletion System** (Completed 2025-10-08)
   - Add soft delete fields (deleted_at, deleted_by, deletion_reason)
   - Soft delete user (mark as deleted, retain data)
-  - Hard delete user (permanent removal, only for already soft-deleted users)
+  - Hard delete user (permanent removal, only for already soft-deleted users) via Edge Function
   - Handle data reassignment/archival before deletion
   - Cascade considerations (receipts, businesses, memberships)
   - Confirmation dialogs for both soft and hard delete
   - Audit logging for deletion operations
-- [ ] 🔴 **User Profile Management**
-  - Admin update user email address
+  - **Force logout on deletion** - Users automatically logged out from all devices when soft deleted
+- [x] ✅ **User Profile Management** (Completed 2025-10-08)
+  - Admin update user email address via Edge Function
   - Admin update user full name
   - Admin update user phone number
-  - Admin modify MFA settings
   - View user profile details in modal
-- [ ] 🔴 **User Details & Analytics**
+  - Edit user profile modal with form validation
+- [x] ✅ **User Details & Analytics** (Completed 2025-10-08)
   - View all businesses user owns
   - View all businesses user is member of
   - View user's receipt count
   - Track and display last login date
   - Show account creation date
-  - View active sessions list
-  - Session termination capability
+  - Display account status (Active/Suspended/Deleted)
+  - View MFA enabled status
+  - **Force logout capability** - Admin can force logout any user from all devices
+- [x] ✅ **Admin User Management Edge Function** (Completed 2025-10-08)
+  - Secure Edge Function for admin operations requiring service role key
+  - Change user password directly
+  - Hard delete user permanently
+  - Update user authentication email
+  - Force logout user from all devices
+  - Full audit logging for all operations
+  - Location: `supabase/functions/admin-user-management/index.ts`
 
 ### Phase 2: Business Management (HIGH PRIORITY)
 - [ ] 🚨 **Business Suspension System**
@@ -491,11 +527,13 @@
 ## Security Improvements
 
 ### Authentication & Authorization
-- [ ] 🚨 **Session Management Enhancements**
-  - Enforce session timeouts
-  - Device tracking and management
-  - "Logout all devices" feature
-  - View active sessions
+- [x] ✅ **Session Management Enhancements** (Completed 2025-10-08)
+  - ~~Enforce session timeouts~~ (Supabase default: 1 hour)
+  - ~~Device tracking and management~~ (Future enhancement)
+  - **Force logout from all devices** - Admin capability via Edge Function
+  - ~~View active sessions~~ (Future enhancement)
+  - Automatic logout on user suspension
+  - Automatic logout on user soft deletion
 - [ ] 🚨 **Rate Limiting**
   - Auth endpoint protection
   - Account lockout after failed attempts
@@ -773,13 +811,28 @@
 - ✅ Category management complete
 - ✅ Audit logging complete
 - ✅ System admin dashboard complete
-- ✅ **Comprehensive activity tracking and observability system** (NEW - 2025-10-07)
+- ✅ **Complete user management system** (NEW - 2025-10-08)
+- ✅ **Admin user management Edge Function** (NEW - 2025-10-08)
+- ✅ **Force logout and session management** (NEW - 2025-10-08)
+- ✅ **Comprehensive activity tracking and observability system** (2025-10-07)
 - 🔄 Team management (partial - database done, UI needs backend integration)
 - 🔄 Approval workflow (database done, UI not implemented)
 - ⏳ MFA (database ready, UI not implemented)
 - ⏳ Advanced features and integrations (not started)
 
-**Recent Major Updates (2025-10-07):**
+**Recent Major Updates (2025-10-08):**
+1. **Complete User Management System**: Full CRUD operations for users with suspension, deletion, restoration
+2. **Admin User Management Edge Function**: Secure Edge Function for password changes, email updates, hard deletes, and force logout
+3. **Force Logout Capability**: Admin can force logout any user from all devices via Edge Function
+4. **Automatic Logout on Suspension/Deletion**: Users automatically logged out when suspended or soft deleted
+5. **Enhanced User Interface**: User management icons increased to 20px, force logout button added (orange icon)
+6. **Last Login Tracking**: Fixed last_login_at timestamp updates on user login
+7. **Full Name Capture Fix**: Fixed signup process to capture and save user full name from metadata
+8. **User Profile Management**: Admin can update user email, full name, phone number through dedicated modals
+9. **Password Management**: Admin can change user passwords directly with validation or send password reset emails
+10. **Session Security**: All admin operations include session invalidation where appropriate
+
+**Previous Major Updates (2025-10-07):**
 1. **Comprehensive Logging System**: Session tracking, user action logging, page view tracking across entire app
 2. **WebP Image Support**: Fixed storage bucket configuration to accept WebP format
 3. **Enhanced System Logs**: User and session filtering for complete activity timeline reconstruction
