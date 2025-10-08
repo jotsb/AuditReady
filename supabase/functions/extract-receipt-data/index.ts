@@ -103,7 +103,7 @@ Deno.serve(async (req: Request) => {
     const promptText = `Analyze this receipt and extract the following information. Return ONLY a valid JSON object with no additional text:\n\n{\n  \"vendor_name\": \"business name\",\n  \"vendor_address\": \"full address if visible\",\n  \"transaction_date\": \"YYYY-MM-DD format\",\n  \"transaction_time\": \"HH:MM format if visible\",\n  \"total_amount\": \"numeric value only\",\n  \"subtotal\": \"numeric value only\",\n  \"gst_amount\": \"GST/tax amount if visible\",\n  \"pst_amount\": \"PST amount if visible\",\n  \"gst_percent\": \"GST percentage if visible (just number)\",\n  \"pst_percent\": \"PST percentage if visible (just number)\",\n  \"card_last_digits\": \"last 4 digits of card if visible\",\n  \"customer_name\": \"customer name if visible\",\n  \"category\": \"Choose from: ${categoryList}\",\n  \"payment_method\": \"Cash, Credit Card, Debit Card, or Unknown\"\n}\n\nRules:\n- Return ONLY the JSON object, no other text\n- Use null for missing string values\n- Use 0 for missing amounts\n- For category: Choose the MOST APPROPRIATE category from the provided list. If none match well, use \"Miscellaneous\"\n- Extract amounts without currency symbols or percentage signs`;
 
     const requestPayload = {
-      model: "gpt-5",
+      model: "gpt-4o",
       messages: [
         {
           role: "user",
@@ -121,7 +121,8 @@ Deno.serve(async (req: Request) => {
           ]
         }
       ],
-      max_completion_tokens: 500
+      max_tokens: 500,
+      temperature: 0.1
     };
 
     // Log OpenAI request
@@ -134,7 +135,7 @@ Deno.serve(async (req: Request) => {
         collectionId,
         model: requestPayload.model,
         prompt: promptText,
-        maxTokens: requestPayload.max_completion_tokens
+        maxTokens: requestPayload.max_tokens
       },
       p_user_id: null,
       p_session_id: null,
