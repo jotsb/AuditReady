@@ -107,7 +107,7 @@ Deno.serve(async (req: Request) => {
         "Authorization": `Bearer ${openaiApiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-5",
         messages: [
           {
             role: "user",
