@@ -136,12 +136,16 @@ Deno.serve(async (req: Request) => {
 
     const openaiData = await openaiResponse.json();
     const responseText = openaiData.choices[0].message.content;
-    
+
+    if (!responseText || responseText.trim() === "") {
+      throw new Error("Empty response from OpenAI API");
+    }
+
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      throw new Error("Could not parse JSON from response: " + responseText);
+      throw new Error(`Could not parse JSON from response. Response was: ${responseText}`);
     }
-    
+
     const extractedData = JSON.parse(jsonMatch[0]);
 
     const executionTime = Date.now() - startTime;
