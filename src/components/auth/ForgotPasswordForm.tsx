@@ -37,12 +37,12 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
 
   if (success) {
     return (
-      <div className="w-full max-w-md mx-auto p-8 bg-white rounded-lg shadow-lg">
+      <div className="w-full max-w-md mx-auto p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
             <Mail size={32} className="text-green-600" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-800 mb-2">Check Your Email</h1>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Check Your Email</h1>
           <p className="text-slate-600 dark:text-gray-400">
             We've sent a password reset link to <strong>{email}</strong>
           </p>
@@ -65,15 +65,15 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
   }
 
   return (
-    <div className="w-full max-w-md mx-auto p-8 bg-white rounded-lg shadow-lg">
+    <div className="w-full max-w-md mx-auto p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-slate-800 mb-2">Reset Password</h1>
+        <h1 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">Reset Password</h1>
         <p className="text-slate-600 dark:text-gray-400">Enter your email to receive a reset link</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
+          <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-gray-200 mb-2">
             Email Address
           </label>
           <input
@@ -82,7 +82,7 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-4 py-3 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            className="w-full px-4 py-3 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white dark:bg-gray-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-400"
             placeholder="you@example.com"
           />
         </div>

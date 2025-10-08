@@ -64,13 +64,13 @@ export function ResetPasswordForm() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 flex items-center justify-center p-4">
-        <div className="w-full max-w-md mx-auto p-8 bg-white rounded-lg shadow-lg text-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+        <div className="w-full max-w-md mx-auto p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
             <CheckCircle size={32} className="text-green-600" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-800 mb-2">Password Reset Successful</h1>
-          <p className="text-slate-600 mb-4">
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Password Reset Successful</h1>
+          <p className="text-slate-600 dark:text-gray-400 mb-4">
             Your password has been updated. Redirecting to login...
           </p>
         </div>
@@ -80,8 +80,8 @@ export function ResetPasswordForm() {
 
   if (!validToken) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 flex items-center justify-center p-4">
-        <div className="w-full max-w-md mx-auto p-8 bg-white rounded-lg shadow-lg">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+        <div className="w-full max-w-md mx-auto p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
           <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
             {error}
           </div>
@@ -97,16 +97,16 @@ export function ResetPasswordForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md mx-auto p-8 bg-white rounded-lg shadow-lg">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+      <div className="w-full max-w-md mx-auto p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-slate-800 mb-2">Set New Password</h1>
+          <h1 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">Set New Password</h1>
           <p className="text-slate-600 dark:text-gray-400">Enter your new password below</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
+            <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-gray-200 mb-2">
               New Password
             </label>
             <input
@@ -116,14 +116,14 @@ export function ResetPasswordForm() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={8}
-              className="w-full px-4 py-3 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              className="w-full px-4 py-3 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white dark:bg-gray-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-400"
               placeholder="Enter new password"
             />
             <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">Minimum 8 characters</p>
           </div>
 
           <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 dark:text-gray-200 mb-2">
               Confirm Password
             </label>
             <input
@@ -133,7 +133,7 @@ export function ResetPasswordForm() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               minLength={8}
-              className="w-full px-4 py-3 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              className="w-full px-4 py-3 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white dark:bg-gray-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-400"
               placeholder="Confirm new password"
             />
           </div>

@@ -51,13 +51,13 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
 
   if (success) {
     return (
-      <div className="w-full max-w-md mx-auto p-8 bg-white rounded-lg shadow-lg">
+      <div className="w-full max-w-md mx-auto p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
             <Mail size={32} className="text-blue-600" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-800 mb-2">Check Your Email</h1>
-          <p className="text-slate-600 mb-4">
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Check Your Email</h1>
+          <p className="text-slate-600 dark:text-gray-400 mb-4">
             We've sent a verification link to <strong>{email}</strong>
           </p>
         </div>
@@ -85,15 +85,15 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
   }
 
   return (
-    <div className="w-full max-w-md mx-auto p-8 bg-white rounded-lg shadow-lg">
+    <div className="w-full max-w-md mx-auto p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-slate-800 mb-2">Create Account</h1>
+        <h1 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">Create Account</h1>
         <p className="text-slate-600 dark:text-gray-400">Start managing your receipts today</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label htmlFor="fullName" className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
+          <label htmlFor="fullName" className="block text-sm font-medium text-slate-700 dark:text-gray-200 mb-2">
             Full Name
           </label>
           <input
@@ -102,13 +102,13 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             required
-            className="w-full px-4 py-3 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            className="w-full px-4 py-3 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white dark:bg-gray-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-400"
             placeholder="John Doe"
           />
         </div>
 
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
+          <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-gray-200 mb-2">
             Email Address
           </label>
           <input
@@ -117,13 +117,13 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-4 py-3 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            className="w-full px-4 py-3 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white dark:bg-gray-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-400"
             placeholder="you@example.com"
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
+          <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-gray-200 mb-2">
             Password
           </label>
           <input
@@ -132,7 +132,7 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full px-4 py-3 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            className="w-full px-4 py-3 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white dark:bg-gray-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-400"
             placeholder="Create a strong password"
           />
 
@@ -161,7 +161,7 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
         </div>
 
         <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
+          <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 dark:text-gray-200 mb-2">
             Confirm Password
           </label>
           <input
@@ -170,7 +170,7 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
-            className="w-full px-4 py-3 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            className="w-full px-4 py-3 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white dark:bg-gray-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-400"
             placeholder="Re-enter your password"
           />
         </div>
