@@ -225,7 +225,7 @@ export function CategoryManagement() {
           categories.map((category) => (
             <div
               key={category.id}
-              className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:border-slate-300 dark:border-gray-600 transition"
+              className="flex items-center justify-between p-3 bg-white dark:bg-gray-700 rounded-lg border border-slate-200 hover:border-slate-300 dark:border-gray-600 dark:hover:border-gray-500 transition"
             >
               <div className="flex-1">
                 <div className="font-medium text-slate-800 dark:text-white">{category.name}</div>
@@ -236,7 +236,7 @@ export function CategoryManagement() {
               <button
                 onClick={() => handleDeleteCategory(category.id, category.name)}
                 disabled={saving}
-                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition disabled:opacity-50"
+                className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition disabled:opacity-50"
                 title="Delete category"
               >
                 <Trash2 size={16} />
