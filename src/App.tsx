@@ -15,18 +15,34 @@ import { ResetPasswordForm } from './components/auth/ResetPasswordForm';
 
 function AppContent() {
   const { user, loading } = useAuth();
-  const [currentView, setCurrentView] = useState('dashboard');
-  const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
+  const [currentView, setCurrentView] = useState(() => {
+    const path = window.location.pathname;
+    const params = new URLSearchParams(window.location.search);
+
+    if (path === '/reset-password') return 'reset-password';
+    if (path === '/receipts') return 'receipts';
+    if (path === '/receipt-details') return 'receipt-details';
+    if (path === '/reports') return 'reports';
+    if (path === '/team') return 'team';
+    if (path === '/settings') return 'settings';
+    if (path === '/audit') return 'audit';
+    if (path === '/system-logs') return 'system-logs';
+    if (path === '/admin') return 'admin';
+
+    return 'dashboard';
+  });
+
+  const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('id');
+  });
+
   const [quickCaptureAction, setQuickCaptureAction] = useState<'photo' | 'upload' | 'manual' | null>(null);
 
   useEffect(() => {
-    const path = window.location.pathname;
-    if (path === '/reset-password') {
-      setCurrentView('reset-password');
-    }
-
     const handleNavigateToSettings = (event: CustomEvent) => {
       setCurrentView('settings');
+      window.history.pushState({}, '', '/settings');
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent('settings-tab-change', {
           detail: { tab: event.detail.section }
@@ -34,10 +50,40 @@ function AppContent() {
       }, 100);
     };
 
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      const params = new URLSearchParams(window.location.search);
+
+      if (path === '/reset-password') {
+        setCurrentView('reset-password');
+      } else if (path === '/receipts') {
+        setCurrentView('receipts');
+      } else if (path === '/receipt-details') {
+        setCurrentView('receipt-details');
+        setSelectedReceiptId(params.get('id'));
+      } else if (path === '/reports') {
+        setCurrentView('reports');
+      } else if (path === '/team') {
+        setCurrentView('team');
+      } else if (path === '/settings') {
+        setCurrentView('settings');
+      } else if (path === '/audit') {
+        setCurrentView('audit');
+      } else if (path === '/system-logs') {
+        setCurrentView('system-logs');
+      } else if (path === '/admin') {
+        setCurrentView('admin');
+      } else {
+        setCurrentView('dashboard');
+      }
+    };
+
     window.addEventListener('navigate-to-settings', handleNavigateToSettings as EventListener);
+    window.addEventListener('popstate', handlePopState);
 
     return () => {
       window.removeEventListener('navigate-to-settings', handleNavigateToSettings as EventListener);
+      window.removeEventListener('popstate', handlePopState);
     };
   }, []);
 
@@ -61,8 +107,11 @@ function AppContent() {
     setCurrentView(view);
     if (view === 'receipt-details' && receiptId) {
       setSelectedReceiptId(receiptId);
+      window.history.pushState({}, '', `/receipt-details?id=${receiptId}`);
     } else {
       setSelectedReceiptId(null);
+      const path = view === 'dashboard' ? '/' : `/${view}`;
+      window.history.pushState({}, '', path);
     }
     setQuickCaptureAction(null);
   };
@@ -70,6 +119,7 @@ function AppContent() {
   const handleQuickCapture = (type: 'photo' | 'upload' | 'manual') => {
     setQuickCaptureAction(type);
     setCurrentView('receipts');
+    window.history.pushState({}, '', '/receipts');
   };
 
   const getTitle = () => {
