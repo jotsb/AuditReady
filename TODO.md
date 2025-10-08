@@ -483,11 +483,32 @@
   - Smart page number display with ellipsis
   - Proper reset on filter/search changes
   - Locations: All major list views across the application
-- [ ] 🚨 **Reduce Bundle Size**
-  - Code splitting by route
-  - Lazy load components
-  - Tree shake unused dependencies
-  - Current size: ~900KB uncompressed
+- [ ] 🟡 **Bundle Size Optimization** (Documented 2025-10-08)
+  - **Current Status:**
+    - Uncompressed: 1,008.97 kB (~1 MB)
+    - Gzipped: 263.23 kB (~263 KB)
+    - Warning threshold: 500 kB exceeded
+  - **Recommended Optimizations:**
+    - **Phase 1 (Quick Wins - 2 hours):**
+      - Route-based code splitting with React.lazy()
+      - Manual chunk splitting for vendors (react, supabase, pdf.js, lucide-react)
+      - Expected result: Initial load ~300 KB (from 1 MB)
+    - **Phase 2 (Medium - 1 day):**
+      - Lazy load PDF.js only when viewing PDFs
+      - Optimize image loading with thumbnails
+      - Expected result: Initial load ~250 KB
+    - **Phase 3 (Polish - 1-2 days):**
+      - Analyze bundle with rollup-plugin-visualizer
+      - Remove duplicate dependencies
+      - Enable Brotli compression
+      - Expected result: Initial load ~200 KB
+  - **Expected Performance Impact:**
+    - 3G connection: 6-8s → 2-3s (70% faster)
+    - 4G connection: 2-3s → 0.8s (60% faster)
+    - WiFi: 1s → 0.3s (70% faster)
+  - **Priority:** Medium (optimize after critical security issues)
+  - **Note:** 263 KB gzipped is acceptable for full-featured SaaS app
+  - **Detailed Documentation:** See PRODUCTION_READINESS.md
 - [ ] 🔴 Lazy load receipt images
 - [ ] 🔴 Implement intersection observer for images
 - [ ] 🔴 Generate and use thumbnail images
