@@ -257,7 +257,7 @@ export function CollectionsPage() {
           </button>
         </div>
       )}
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+      <div className="bg-white dark:bg-gray-800rounded-lg shadow-sm border border-slate-200 dark:border-gray-700p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold text-slate-800">Businesses</h3>
           <button
@@ -270,7 +270,7 @@ export function CollectionsPage() {
         </div>
 
         {showNewBusinessForm && (
-          <form onSubmit={createBusiness} className="mb-6 p-4 border border-slate-200 rounded-lg">
+          <form onSubmit={createBusiness} className="mb-6 p-4 border border-slate-200 dark:border-gray-700rounded-lg">
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -336,7 +336,7 @@ export function CollectionsPage() {
       </div>
 
       {selectedBusiness && (
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+        <div className="bg-white dark:bg-gray-800rounded-lg shadow-sm border border-slate-200 dark:border-gray-700p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-slate-800">Collections</h3>
             <button
@@ -349,7 +349,7 @@ export function CollectionsPage() {
           </div>
 
           {showNewCollectionForm && (
-            <form onSubmit={createCollection} className="mb-6 p-4 border border-slate-200 rounded-lg">
+            <form onSubmit={createCollection} className="mb-6 p-4 border border-slate-200 dark:border-gray-700rounded-lg">
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -411,7 +411,7 @@ export function CollectionsPage() {
             {collections.map((collection) => (
               <div
                 key={collection.id}
-                className="p-6 border border-slate-200 rounded-lg hover:border-blue-300 hover:shadow-md transition relative group"
+                className="p-6 border border-slate-200 dark:border-gray-700rounded-lg hover:border-blue-300 hover:shadow-md transition relative group"
               >
                 <button
                   onClick={() => deleteCollection(collection.id, collection.name)}
@@ -425,9 +425,9 @@ export function CollectionsPage() {
                     <FolderOpen size={24} className="text-blue-600" />
                   </div>
                   <div className="flex-1">
-                    <h4 className="font-semibold text-slate-800 mb-1">{collection.name}</h4>
+                    <h4 className="font-semibold text-slate-800 dark:text-whitemb-1">{collection.name}</h4>
                     {collection.description && (
-                      <p className="text-sm text-slate-600 mb-3">{collection.description}</p>
+                      <p className="text-sm text-slate-600 dark:text-gray-400mb-3">{collection.description}</p>
                     )}
                     <div className="flex items-center gap-4 text-sm text-slate-500">
                       <div className="flex items-center gap-1">

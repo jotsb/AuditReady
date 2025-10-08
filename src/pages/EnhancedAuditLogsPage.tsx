@@ -255,7 +255,7 @@ export function EnhancedAuditLogsPage() {
         )}
 
         {/* Advanced Filters */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
               <Filter className="text-slate-500 mr-2" size={20} />
@@ -368,7 +368,7 @@ export function EnhancedAuditLogsPage() {
         </div>
 
         {/* Logs Table */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
           <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
             <p className="text-sm text-slate-600">
               Showing {filteredLogs.length} of {logs.length} logs on page {currentPage} (Total: {totalCount} logs)
@@ -392,7 +392,7 @@ export function EnhancedAuditLogsPage() {
           </div>
 
           {totalCount > itemsPerPage && (
-            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50">
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-gray-700 bg-slate-50">
               <div className="text-sm text-slate-600">
                 Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} logs
               </div>

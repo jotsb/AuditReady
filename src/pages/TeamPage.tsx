@@ -275,7 +275,7 @@ export default function TeamPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-8">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-8">
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">Team Members ({totalMembers})</h2>
         </div>
@@ -354,7 +354,7 @@ export default function TeamPage() {
       </div>
 
       {totalInvites > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900">Pending Invitations ({totalInvites})</h2>
           </div>
@@ -415,7 +415,7 @@ export default function TeamPage() {
 
       {showInviteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="p-6 border-b border-gray-200">
               <h2 className="text-xl font-semibold text-gray-900">Invite Team Member</h2>
             </div>

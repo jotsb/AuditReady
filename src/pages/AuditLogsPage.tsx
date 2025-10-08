@@ -188,9 +188,9 @@ export function AuditLogsPage() {
   if (!isSystemAdmin) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 max-w-md w-full text-center">
           <AlertCircle className="mx-auto mb-4 text-red-600" size={48} />
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">Access Denied</h2>
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Access Denied</h2>
           <p className="text-slate-600">You do not have permission to view system-wide audit logs.</p>
         </div>
       </div>
@@ -236,7 +236,7 @@ export function AuditLogsPage() {
         )}
 
         {/* Advanced Filters */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
               <Filter className="text-slate-500 mr-2" size={20} />
@@ -349,7 +349,7 @@ export function AuditLogsPage() {
         </div>
 
         {/* Logs Display */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
           <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
             <p className="text-sm text-slate-600">
               Showing {filteredLogs.length} of {logs.length} logs on page {currentPage} (Total: {totalCount} logs)
@@ -373,7 +373,7 @@ export function AuditLogsPage() {
           </div>
 
           {totalCount > itemsPerPage && (
-            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50">
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-gray-700 bg-slate-50">
               <div className="text-sm text-slate-600">
                 Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} logs
               </div>

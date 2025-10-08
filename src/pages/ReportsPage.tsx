@@ -29,7 +29,7 @@ export function ReportsPage() {
       <div className="space-y-6">
         <button
           onClick={handleBackClick}
-          className="flex items-center gap-2 text-slate-600 hover:text-slate-800 transition"
+          className="flex items-center gap-2 text-slate-600 dark:text-gray-400 hover:text-slate-800 dark:hover:text-gray-200 transition"
         >
           <ArrowLeft size={20} />
           <span>Back to Reports</span>
@@ -45,13 +45,13 @@ export function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-            <FileText size={32} className="text-blue-600" />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full mb-4">
+            <FileText size={32} className="text-blue-600 dark:text-blue-400" />
           </div>
-          <h3 className="text-2xl font-bold text-slate-800 mb-2">Reports & Exports</h3>
-          <p className="text-slate-600">
+          <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Reports & Exports</h3>
+          <p className="text-slate-600 dark:text-gray-400">
             Generate detailed reports for audits and tax purposes
           </p>
         </div>
@@ -59,15 +59,15 @@ export function ReportsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ">
           <button
             onClick={() => handleReportSelect('csv')}
-            className="p-6 border-2 border-slate-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition text-left"
+            className="p-6 border-2 border-slate-200 dark:border-gray-700 rounded-lg hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition text-left"
           >
             <div className="flex items-start gap-4">
-              <div className="p-3 bg-slate-100 rounded-lg">
-                <Download size={24} className="text-slate-600" />
+              <div className="p-3 bg-slate-100 dark:bg-gray-700 rounded-lg">
+                <Download size={24} className="text-slate-600 dark:text-gray-400" />
               </div>
               <div>
-                <h4 className="font-semibold text-slate-800 mb-1">Export to CSV</h4>
-                <p className="text-sm text-slate-600">
+                <h4 className="font-semibold text-slate-800 dark:text-white mb-1">Export to CSV</h4>
+                <p className="text-sm text-slate-600 dark:text-gray-400">
                   Download all receipt data in spreadsheet format
                 </p>
               </div>
@@ -76,15 +76,15 @@ export function ReportsPage() {
 
           <button
             onClick={() => handleReportSelect('tax')}
-            className="p-6 border-2 border-slate-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition text-left"
+            className="p-6 border-2 border-slate-200 dark:border-gray-700 rounded-lg hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition text-left"
           >
             <div className="flex items-start gap-4">
-              <div className="p-3 bg-slate-100 rounded-lg">
-                <FileText size={24} className="text-slate-600" />
+              <div className="p-3 bg-slate-100 dark:bg-gray-700 rounded-lg">
+                <FileText size={24} className="text-slate-600 dark:text-gray-400" />
               </div>
               <div>
-                <h4 className="font-semibold text-slate-800 mb-1">Tax Summary Report</h4>
-                <p className="text-sm text-slate-600">
+                <h4 className="font-semibold text-slate-800 dark:text-white mb-1">Tax Summary Report</h4>
+                <p className="text-sm text-slate-600 dark:text-gray-400">
                   Generate GST/PST summary for tax filing
                 </p>
               </div>
@@ -93,15 +93,15 @@ export function ReportsPage() {
 
           <button
             onClick={() => handleReportSelect('yearend')}
-            className="p-6 border-2 border-slate-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition text-left"
+            className="p-6 border-2 border-slate-200 dark:border-gray-700 rounded-lg hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition text-left"
           >
             <div className="flex items-start gap-4">
-              <div className="p-3 bg-slate-100 rounded-lg">
-                <FileText size={24} className="text-slate-600" />
+              <div className="p-3 bg-slate-100 dark:bg-gray-700 rounded-lg">
+                <FileText size={24} className="text-slate-600 dark:text-gray-400" />
               </div>
               <div>
-                <h4 className="font-semibold text-slate-800 mb-1">Year-End Summary</h4>
-                <p className="text-sm text-slate-600">
+                <h4 className="font-semibold text-slate-800 dark:text-white mb-1">Year-End Summary</h4>
+                <p className="text-sm text-slate-600 dark:text-gray-400">
                   Complete annual expense breakdown
                 </p>
               </div>
@@ -110,15 +110,15 @@ export function ReportsPage() {
 
           <button
             onClick={() => handleReportSelect('pdf')}
-            className="p-6 border-2 border-slate-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition text-left"
+            className="p-6 border-2 border-slate-200 dark:border-gray-700 rounded-lg hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition text-left"
           >
             <div className="flex items-start gap-4">
-              <div className="p-3 bg-slate-100 rounded-lg">
-                <Download size={24} className="text-slate-600" />
+              <div className="p-3 bg-slate-100 dark:bg-gray-700 rounded-lg">
+                <Download size={24} className="text-slate-600 dark:text-gray-400" />
               </div>
               <div>
-                <h4 className="font-semibold text-slate-800 mb-1">Export to PDF</h4>
-                <p className="text-sm text-slate-600">
+                <h4 className="font-semibold text-slate-800 dark:text-white mb-1">Export to PDF</h4>
+                <p className="text-sm text-slate-600 dark:text-gray-400">
                   Create PDF report with receipt images
                 </p>
               </div>

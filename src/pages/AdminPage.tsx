@@ -146,9 +146,9 @@ export function AdminPage() {
   if (!isSystemAdmin) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 max-w-md w-full text-center">
           <AlertCircle className="mx-auto mb-4 text-red-600" size={48} />
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">Access Denied</h2>
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Access Denied</h2>
           <p className="text-slate-600">You do not have permission to access this page.</p>
         </div>
       </div>
@@ -167,7 +167,7 @@ export function AdminPage() {
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-800 mb-2">System Administration</h1>
+          <h1 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">System Administration</h1>
           <p className="text-slate-600">Manage all businesses and users across the platform</p>
         </div>
 
@@ -231,51 +231,51 @@ export function AdminPage() {
         {activeTab === 'overview' && (
           <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                 <Building2 className="text-blue-600" size={24} />
               </div>
               <TrendingUp className="text-blue-600" size={20} />
             </div>
-            <h3 className="text-slate-600 text-sm font-medium mb-1">Total Businesses</h3>
+            <h3 className="text-slate-600 dark:text-gray-400 text-sm font-medium mb-1">Total Businesses</h3>
             <p className="text-3xl font-bold text-slate-800">{stats.totalBusinesses}</p>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                 <Users className="text-green-600" size={24} />
               </div>
               <TrendingUp className="text-green-600" size={20} />
             </div>
-            <h3 className="text-slate-600 text-sm font-medium mb-1">Total Users</h3>
+            <h3 className="text-slate-600 dark:text-gray-400 text-sm font-medium mb-1">Total Users</h3>
             <p className="text-3xl font-bold text-slate-800">{stats.totalUsers}</p>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                 <Receipt className="text-purple-600" size={24} />
               </div>
               <TrendingUp className="text-purple-600" size={20} />
             </div>
-            <h3 className="text-slate-600 text-sm font-medium mb-1">Total Receipts</h3>
+            <h3 className="text-slate-600 dark:text-gray-400 text-sm font-medium mb-1">Total Receipts</h3>
             <p className="text-3xl font-bold text-slate-800">{stats.totalReceipts}</p>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
                 <Users className="text-red-600" size={24} />
               </div>
             </div>
-            <h3 className="text-slate-600 text-sm font-medium mb-1">System Admins</h3>
+            <h3 className="text-slate-600 dark:text-gray-400 text-sm font-medium mb-1">System Admins</h3>
             <p className="text-3xl font-bold text-slate-800">{stats.systemAdmins}</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-200">
             <h2 className="text-xl font-bold text-slate-800">All Businesses</h2>
           </div>
@@ -543,7 +543,7 @@ function AuditLogsTab() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
         <div className="text-center text-slate-600">Loading audit logs...</div>
       </div>
     );
@@ -559,7 +559,7 @@ function AuditLogsTab() {
       )}
 
       {/* Advanced Filters */}
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
             <FilterIcon className="text-slate-500 mr-2" size={20} />
@@ -682,7 +682,7 @@ function AuditLogsTab() {
       </div>
 
       {/* Logs Display */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
         <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
           <p className="text-sm text-slate-600">
             Showing {filteredLogs.length} of {logs.length} total logs
@@ -785,7 +785,7 @@ function AnalyticsTab() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
         <div className="text-center text-slate-600">Loading analytics...</div>
       </div>
     );
@@ -793,7 +793,7 @@ function AnalyticsTab() {
 
   if (!analytics) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
         <div className="text-center text-slate-600">No analytics data available</div>
       </div>
     );
@@ -801,8 +801,8 @@ function AnalyticsTab() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-bold text-slate-800 mb-6">Platform Analytics</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-6">Platform Analytics</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
@@ -832,8 +832,8 @@ function AnalyticsTab() {
           </div>
         </div>
 
-        <div className="border-t border-slate-200 pt-6">
-          <h3 className="text-lg font-semibold text-slate-800 mb-4">Top Categories</h3>
+        <div className="border-t border-slate-200 dark:border-gray-700 pt-6">
+          <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-4">Top Categories</h3>
           <div className="space-y-3">
             {analytics.topCategories.map(([category, count]: [string, number], index: number) => {
               const maxCount = analytics.topCategories[0][1];
@@ -866,8 +866,8 @@ function AnalyticsTab() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-slate-800 mb-4">Growth Metrics</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-4">Growth Metrics</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
               <span className="text-slate-600">Avg Receipts per Business</span>
@@ -882,8 +882,8 @@ function AnalyticsTab() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-slate-800 mb-4">Activity Summary</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-4">Activity Summary</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
               <span className="text-slate-600">Businesses Created Today</span>

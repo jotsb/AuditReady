@@ -88,7 +88,7 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
       <div className="p-6">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-slate-600 hover:text-slate-800 mb-6"
+          className="flex items-center gap-2 text-slate-600 dark:text-gray-400 hover:text-slate-800 dark:text-white mb-6"
         >
           <ArrowLeft size={20} />
           <span>Back to Receipts</span>
@@ -103,7 +103,7 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
       <div className="p-4 md:p-0 md:mb-6">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-slate-600 hover:text-slate-800 transition"
+          className="flex items-center gap-2 text-slate-600 dark:text-gray-400 hover:text-slate-800 dark:text-white transition"
         >
           <ArrowLeft size={20} />
           <span>Back to Receipts</span>
@@ -112,7 +112,7 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <div className="space-y-6">
-          <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <h2 className="text-2xl font-bold text-slate-800">Receipt Details</h2>
@@ -264,8 +264,8 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
 
               {receipt.notes && (
                 <div className="pt-4 border-t border-slate-200">
-                  <div className="text-sm text-slate-600 mb-2">Notes</div>
-                  <div className="text-slate-800 bg-slate-50 p-3 rounded-lg">
+                  <div className="text-sm text-slate-600 dark:text-gray-400 mb-2">Notes</div>
+                  <div className="text-slate-800 dark:text-white bg-slate-50 p-3 rounded-lg">
                     {receipt.notes}
                   </div>
                 </div>
@@ -273,8 +273,8 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">Metadata</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-4">Metadata</h3>
             <div className="space-y-2 text-sm">
               {receipt.extraction_status && (
                 <div className="flex justify-between">
@@ -310,7 +310,7 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-slate-800">Original Receipt</h3>
             {imageUrl && receipt?.file_path && (
@@ -324,7 +324,7 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
             )}
           </div>
           {imageUrl ? (
-            <div className="border border-slate-200 rounded-lg overflow-hidden">
+            <div className="border border-slate-200 dark:border-gray-700 rounded-lg overflow-hidden">
               <img
                 src={imageUrl}
                 alt="Receipt"

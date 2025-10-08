@@ -381,14 +381,14 @@ export function ReceiptsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
         <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-6">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-slate-700 mb-2">Collection</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Collection</label>
             <select
               value={selectedCollection}
               onChange={(e) => handleCollectionChange(e.target.value)}
-              className="w-full md:w-auto px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full md:w-auto px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
               {collections.map((col) => (
                 <option key={col.id} value={col.id}>
@@ -445,7 +445,7 @@ export function ReceiptsPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-slate-200">
@@ -575,7 +575,7 @@ export function ReceiptsPage() {
               <button
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
               >
                 Previous
               </button>
@@ -610,7 +610,7 @@ export function ReceiptsPage() {
               <button
                 onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalCount / itemsPerPage), p + 1))}
                 disabled={currentPage >= Math.ceil(totalCount / itemsPerPage)}
-                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
               >
                 Next
               </button>
@@ -625,7 +625,7 @@ export function ReceiptsPage() {
 
       {extracting && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 flex flex-col items-center gap-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-8 flex flex-col items-center gap-4">
             <Loader2 size={48} className="text-blue-600 animate-spin" />
             <p className="text-lg font-medium text-slate-800">Extracting receipt data...</p>
             <p className="text-sm text-slate-600">This may take a moment</p>
