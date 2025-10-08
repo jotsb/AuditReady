@@ -18,7 +18,7 @@ function AppContent() {
   const { user, loading } = useAuth();
   const [currentView, setCurrentView] = useState('dashboard');
   const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
-  const [quickCaptureAction, setQuickCaptureAction] = useState<'upload' | 'manual' | null>(null);
+  const [quickCaptureAction, setQuickCaptureAction] = useState<'photo' | 'upload' | 'manual' | null>(null);
 
   useEffect(() => {
     const path = window.location.pathname;
@@ -53,7 +53,7 @@ function AppContent() {
     setQuickCaptureAction(null);
   };
 
-  const handleQuickCapture = (type: 'upload' | 'manual') => {
+  const handleQuickCapture = (type: 'photo' | 'upload' | 'manual') => {
     setQuickCaptureAction(type);
     setCurrentView('receipts');
   };

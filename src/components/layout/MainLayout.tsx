@@ -8,7 +8,7 @@ interface MainLayoutProps {
   currentView: string;
   onNavigate: (view: string) => void;
   title: string;
-  onQuickCapture?: (type: 'upload' | 'manual') => void;
+  onQuickCapture?: (type: 'photo' | 'upload' | 'manual') => void;
 }
 
 export function MainLayout({ children, currentView, onNavigate, title, onQuickCapture }: MainLayoutProps) {
@@ -17,6 +17,14 @@ export function MainLayout({ children, currentView, onNavigate, title, onQuickCa
   const handleNavigate = (view: string) => {
     onNavigate(view);
     setSidebarOpen(false);
+  };
+
+  const handleTakePhotoClick = () => {
+    if (onQuickCapture) {
+      onQuickCapture('photo');
+    } else {
+      onNavigate('receipts');
+    }
   };
 
   const handleUploadClick = () => {
@@ -48,6 +56,7 @@ export function MainLayout({ children, currentView, onNavigate, title, onQuickCa
       </div>
 
       <FloatingActionButton
+        onTakePhotoClick={handleTakePhotoClick}
         onUploadClick={handleUploadClick}
         onManualEntryClick={handleManualEntryClick}
       />

@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Camera, Plus, FileText, X } from 'lucide-react';
+import { Camera, Plus, Upload, FileText, X } from 'lucide-react';
 
 interface FloatingActionButtonProps {
+  onTakePhotoClick: () => void;
   onUploadClick: () => void;
   onManualEntryClick: () => void;
 }
 
-export function FloatingActionButton({ onUploadClick, onManualEntryClick }: FloatingActionButtonProps) {
+export function FloatingActionButton({ onTakePhotoClick, onUploadClick, onManualEntryClick }: FloatingActionButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -26,6 +27,11 @@ export function FloatingActionButton({ onUploadClick, onManualEntryClick }: Floa
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [isOpen]);
+
+  const handleTakePhoto = () => {
+    setIsOpen(false);
+    onTakePhotoClick();
+  };
 
   const handleUpload = () => {
     setIsOpen(false);
@@ -49,21 +55,30 @@ export function FloatingActionButton({ onUploadClick, onManualEntryClick }: Floa
       <div className="fixed bottom-6 right-6 z-50">
         <div className={`flex flex-col-reverse items-end gap-3 mb-3 transition-all duration-300 ${isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
           <button
-            onClick={handleUpload}
-            className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-800 text-slate-800 dark:text-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 border border-slate-200 dark:border-gray-700"
-            title="Upload Receipt (Image/PDF)"
-          >
-            <Camera size={20} />
-            <span className="font-medium">Upload Receipt</span>
-          </button>
-
-          <button
             onClick={handleManualEntry}
             className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-800 text-slate-800 dark:text-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 border border-slate-200 dark:border-gray-700"
             title="Manual Entry"
           >
             <FileText size={20} />
             <span className="font-medium">Manual Entry</span>
+          </button>
+
+          <button
+            onClick={handleUpload}
+            className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-800 text-slate-800 dark:text-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 border border-slate-200 dark:border-gray-700"
+            title="Upload Receipt (Image/PDF)"
+          >
+            <Upload size={20} />
+            <span className="font-medium">Upload Receipt</span>
+          </button>
+
+          <button
+            onClick={handleTakePhoto}
+            className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-800 text-slate-800 dark:text-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 border border-slate-200 dark:border-gray-700"
+            title="Take Photo"
+          >
+            <Camera size={20} />
+            <span className="font-medium">Take Photo</span>
           </button>
         </div>
 

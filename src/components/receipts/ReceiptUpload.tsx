@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Upload, Camera, X } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { optimizeImage, type OptimizedImages } from '../../lib/imageOptimizer';
@@ -8,6 +8,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.j
 interface ReceiptUploadProps {
   onUpload: (file: File, thumbnail: File) => Promise<void>;
   onClose: () => void;
+  autoTriggerPhoto?: boolean;
 }
 
 async function convertPdfToImage(pdfFile: File): Promise<File> {
@@ -40,13 +41,20 @@ async function convertPdfToImage(pdfFile: File): Promise<File> {
   });
 }
 
-export function ReceiptUpload({ onUpload, onClose }: ReceiptUploadProps) {
+export function ReceiptUpload({ onUpload, onClose, autoTriggerPhoto = false }: ReceiptUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [thumbnail, setThumbnail] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [converting, setConverting] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (autoTriggerPhoto && photoInputRef.current) {
+      photoInputRef.current.click();
+    }
+  }, [autoTriggerPhoto]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -164,6 +172,7 @@ export function ReceiptUpload({ onUpload, onClose }: ReceiptUploadProps) {
                   <Camera size={20} />
                   <span className="font-medium">Take Photo</span>
                   <input
+                    ref={photoInputRef}
                     type="file"
                     className="hidden"
                     accept="image/*"

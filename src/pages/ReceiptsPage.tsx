@@ -32,7 +32,7 @@ interface Receipt {
 }
 
 interface ReceiptsPageProps {
-  quickCaptureAction?: 'upload' | 'manual' | null;
+  quickCaptureAction?: 'photo' | 'upload' | 'manual' | null;
 }
 
 export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
@@ -42,6 +42,7 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
   const [selectedCollection, setSelectedCollection] = useState<string>('');
   const [showUpload, setShowUpload] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
+  const [autoTriggerPhoto, setAutoTriggerPhoto] = useState(false);
   const [verifyReceipt, setVerifyReceipt] = useState<{filePath: string, thumbnailPath: string, data: any} | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
@@ -74,12 +75,18 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
   }, [currentPage]);
 
   useEffect(() => {
-    if (quickCaptureAction === 'upload') {
+    if (quickCaptureAction === 'photo') {
       setShowUpload(true);
       setShowManualEntry(false);
+      setAutoTriggerPhoto(true);
+    } else if (quickCaptureAction === 'upload') {
+      setShowUpload(true);
+      setShowManualEntry(false);
+      setAutoTriggerPhoto(false);
     } else if (quickCaptureAction === 'manual') {
       setShowManualEntry(true);
       setShowUpload(false);
+      setAutoTriggerPhoto(false);
     }
   }, [quickCaptureAction]);
 
@@ -634,7 +641,14 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
       </div>
 
       {showUpload && !extracting && (
-        <ReceiptUpload onUpload={handleUpload} onClose={() => setShowUpload(false)} />
+        <ReceiptUpload
+          onUpload={handleUpload}
+          onClose={() => {
+            setShowUpload(false);
+            setAutoTriggerPhoto(false);
+          }}
+          autoTriggerPhoto={autoTriggerPhoto}
+        />
       )}
 
       {extracting && (
