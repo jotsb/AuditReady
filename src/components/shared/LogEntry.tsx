@@ -324,9 +324,9 @@ export function LogEntry({ log }: LogEntryProps) {
           <div className="flex items-center flex-1 min-w-0 gap-4">
             {hasExpandableContent ? (
               isExpanded ? (
-                <ChevronDown size={20} className="text-slate-400 mr-3 flex-shrink-0" />
+                <ChevronDown size={20} className="text-slate-400 dark:text-gray-500 mr-3 flex-shrink-0" />
               ) : (
-                <ChevronRight size={20} className="text-slate-400 mr-3 flex-shrink-0" />
+                <ChevronRight size={20} className="text-slate-400 dark:text-gray-500 mr-3 flex-shrink-0" />
               )
             ) : (
               <div className="w-8 mr-3 flex-shrink-0" />

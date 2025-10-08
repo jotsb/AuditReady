@@ -301,7 +301,7 @@ export function BusinessManagement() {
 
       {businesses.length === 0 && (
         <div className="text-center py-12 bg-slate-50 dark:bg-gray-800 rounded-lg border border-slate-200">
-          <Building2 size={48} className="mx-auto text-slate-400 mb-4" />
+          <Building2 size={48} className="mx-auto text-slate-400 dark:text-gray-500 mb-4" />
           <h3 className="text-lg font-semibold text-slate-800 mb-2">No businesses yet</h3>
           <p className="text-slate-600 mb-4">Create your first business to start managing receipts</p>
           <button
@@ -332,7 +332,7 @@ export function BusinessManagement() {
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
                   placeholder="e.g., Acme Corp"
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 dark:text-white border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
@@ -345,7 +345,7 @@ export function BusinessManagement() {
                   value={formData.tax_id}
                   onChange={(e) => setFormData({ ...formData, tax_id: e.target.value })}
                   placeholder="e.g., 123456789"
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 dark:text-white border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
@@ -357,7 +357,7 @@ export function BusinessManagement() {
                   value={formData.currency}
                   onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
                   required
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 dark:text-white border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   {CURRENCIES.map((currency) => (
                     <option key={currency.code} value={currency.code}>
@@ -415,7 +415,7 @@ export function BusinessManagement() {
                   type="text"
                   value={transferringBusiness.name}
                   disabled
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg bg-slate-50 dark:bg-gray-800 text-slate-600 dark:text-gray-400"
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 dark:text-white border border-slate-300 dark:border-gray-600 rounded-lg bg-slate-50 dark:bg-gray-800 text-slate-600 dark:text-gray-400"
                 />
               </div>
 
@@ -429,7 +429,7 @@ export function BusinessManagement() {
                   onChange={(e) => setTransferEmail(e.target.value)}
                   required
                   placeholder="Enter user ID (UUID)"
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 dark:text-white border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
                 <p className="text-xs text-slate-500 dark:text-gray-400 mt-1">
                   Enter the UUID of the user you want to transfer ownership to

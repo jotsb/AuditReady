@@ -134,7 +134,7 @@ export function ReceiptUpload({ onUpload, onClose }: ReceiptUploadProps) {
                       </>
                     ) : (
                       <>
-                        <Upload size={48} className="text-slate-400 mb-4" />
+                        <Upload size={48} className="text-slate-400 dark:text-gray-500 mb-4" />
                         <p className="mb-2 text-sm text-slate-600 dark:text-gray-400">
                           <span className="font-semibold">Click to upload</span> or drag and drop
                         </p>
@@ -180,7 +180,7 @@ export function ReceiptUpload({ onUpload, onClose }: ReceiptUploadProps) {
                   ) : (
                     <div className="flex items-center justify-center h-64 bg-slate-50">
                       <div className="text-center">
-                        <Upload size={48} className="text-slate-400 mx-auto mb-2" />
+                        <Upload size={48} className="text-slate-400 dark:text-gray-500 mx-auto mb-2" />
                         <p className="text-slate-600 dark:text-gray-400">{file?.name}</p>
                       </div>
                     </div>

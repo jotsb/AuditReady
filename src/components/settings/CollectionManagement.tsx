@@ -262,7 +262,7 @@ export function CollectionManagement() {
 
       {collections.length === 0 && (
         <div className="text-center py-12 bg-slate-50 dark:bg-gray-800 rounded-lg border border-slate-200">
-          <FolderOpen size={48} className="mx-auto text-slate-400 mb-4" />
+          <FolderOpen size={48} className="mx-auto text-slate-400 dark:text-gray-500 mb-4" />
           <h3 className="text-lg font-semibold text-slate-800 mb-2">No collections yet</h3>
           <p className="text-slate-600 mb-4">Create your first collection to start organizing receipts</p>
           <button
@@ -293,7 +293,7 @@ export function CollectionManagement() {
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
                   placeholder="e.g., 2025 Expenses"
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 dark:text-white border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
@@ -306,7 +306,7 @@ export function CollectionManagement() {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Optional description"
                   rows={3}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 dark:text-white border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
@@ -321,7 +321,7 @@ export function CollectionManagement() {
                   required
                   min="2000"
                   max="2100"
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 dark:text-white border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
@@ -333,7 +333,7 @@ export function CollectionManagement() {
                   value={formData.business_id}
                   onChange={(e) => setFormData({ ...formData, business_id: e.target.value })}
                   required
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 dark:text-white border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">Select a business</option>
                   {businesses.map((business) => (
