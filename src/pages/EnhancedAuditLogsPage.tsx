@@ -231,7 +231,7 @@ export function EnhancedAuditLogsPage() {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
               <Activity className="mr-3 text-blue-600" size={32} />
-              <h1 className="text-3xl font-bold text-slate-800">Audit Logs</h1>
+              <h1 className="text-3xl font-bold text-slate-800 dark:text-white">Audit Logs</h1>
             </div>
             <button
               onClick={exportToCSV}
@@ -259,7 +259,7 @@ export function EnhancedAuditLogsPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
               <Filter className="text-slate-500 dark:text-gray-400 mr-2" size={20} />
-              <h3 className="font-semibold text-slate-800">Filters</h3>
+              <h3 className="font-semibold text-slate-800 dark:text-white">Filters</h3>
             </div>
             <button
               onClick={clearFilters}

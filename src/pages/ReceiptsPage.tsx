@@ -450,27 +450,27 @@ export function ReceiptsPage() {
           <table className="w-full">
             <thead className="bg-slate-50 dark:bg-gray-800 border-b border-slate-200">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-gray-300 uppercase tracking-wider">
                   Vendor
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-gray-300 uppercase tracking-wider">
                   Date
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-gray-300 uppercase tracking-wider">
                   Category
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-gray-300 uppercase tracking-wider">
                   Payment
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-600 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-slate-600 dark:text-gray-300 uppercase tracking-wider">
                   Amount
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-600 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-slate-600 dark:text-gray-300 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-slate-200 dark:divide-gray-700">
               {filteredReceipts.map((receipt) => (
                 <tr
                   key={receipt.id}
@@ -480,42 +480,42 @@ export function ReceiptsPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <div>
-                        <div className="text-sm font-medium text-slate-800">
+                        <div className="text-sm font-medium text-slate-800 dark:text-white">
                           {receipt.vendor_name || 'Unknown Vendor'}
                         </div>
                         {receipt.vendor_address && (
-                          <div className="text-xs text-slate-500">{receipt.vendor_address}</div>
+                          <div className="text-xs text-slate-500 dark:text-gray-400">{receipt.vendor_address}</div>
                         )}
                       </div>
                       {receipt.is_edited && (
-                        <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium" title="This receipt has been manually edited">
+                        <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded text-xs font-medium" title="This receipt has been manually edited">
                           Edited
                         </span>
                       )}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-1 text-sm text-slate-600">
+                    <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-gray-300">
                       <Calendar size={14} />
                       <span>{formatDate(receipt.transaction_date)}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {receipt.category ? (
-                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                      <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
                         {receipt.category}
                       </span>
                     ) : (
-                      <span className="text-xs text-slate-400">Uncategorized</span>
+                      <span className="text-xs text-slate-400 dark:text-gray-500">Uncategorized</span>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-slate-600 capitalize">
+                    <span className="text-sm text-slate-600 dark:text-gray-300 capitalize">
                       {receipt.payment_method || '-'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <div className="flex items-center justify-end gap-1 text-sm font-semibold text-slate-800">
+                    <div className="flex items-center justify-end gap-1 text-sm font-semibold text-slate-800 dark:text-white">
                       <DollarSign size={16} />
                       <span>{receipt.total_amount.toFixed(2)}</span>
                     </div>
@@ -627,7 +627,7 @@ export function ReceiptsPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-8 flex flex-col items-center gap-4">
             <Loader2 size={48} className="text-blue-600 animate-spin" />
-            <p className="text-lg font-medium text-slate-800">Extracting receipt data...</p>
+            <p className="text-lg font-medium text-slate-800 dark:text-white">Extracting receipt data...</p>
             <p className="text-sm text-slate-600">This may take a moment</p>
           </div>
         </div>

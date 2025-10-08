@@ -212,7 +212,7 @@ export function BusinessManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-slate-800">Businesses</h3>
+          <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Businesses</h3>
           <p className="text-sm text-slate-600 mt-1">
             Manage your business entities and their settings
           </p>
@@ -252,7 +252,7 @@ export function BusinessManagement() {
                     <Building2 size={20} className="text-blue-600" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-slate-800">{business.name}</h4>
+                    <h4 className="font-semibold text-slate-800 dark:text-white">{business.name}</h4>
                     <p className="text-sm text-slate-500">
                       {business.currency} • {isOwner ? 'Owner' : 'Member'}
                     </p>

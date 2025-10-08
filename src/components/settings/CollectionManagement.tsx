@@ -188,7 +188,7 @@ export function CollectionManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-slate-800">Collections</h3>
+          <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Collections</h3>
           <p className="text-sm text-slate-600 mt-1">
             Organize receipts by year, department, or project
           </p>
@@ -226,7 +226,7 @@ export function CollectionManagement() {
                   <FolderOpen size={20} className="text-blue-600" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-slate-800">{collection.name}</h4>
+                  <h4 className="font-semibold text-slate-800 dark:text-white">{collection.name}</h4>
                   <p className="text-sm text-slate-500">Year: {collection.year}</p>
                 </div>
               </div>

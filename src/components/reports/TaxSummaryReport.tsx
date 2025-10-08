@@ -220,7 +220,7 @@ export function TaxSummaryReport() {
                 </div>
                 <span className="text-sm text-slate-600">Total GST</span>
               </div>
-              <p className="text-2xl font-bold text-slate-800">${summary.totalGST.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-slate-800 dark:text-white">${summary.totalGST.toFixed(2)}</p>
             </div>
 
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
@@ -230,7 +230,7 @@ export function TaxSummaryReport() {
                 </div>
                 <span className="text-sm text-slate-600">Total PST</span>
               </div>
-              <p className="text-2xl font-bold text-slate-800">${summary.totalPST.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-slate-800 dark:text-white">${summary.totalPST.toFixed(2)}</p>
             </div>
 
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
@@ -240,7 +240,7 @@ export function TaxSummaryReport() {
                 </div>
                 <span className="text-sm text-slate-600">Total Amount</span>
               </div>
-              <p className="text-2xl font-bold text-slate-800">${summary.totalAmount.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-slate-800 dark:text-white">${summary.totalAmount.toFixed(2)}</p>
             </div>
 
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
@@ -250,7 +250,7 @@ export function TaxSummaryReport() {
                 </div>
                 <span className="text-sm text-slate-600">Receipts</span>
               </div>
-              <p className="text-2xl font-bold text-slate-800">{summary.receiptCount}</p>
+              <p className="text-2xl font-bold text-slate-800 dark:text-white">{summary.receiptCount}</p>
             </div>
           </div>
 
@@ -276,7 +276,7 @@ export function TaxSummaryReport() {
                     </tr>
                   ))}
                   <tr className="bg-slate-50 dark:bg-gray-800 font-semibold">
-                    <td className="py-3 px-4 text-sm text-slate-800">TOTAL</td>
+                    <td className="py-3 px-4 text-sm text-slate-800 dark:text-white">TOTAL</td>
                     <td className="py-3 px-4 text-sm text-slate-800 text-right">${summary.totalGST.toFixed(2)}</td>
                     <td className="py-3 px-4 text-sm text-slate-800 text-right">${summary.totalPST.toFixed(2)}</td>
                     <td className="py-3 px-4 text-sm text-slate-800 text-right">${summary.totalAmount.toFixed(2)}</td>

@@ -191,7 +191,7 @@ export function AuditLogsPage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 max-w-md w-full text-center">
           <AlertCircle className="mx-auto mb-4 text-red-600" size={48} />
           <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Access Denied</h2>
-          <p className="text-slate-600">You do not have permission to view system-wide audit logs.</p>
+          <p className="text-slate-600 dark:text-gray-400">You do not have permission to view system-wide audit logs.</p>
         </div>
       </div>
     );
@@ -200,7 +200,7 @@ export function AuditLogsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-gray-800 flex items-center justify-center">
-        <div className="text-slate-600">Loading audit logs...</div>
+        <div className="text-slate-600 dark:text-gray-400">Loading audit logs...</div>
       </div>
     );
   }
@@ -211,8 +211,8 @@ export function AuditLogsPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
-              <Activity className="mr-3 text-blue-600" size={32} />
-              <h1 className="text-3xl font-bold text-slate-800">System-Wide Audit Logs</h1>
+              <Activity className="mr-3 text-blue-600 dark:text-blue-400" size={32} />
+              <h1 className="text-3xl font-bold text-slate-800 dark:text-white">System-Wide Audit Logs</h1>
             </div>
             <button
               onClick={exportToCSV}
@@ -223,13 +223,13 @@ export function AuditLogsPage() {
               Export CSV
             </button>
           </div>
-          <p className="text-slate-600">
+          <p className="text-slate-600 dark:text-gray-400">
             View all activity across the entire platform
           </p>
         </div>
 
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center">
+          <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg flex items-center">
             <AlertCircle className="mr-2" size={20} />
             {error}
           </div>
@@ -240,11 +240,11 @@ export function AuditLogsPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
               <Filter className="text-slate-500 dark:text-gray-400 mr-2" size={20} />
-              <h3 className="font-semibold text-slate-800">Filters</h3>
+              <h3 className="font-semibold text-slate-800 dark:text-white">Filters</h3>
             </div>
             <button
               onClick={clearFilters}
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
             >
               Clear All
             </button>
@@ -253,7 +253,7 @@ export function AuditLogsPage() {
           {/* Search */}
           <div className="mb-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-gray-500" size={20} />
               <input
                 type="text"
                 placeholder="Search logs..."
@@ -351,7 +351,7 @@ export function AuditLogsPage() {
         {/* Logs Display */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
           <div className="px-6 py-4 bg-slate-50 dark:bg-gray-800 border-b border-slate-200">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-slate-600 dark:text-gray-400">
               Showing {filteredLogs.length} of {logs.length} logs on page {currentPage} (Total: {totalCount} logs)
             </p>
           </div>
@@ -374,7 +374,7 @@ export function AuditLogsPage() {
 
           {totalCount > itemsPerPage && (
             <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-gray-700 bg-slate-50">
-              <div className="text-sm text-slate-600">
+              <div className="text-sm text-slate-600 dark:text-gray-400">
                 Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} logs
               </div>
               <div className="flex gap-2">
@@ -398,7 +398,7 @@ export function AuditLogsPage() {
                       const showEllipsis = index > 0 && page - array[index - 1] > 1;
                       return (
                         <div key={page} className="flex items-center gap-1">
-                          {showEllipsis && <span className="px-2 text-slate-400">...</span>}
+                          {showEllipsis && <span className="px-2 text-slate-400 dark:text-gray-500">...</span>}
                           <button
                             onClick={() => setCurrentPage(page)}
                             className={`px-3 py-2 text-sm font-medium rounded-lg transition ${

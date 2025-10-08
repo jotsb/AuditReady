@@ -242,7 +242,7 @@ export function YearEndSummaryReport() {
                 </div>
                 <span className="text-sm text-slate-600">Total Receipts</span>
               </div>
-              <p className="text-2xl font-bold text-slate-800">{summary.totalReceipts}</p>
+              <p className="text-2xl font-bold text-slate-800 dark:text-white">{summary.totalReceipts}</p>
             </div>
 
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
@@ -252,7 +252,7 @@ export function YearEndSummaryReport() {
                 </div>
                 <span className="text-sm text-slate-600">Total Amount</span>
               </div>
-              <p className="text-2xl font-bold text-slate-800">${summary.totalAmount.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-slate-800 dark:text-white">${summary.totalAmount.toFixed(2)}</p>
             </div>
 
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
@@ -262,7 +262,7 @@ export function YearEndSummaryReport() {
                 </div>
                 <span className="text-sm text-slate-600">Total GST</span>
               </div>
-              <p className="text-2xl font-bold text-slate-800">${summary.totalGST.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-slate-800 dark:text-white">${summary.totalGST.toFixed(2)}</p>
             </div>
 
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
@@ -272,7 +272,7 @@ export function YearEndSummaryReport() {
                 </div>
                 <span className="text-sm text-slate-600">Total PST</span>
               </div>
-              <p className="text-2xl font-bold text-slate-800">${summary.totalPST.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-slate-800 dark:text-white">${summary.totalPST.toFixed(2)}</p>
             </div>
           </div>
 
@@ -311,7 +311,7 @@ export function YearEndSummaryReport() {
                       <p className="text-sm font-medium text-slate-800 truncate">{vendor.vendor}</p>
                       <p className="text-xs text-slate-600">{vendor.count} receipts</p>
                     </div>
-                    <span className="ml-3 text-sm font-semibold text-slate-800">
+                    <span className="ml-3 text-sm font-semibold text-slate-800 dark:text-white">
                       ${vendor.amount.toFixed(2)}
                     </span>
                   </div>
@@ -353,7 +353,7 @@ export function YearEndSummaryReport() {
                     <p className="font-semibold text-slate-800 mb-2">{business.business}</p>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-slate-600">{business.count} receipts</span>
-                      <span className="font-semibold text-slate-800">${business.amount.toFixed(2)}</span>
+                      <span className="font-semibold text-slate-800 dark:text-white">${business.amount.toFixed(2)}</span>
                     </div>
                   </div>
                 ))}

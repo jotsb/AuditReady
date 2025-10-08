@@ -239,7 +239,7 @@ export function AdminPage() {
               <TrendingUp className="text-blue-600" size={20} />
             </div>
             <h3 className="text-slate-600 dark:text-gray-400 text-sm font-medium mb-1">Total Businesses</h3>
-            <p className="text-3xl font-bold text-slate-800">{stats.totalBusinesses}</p>
+            <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.totalBusinesses}</p>
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
@@ -250,7 +250,7 @@ export function AdminPage() {
               <TrendingUp className="text-green-600" size={20} />
             </div>
             <h3 className="text-slate-600 dark:text-gray-400 text-sm font-medium mb-1">Total Users</h3>
-            <p className="text-3xl font-bold text-slate-800">{stats.totalUsers}</p>
+            <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.totalUsers}</p>
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
@@ -261,7 +261,7 @@ export function AdminPage() {
               <TrendingUp className="text-purple-600" size={20} />
             </div>
             <h3 className="text-slate-600 dark:text-gray-400 text-sm font-medium mb-1">Total Receipts</h3>
-            <p className="text-3xl font-bold text-slate-800">{stats.totalReceipts}</p>
+            <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.totalReceipts}</p>
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
@@ -271,13 +271,13 @@ export function AdminPage() {
               </div>
             </div>
             <h3 className="text-slate-600 dark:text-gray-400 text-sm font-medium mb-1">System Admins</h3>
-            <p className="text-3xl font-bold text-slate-800">{stats.systemAdmins}</p>
+            <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.systemAdmins}</p>
           </div>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-200">
-            <h2 className="text-xl font-bold text-slate-800">All Businesses</h2>
+            <h2 className="text-xl font-bold text-slate-800 dark:text-white">All Businesses</h2>
           </div>
 
           <div className="overflow-x-auto">
@@ -563,7 +563,7 @@ function AuditLogsTab() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
             <FilterIcon className="text-slate-500 dark:text-gray-400 mr-2" size={20} />
-            <h3 className="font-semibold text-slate-800">Filters</h3>
+            <h3 className="font-semibold text-slate-800 dark:text-white">Filters</h3>
           </div>
           <div className="flex gap-3">
             <button
@@ -871,13 +871,13 @@ function AnalyticsTab() {
           <div className="space-y-4">
             <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-gray-800 rounded-lg">
               <span className="text-slate-600">Avg Receipts per Business</span>
-              <span className="font-bold text-slate-800">
+              <span className="font-bold text-slate-800 dark:text-white">
                 {(analytics.totalReceipts / analytics.totalBusinesses || 0).toFixed(1)}
               </span>
             </div>
             <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-gray-800 rounded-lg">
               <span className="text-slate-600">Total Collections</span>
-              <span className="font-bold text-slate-800">{analytics.totalCollections}</span>
+              <span className="font-bold text-slate-800 dark:text-white">{analytics.totalCollections}</span>
             </div>
           </div>
         </div>
@@ -887,7 +887,7 @@ function AnalyticsTab() {
           <div className="space-y-4">
             <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-gray-800 rounded-lg">
               <span className="text-slate-600">Businesses Created Today</span>
-              <span className="font-bold text-slate-800">
+              <span className="font-bold text-slate-800 dark:text-white">
                 {analytics.recentBusinesses > 0 ? '🔥' : '—'}
               </span>
             </div>

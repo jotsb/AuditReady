@@ -115,7 +115,7 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
-                <h2 className="text-2xl font-bold text-slate-800">Receipt Details</h2>
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Receipt Details</h2>
                 {receipt.is_edited && (
                   <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs font-medium">
                     Edited
@@ -133,12 +133,12 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
 
             <div className="space-y-4">
               <div className="flex items-start gap-3">
-                <div className="p-2 bg-blue-50 rounded-lg">
-                  <FileText size={20} className="text-blue-600" />
+                <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                  <FileText size={20} className="text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="flex-1">
-                  <div className="text-sm text-slate-600">Vendor</div>
-                  <div className="text-lg font-semibold text-slate-800">
+                  <div className="text-sm text-slate-600 dark:text-gray-400">Vendor</div>
+                  <div className="text-lg font-semibold text-slate-800 dark:text-white">
                     {receipt.vendor_name || 'Unknown'}
                   </div>
                 </div>
@@ -146,24 +146,24 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
 
               {receipt.vendor_address && (
                 <div className="flex items-start gap-3">
-                  <div className="p-2 bg-blue-50 rounded-lg">
-                    <MapPin size={20} className="text-blue-600" />
+                  <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                    <MapPin size={20} className="text-blue-600 dark:text-blue-400" />
                   </div>
                   <div className="flex-1">
-                    <div className="text-sm text-slate-600">Address</div>
-                    <div className="text-slate-800">{receipt.vendor_address}</div>
+                    <div className="text-sm text-slate-600 dark:text-gray-400">Address</div>
+                    <div className="text-slate-800 dark:text-white">{receipt.vendor_address}</div>
                   </div>
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-start gap-3">
-                  <div className="p-2 bg-blue-50 rounded-lg">
-                    <Calendar size={20} className="text-blue-600" />
+                  <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                    <Calendar size={20} className="text-blue-600 dark:text-blue-400" />
                   </div>
                   <div className="flex-1">
-                    <div className="text-sm text-slate-600">Date</div>
-                    <div className="text-slate-800">
+                    <div className="text-sm text-slate-600 dark:text-gray-400">Date</div>
+                    <div className="text-slate-800 dark:text-white">
                       {new Date(receipt.transaction_date).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'short',
@@ -175,12 +175,12 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
 
                 {receipt.extraction_data?.transaction_time && (
                   <div className="flex items-start gap-3">
-                    <div className="p-2 bg-blue-50 rounded-lg">
-                      <Clock size={20} className="text-blue-600" />
+                    <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                      <Clock size={20} className="text-blue-600 dark:text-blue-400" />
                     </div>
                     <div className="flex-1">
-                      <div className="text-sm text-slate-600">Time</div>
-                      <div className="text-slate-800">{receipt.extraction_data.transaction_time}</div>
+                      <div className="text-sm text-slate-600 dark:text-gray-400">Time</div>
+                      <div className="text-slate-800 dark:text-white">{receipt.extraction_data.transaction_time}</div>
                     </div>
                   </div>
                 )}
@@ -188,12 +188,12 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
 
               <div className="pt-4 border-t border-slate-200">
                 <div className="flex items-start gap-3 mb-3">
-                  <div className="p-2 bg-blue-50 rounded-lg">
-                    <DollarSign size={20} className="text-blue-600" />
+                  <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                    <DollarSign size={20} className="text-blue-600 dark:text-blue-400" />
                   </div>
                   <div className="flex-1">
-                    <div className="text-sm text-slate-600">Total Amount</div>
-                    <div className="text-2xl font-bold text-slate-800">
+                    <div className="text-sm text-slate-600 dark:text-gray-400">Total Amount</div>
+                    <div className="text-2xl font-bold text-slate-800 dark:text-white">
                       ${receipt.total_amount.toFixed(2)}
                     </div>
                   </div>
@@ -203,7 +203,7 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
                   {receipt.subtotal && parseFloat(receipt.subtotal.toString()) > 0 && (
                     <div className="flex justify-between">
                       <span className="text-slate-600">Subtotal</span>
-                      <span className="text-slate-800">${parseFloat(receipt.subtotal.toString()).toFixed(2)}</span>
+                      <span className="text-slate-800 dark:text-white">${parseFloat(receipt.subtotal.toString()).toFixed(2)}</span>
                     </div>
                   )}
                   {receipt.gst_amount && parseFloat(receipt.gst_amount.toString()) > 0 && (
@@ -211,7 +211,7 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
                       <span className="text-slate-600">
                         GST {receipt.extraction_data?.gst_percent && `(${receipt.extraction_data.gst_percent}%)`}
                       </span>
-                      <span className="text-slate-800">${parseFloat(receipt.gst_amount.toString()).toFixed(2)}</span>
+                      <span className="text-slate-800 dark:text-white">${parseFloat(receipt.gst_amount.toString()).toFixed(2)}</span>
                     </div>
                   )}
                   {receipt.pst_amount && parseFloat(receipt.pst_amount.toString()) > 0 && (
@@ -219,29 +219,29 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
                       <span className="text-slate-600">
                         PST {receipt.extraction_data?.pst_percent && `(${receipt.extraction_data.pst_percent}%)`}
                       </span>
-                      <span className="text-slate-800">${parseFloat(receipt.pst_amount.toString()).toFixed(2)}</span>
+                      <span className="text-slate-800 dark:text-white">${parseFloat(receipt.pst_amount.toString()).toFixed(2)}</span>
                     </div>
                   )}
                 </div>
               </div>
 
               <div className="flex items-start gap-3">
-                <div className="p-2 bg-blue-50 rounded-lg">
-                  <Tag size={20} className="text-blue-600" />
+                <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                  <Tag size={20} className="text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="flex-1">
-                  <div className="text-sm text-slate-600">Category</div>
-                  <div className="text-slate-800">{receipt.category}</div>
+                  <div className="text-sm text-slate-600 dark:text-gray-400">Category</div>
+                  <div className="text-slate-800 dark:text-white">{receipt.category}</div>
                 </div>
               </div>
 
               <div className="flex items-start gap-3">
-                <div className="p-2 bg-blue-50 rounded-lg">
-                  <CreditCard size={20} className="text-blue-600" />
+                <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                  <CreditCard size={20} className="text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="flex-1">
-                  <div className="text-sm text-slate-600">Payment Method</div>
-                  <div className="text-slate-800">
+                  <div className="text-sm text-slate-600 dark:text-gray-400">Payment Method</div>
+                  <div className="text-slate-800 dark:text-white">
                     {receipt.payment_method}
                     {receipt.extraction_data?.card_last_digits && (
                       <span className="text-slate-500 dark:text-gray-400 ml-2">(...{receipt.extraction_data.card_last_digits})</span>
@@ -252,12 +252,12 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
 
               {receipt.extraction_data?.customer_name && (
                 <div className="flex items-start gap-3">
-                  <div className="p-2 bg-blue-50 rounded-lg">
-                    <User size={20} className="text-blue-600" />
+                  <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                    <User size={20} className="text-blue-600 dark:text-blue-400" />
                   </div>
                   <div className="flex-1">
-                    <div className="text-sm text-slate-600">Customer Name</div>
-                    <div className="text-slate-800">{receipt.extraction_data.customer_name}</div>
+                    <div className="text-sm text-slate-600 dark:text-gray-400">Customer Name</div>
+                    <div className="text-slate-800 dark:text-white">{receipt.extraction_data.customer_name}</div>
                   </div>
                 </div>
               )}
@@ -296,13 +296,13 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
               )}
               <div className="flex justify-between">
                 <span className="text-slate-600">Created</span>
-                <span className="text-slate-800">
+                <span className="text-slate-800 dark:text-white">
                   {new Date(receipt.created_at).toLocaleDateString()}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-600">Updated</span>
-                <span className="text-slate-800">
+                <span className="text-slate-800 dark:text-white">
                   {new Date(receipt.updated_at).toLocaleDateString()}
                 </span>
               </div>
@@ -312,7 +312,7 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-slate-800">Original Receipt</h3>
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Original Receipt</h3>
             {imageUrl && receipt?.file_path && (
               <button
                 onClick={handleDownload}

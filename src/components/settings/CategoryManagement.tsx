@@ -138,7 +138,7 @@ export function CategoryManagement() {
     <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-semibold text-slate-800">Expense Categories</h3>
+          <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Expense Categories</h3>
           <p className="text-sm text-slate-600 mt-1">
             Manage global expense categories for all receipts
           </p>
@@ -228,7 +228,7 @@ export function CategoryManagement() {
               className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:border-slate-300 dark:border-gray-600 transition"
             >
               <div className="flex-1">
-                <div className="font-medium text-slate-800">{category.name}</div>
+                <div className="font-medium text-slate-800 dark:text-white">{category.name}</div>
                 {category.description && (
                   <div className="text-sm text-slate-600">{category.description}</div>
                 )}

@@ -84,7 +84,7 @@ export function VerifyReceiptModal({ receiptId, extractedData, onConfirm, onClos
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-slate-200 flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-slate-800">Verify Receipt Data</h2>
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Verify Receipt Data</h2>
             <p className="text-sm text-slate-600 mt-1">Review and edit the extracted information</p>
           </div>
           <button
@@ -150,7 +150,7 @@ export function VerifyReceiptModal({ receiptId, extractedData, onConfirm, onClos
           </div>
 
           <div className="border border-slate-200 rounded-lg p-4 space-y-4">
-            <h3 className="font-semibold text-slate-800">Amount Breakdown</h3>
+            <h3 className="font-semibold text-slate-800 dark:text-white">Amount Breakdown</h3>
 
             <div className="grid grid-cols-2 gap-4">
               <div>

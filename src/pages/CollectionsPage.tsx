@@ -259,7 +259,7 @@ export function CollectionsPage() {
       )}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-slate-800">Businesses</h3>
+          <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Businesses</h3>
           <button
             onClick={() => setShowNewBusinessForm(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
@@ -338,7 +338,7 @@ export function CollectionsPage() {
       {selectedBusiness && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-slate-800">Collections</h3>
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Collections</h3>
             <button
               onClick={() => setShowNewCollectionForm(true)}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"

@@ -256,7 +256,7 @@ export default function TeamPage() {
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <Users className="w-8 h-8 text-blue-600" />
-          <h1 className="text-3xl font-bold text-gray-900">Team Management</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Team Management</h1>
         </div>
         {canManageTeam && (
           <button
@@ -270,14 +270,14 @@ export default function TeamPage() {
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300">
           {error}
         </div>
       )}
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-8">
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Team Members ({totalMembers})</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Team Members ({totalMembers})</h2>
         </div>
         <div className="divide-y divide-gray-200">
           {members.map((member) => (
@@ -287,7 +287,7 @@ export default function TeamPage() {
                   <Users className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-gray-900">{member.profiles.full_name}</h3>
+                  <h3 className="font-medium text-gray-900 dark:text-white">{member.profiles.full_name}</h3>
                   <p className="text-sm text-gray-500">{member.profiles.email}</p>
                   <p className="text-xs text-gray-400 mt-1">
                     Joined {new Date(member.joined_at).toLocaleDateString()}
@@ -356,7 +356,7 @@ export default function TeamPage() {
       {totalInvites > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Pending Invitations ({totalInvites})</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Pending Invitations ({totalInvites})</h2>
           </div>
           <div className="divide-y divide-gray-200">
             {invitations.map((invitation) => (
@@ -366,7 +366,7 @@ export default function TeamPage() {
                     <Mail className="w-6 h-6 text-orange-600" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-gray-900">{invitation.email}</h3>
+                    <h3 className="font-medium text-gray-900 dark:text-white">{invitation.email}</h3>
                     <p className="text-sm text-gray-500">
                       Invited as {invitation.role}
                     </p>
@@ -417,7 +417,7 @@ export default function TeamPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Invite Team Member</h2>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Invite Team Member</h2>
             </div>
             <form onSubmit={handleInvite} className="p-6 space-y-4">
               <div>
