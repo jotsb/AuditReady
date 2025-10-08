@@ -268,7 +268,7 @@ export function TaxSummaryReport() {
                 </thead>
                 <tbody>
                   {summary.monthlyBreakdown.map((item, index) => (
-                    <tr key={index} className="border-b border-slate-100 hover:bg-slate-50">
+                    <tr key={index} className="border-b border-slate-100 hover:bg-slate-50 dark:hover:bg-gray-700">
                       <td className="py-3 px-4 text-sm text-slate-700 dark:text-gray-300">{item.month}</td>
                       <td className="py-3 px-4 text-sm text-slate-700 dark:text-gray-300 text-right">${item.gst.toFixed(2)}</td>
                       <td className="py-3 px-4 text-sm text-slate-700 dark:text-gray-300 text-right">${item.pst.toFixed(2)}</td>

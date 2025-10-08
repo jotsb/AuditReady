@@ -373,7 +373,7 @@ export function AuditLogsPage() {
           </div>
 
           {totalCount > itemsPerPage && (
-            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-gray-700 bg-slate-50">
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800">
               <div className="text-sm text-slate-600 dark:text-gray-400">
                 Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} logs
               </div>

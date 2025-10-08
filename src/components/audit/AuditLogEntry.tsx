@@ -95,7 +95,7 @@ export function AuditLogEntry({ log }: AuditLogEntryProps) {
 
                 return (
                   <tr key={key} className={isChanged ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''}>
-                    <td className="px-4 py-2 font-medium text-slate-700 dark:text-gray-300">
+                    <td className="px-4 py-2 font-medium text-slate-700 dark:text-gray-200">
                       {key.replace(/_/g, ' ')}
                     </td>
                     <td className="px-4 py-2 text-slate-600 dark:text-gray-400">
