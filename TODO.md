@@ -609,7 +609,42 @@
 - [ ] 🟡 Dark mode support
 - [ ] 🟡 Mobile responsiveness audit
 - [ ] 🟡 Accessibility audit (WCAG 2.1)
-- [ ] 🟢 Onboarding tutorial/wizard
+- [ ] 🔴 **First-Time User Onboarding Flow** (PLANNED - 2025-10-08)
+  - **Step 1: Business Setup**
+    - Welcome screen explaining business setup
+    - Business creation form (name, tax ID, currency)
+    - Explain that business is the parent entity for collections
+    - Note: First user becomes business owner automatically
+  - **Step 2: Collection Setup**
+    - Explain collections organize receipts by tax year/project
+    - Collection creation form (name, year, description)
+    - Link collection to newly created business
+    - Suggest naming conventions (e.g., "2025 Tax Year")
+  - **Step 3: Receipt Import Tutorial**
+    - Show three ways to add receipts:
+      1. Take photo with camera
+      2. Upload image file
+      3. Manual entry
+    - Quick demo/animation of upload process
+    - Explain AI extraction and verification process
+  - **Step 4: Team Management Overview** (for business owners)
+    - Explain roles: Owner, Manager, Member
+    - Show how to invite team members
+    - Explain permission differences between roles
+    - Skip option if user wants to work solo initially
+  - **Step 5: Reports & Features Overview**
+    - Quick tour of dashboard
+    - Explain available reports (Tax Summary, CSV/PDF exports)
+    - Show where settings and categories are
+    - Link to help documentation
+  - **Implementation Notes:**
+    - Triggered only on first login after registration
+    - Can be dismissed/skipped at any time
+    - Progress saved if user exits mid-flow
+    - "Show me around" button in settings to replay tour
+    - Database flag: `profiles.onboarding_completed`
+    - Interactive tour using tooltips and modal overlays
+    - Location: New component `src/components/onboarding/OnboardingFlow.tsx`
 - [ ] 🟢 Help documentation
 - [ ] 🟢 In-app chat support
 

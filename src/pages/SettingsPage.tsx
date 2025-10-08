@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User, Building2, Shield, Bell, FolderOpen, Tag, Palette } from 'lucide-react';
 import { BusinessManagement } from '../components/settings/BusinessManagement';
 import { CollectionManagement } from '../components/settings/CollectionManagement';
@@ -8,11 +8,28 @@ import { ThemeSettings } from '../components/settings/ThemeSettings';
 import { usePageTracking } from '../hooks/usePageTracking';
 import { actionTracker } from '../lib/actionTracker';
 
-type SettingsTab = 'profile' | '2fa' | 'businesses' | 'collections' | 'categories' | 'theme' | 'notifications';
+type SettingsTab = 'profile' | '2fa' | 'business' | 'businesses' | 'collections' | 'categories' | 'theme' | 'notifications';
 
 export function SettingsPage() {
   usePageTracking('Settings', { section: 'settings' });
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
+
+  useEffect(() => {
+    const handleTabChange = (event: CustomEvent) => {
+      const tab = event.detail.tab;
+      if (tab === 'business') {
+        setActiveTab('businesses');
+      } else {
+        setActiveTab(tab);
+      }
+    };
+
+    window.addEventListener('settings-tab-change', handleTabChange as EventListener);
+
+    return () => {
+      window.removeEventListener('settings-tab-change', handleTabChange as EventListener);
+    };
+  }, []);
 
   return (
     <div className="space-y-6">

@@ -39,6 +39,7 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
   const { user } = useAuth();
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [collections, setCollections] = useState<any[]>([]);
+  const [businesses, setBusinesses] = useState<any[]>([]);
   const [selectedCollection, setSelectedCollection] = useState<string>('');
   const [showUpload, setShowUpload] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
@@ -93,14 +94,27 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
 
   const loadCollections = async () => {
     try {
-      const { data: collectionData, error } = await supabase
-        .from('collections')
-        .select('*, businesses(name)')
-        .order('created_at', { ascending: false });
+      const [collectionsResult, businessesResult] = await Promise.all([
+        supabase
+          .from('collections')
+          .select('*, businesses(name)')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('businesses')
+          .select('id, name')
+      ]);
 
-      if (!error && collectionData && collectionData.length > 0) {
-        setCollections(collectionData);
-        setSelectedCollection(collectionData[0].id);
+      if (!collectionsResult.error && collectionsResult.data && collectionsResult.data.length > 0) {
+        setCollections(collectionsResult.data);
+        setSelectedCollection(collectionsResult.data[0].id);
+      } else {
+        setCollections([]);
+      }
+
+      if (!businessesResult.error && businessesResult.data) {
+        setBusinesses(businessesResult.data);
+      } else {
+        setBusinesses([]);
       }
     } catch (error) {
       console.error('Error loading collections:', error);
@@ -391,10 +405,38 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
   }
 
   if (collections.length === 0) {
+    const hasBusiness = businesses.length > 0;
+
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <p className="text-slate-600 mb-4">No collections found. Create a collection first!</p>
+        <div className="text-center max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-slate-200 dark:border-gray-700 p-8">
+          <div className="mb-4">
+            <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Receipt size={32} className="text-blue-600 dark:text-blue-400" />
+            </div>
+            <h3 className="text-xl font-semibold text-slate-800 dark:text-white mb-2">
+              {hasBusiness ? 'No Collections Found' : 'Getting Started'}
+            </h3>
+            <p className="text-slate-600 dark:text-gray-400 mb-6">
+              {hasBusiness
+                ? 'You need to create a collection before you can start managing receipts.'
+                : 'Before you can manage receipts, you need to set up your business and create a collection.'
+              }
+            </p>
+          </div>
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              window.dispatchEvent(new CustomEvent('navigate-to-settings', {
+                detail: { section: hasBusiness ? 'collections' : 'business' }
+              }));
+            }}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+          >
+            <Plus size={20} />
+            {hasBusiness ? 'Create Collection' : 'Set Up Business'}
+          </a>
         </div>
       </div>
     );

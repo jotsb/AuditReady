@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthPage } from './pages/AuthPage';
 import { DashboardPage } from './pages/DashboardPage';
-import { CollectionsPage } from './pages/CollectionsPage';
 import { ReceiptsPage } from './pages/ReceiptsPage';
 import { ReceiptDetailsPage } from './pages/ReceiptDetailsPage';
 import { ReportsPage } from './pages/ReportsPage';
@@ -25,6 +24,21 @@ function AppContent() {
     if (path === '/reset-password') {
       setCurrentView('reset-password');
     }
+
+    const handleNavigateToSettings = (event: CustomEvent) => {
+      setCurrentView('settings');
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('settings-tab-change', {
+          detail: { tab: event.detail.section }
+        }));
+      }, 100);
+    };
+
+    window.addEventListener('navigate-to-settings', handleNavigateToSettings as EventListener);
+
+    return () => {
+      window.removeEventListener('navigate-to-settings', handleNavigateToSettings as EventListener);
+    };
   }, []);
 
   if (loading) {
@@ -66,8 +80,6 @@ function AppContent() {
         return 'Receipts';
       case 'receipt-details':
         return 'Receipt Details';
-      case 'collections':
-        return 'Collections';
       case 'reports':
         return 'Reports';
       case 'team':
@@ -100,8 +112,6 @@ function AppContent() {
         ) : (
           <DashboardPage onViewReceipt={(id) => handleNavigate('receipt-details', id)} />
         );
-      case 'collections':
-        return <CollectionsPage />;
       case 'reports':
         return <ReportsPage />;
       case 'team':
