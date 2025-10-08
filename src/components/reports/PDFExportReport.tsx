@@ -390,14 +390,14 @@ export function PDFExportReport() {
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
         <div className="mb-6">
           <h3 className="text-xl font-semibold text-slate-800 mb-2">Export to PDF</h3>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-slate-600 dark:text-gray-400">
             Generate a professional PDF report with your receipt data and optional images
           </p>
         </div>
 
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-4">
-            <Filter size={18} className="text-slate-600" />
+            <Filter size={18} className="text-slate-600 dark:text-gray-400" />
             <span className="font-medium text-slate-700">Filter Options</span>
           </div>
 

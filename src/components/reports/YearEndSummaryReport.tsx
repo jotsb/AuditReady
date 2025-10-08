@@ -188,7 +188,7 @@ export function YearEndSummaryReport() {
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
         <div className="mb-6">
           <h3 className="text-xl font-semibold text-slate-800 mb-2">Year-End Summary Report</h3>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-slate-600 dark:text-gray-400">
             Complete annual expense breakdown with category analysis and spending trends
           </p>
         </div>
@@ -240,7 +240,7 @@ export function YearEndSummaryReport() {
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <Calendar size={20} className="text-blue-600" />
                 </div>
-                <span className="text-sm text-slate-600">Total Receipts</span>
+                <span className="text-sm text-slate-600 dark:text-gray-400">Total Receipts</span>
               </div>
               <p className="text-2xl font-bold text-slate-800 dark:text-white">{summary.totalReceipts}</p>
             </div>
@@ -250,7 +250,7 @@ export function YearEndSummaryReport() {
                 <div className="p-2 bg-green-100 rounded-lg">
                   <DollarSign size={20} className="text-green-600" />
                 </div>
-                <span className="text-sm text-slate-600">Total Amount</span>
+                <span className="text-sm text-slate-600 dark:text-gray-400">Total Amount</span>
               </div>
               <p className="text-2xl font-bold text-slate-800 dark:text-white">${summary.totalAmount.toFixed(2)}</p>
             </div>
@@ -260,7 +260,7 @@ export function YearEndSummaryReport() {
                 <div className="p-2 bg-orange-100 rounded-lg">
                   <TrendingUp size={20} className="text-orange-600" />
                 </div>
-                <span className="text-sm text-slate-600">Total GST</span>
+                <span className="text-sm text-slate-600 dark:text-gray-400">Total GST</span>
               </div>
               <p className="text-2xl font-bold text-slate-800 dark:text-white">${summary.totalGST.toFixed(2)}</p>
             </div>
@@ -270,7 +270,7 @@ export function YearEndSummaryReport() {
                 <div className="p-2 bg-red-100 rounded-lg">
                   <TrendingUp size={20} className="text-red-600" />
                 </div>
-                <span className="text-sm text-slate-600">Total PST</span>
+                <span className="text-sm text-slate-600 dark:text-gray-400">Total PST</span>
               </div>
               <p className="text-2xl font-bold text-slate-800 dark:text-white">${summary.totalPST.toFixed(2)}</p>
             </div>
@@ -284,7 +284,7 @@ export function YearEndSummaryReport() {
                   <div key={index}>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm font-medium text-slate-700">{item.category}</span>
-                      <span className="text-sm text-slate-600">{item.percentage.toFixed(1)}%</span>
+                      <span className="text-sm text-slate-600 dark:text-gray-400">{item.percentage.toFixed(1)}%</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 bg-slate-200 dark:bg-gray-700 rounded-full h-2">
@@ -309,7 +309,7 @@ export function YearEndSummaryReport() {
                   <div key={index} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-gray-800 rounded">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-slate-800 truncate">{vendor.vendor}</p>
-                      <p className="text-xs text-slate-600">{vendor.count} receipts</p>
+                      <p className="text-xs text-slate-600 dark:text-gray-400">{vendor.count} receipts</p>
                     </div>
                     <span className="ml-3 text-sm font-semibold text-slate-800 dark:text-white">
                       ${vendor.amount.toFixed(2)}
@@ -352,7 +352,7 @@ export function YearEndSummaryReport() {
                   <div key={index} className="p-4 bg-slate-50 dark:bg-gray-800 rounded-lg">
                     <p className="font-semibold text-slate-800 mb-2">{business.business}</p>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-600">{business.count} receipts</span>
+                      <span className="text-slate-600 dark:text-gray-400">{business.count} receipts</span>
                       <span className="font-semibold text-slate-800 dark:text-white">${business.amount.toFixed(2)}</span>
                     </div>
                   </div>
@@ -369,7 +369,7 @@ export function YearEndSummaryReport() {
             <Calendar size={32} className="text-slate-400" />
           </div>
           <h3 className="text-lg font-semibold text-slate-800 mb-2">No Report Generated</h3>
-          <p className="text-slate-600">
+          <p className="text-slate-600 dark:text-gray-400">
             Select a year and click "Generate Report" to view year-end summary
           </p>
         </div>

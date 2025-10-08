@@ -43,12 +43,12 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
             <Mail size={32} className="text-green-600" />
           </div>
           <h1 className="text-2xl font-bold text-slate-800 mb-2">Check Your Email</h1>
-          <p className="text-slate-600">
+          <p className="text-slate-600 dark:text-gray-400">
             We've sent a password reset link to <strong>{email}</strong>
           </p>
         </div>
 
-        <div className="space-y-4 text-sm text-slate-600">
+        <div className="space-y-4 text-sm text-slate-600 dark:text-gray-400">
           <p>Click the link in the email to reset your password.</p>
           <p>If you don't see the email, check your spam folder.</p>
         </div>
@@ -68,7 +68,7 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
     <div className="w-full max-w-md mx-auto p-8 bg-white rounded-lg shadow-lg">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-slate-800 mb-2">Reset Password</h1>
-        <p className="text-slate-600">Enter your email to receive a reset link</p>
+        <p className="text-slate-600 dark:text-gray-400">Enter your email to receive a reset link</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">

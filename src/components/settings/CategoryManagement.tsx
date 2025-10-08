@@ -129,7 +129,7 @@ export function CategoryManagement() {
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <Loader2 size={24} className="animate-spin text-slate-600" />
+        <Loader2 size={24} className="animate-spin text-slate-600 dark:text-gray-400" />
       </div>
     );
   }
@@ -230,7 +230,7 @@ export function CategoryManagement() {
               <div className="flex-1">
                 <div className="font-medium text-slate-800 dark:text-white">{category.name}</div>
                 {category.description && (
-                  <div className="text-sm text-slate-600">{category.description}</div>
+                  <div className="text-sm text-slate-600 dark:text-gray-400">{category.description}</div>
                 )}
               </div>
               <button
@@ -248,7 +248,7 @@ export function CategoryManagement() {
 
       {totalCategories > itemsPerPage && (
         <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-200">
-          <div className="text-sm text-slate-600">
+          <div className="text-sm text-slate-600 dark:text-gray-400">
             Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCategories)} of {totalCategories} categories
           </div>
           <div className="flex gap-2">

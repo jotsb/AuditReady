@@ -93,7 +93,7 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
           <ArrowLeft size={20} />
           <span>Back to Receipts</span>
         </button>
-        <div className="text-center text-slate-600">Receipt not found</div>
+        <div className="text-center text-slate-600 dark:text-gray-400">Receipt not found</div>
       </div>
     );
   }
@@ -202,13 +202,13 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
                 <div className="ml-11 space-y-2 text-sm">
                   {receipt.subtotal && parseFloat(receipt.subtotal.toString()) > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-slate-600">Subtotal</span>
+                      <span className="text-slate-600 dark:text-gray-400">Subtotal</span>
                       <span className="text-slate-800 dark:text-white">${parseFloat(receipt.subtotal.toString()).toFixed(2)}</span>
                     </div>
                   )}
                   {receipt.gst_amount && parseFloat(receipt.gst_amount.toString()) > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-slate-600">
+                      <span className="text-slate-600 dark:text-gray-400">
                         GST {receipt.extraction_data?.gst_percent && `(${receipt.extraction_data.gst_percent}%)`}
                       </span>
                       <span className="text-slate-800 dark:text-white">${parseFloat(receipt.gst_amount.toString()).toFixed(2)}</span>
@@ -216,7 +216,7 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
                   )}
                   {receipt.pst_amount && parseFloat(receipt.pst_amount.toString()) > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-slate-600">
+                      <span className="text-slate-600 dark:text-gray-400">
                         PST {receipt.extraction_data?.pst_percent && `(${receipt.extraction_data.pst_percent}%)`}
                       </span>
                       <span className="text-slate-800 dark:text-white">${parseFloat(receipt.pst_amount.toString()).toFixed(2)}</span>
@@ -278,11 +278,11 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
             <div className="space-y-2 text-sm">
               {receipt.extraction_status && (
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Extraction Status</span>
+                  <span className="text-slate-600 dark:text-gray-400">Extraction Status</span>
                   <span className={`font-medium ${
-                    receipt.extraction_status === 'completed' ? 'text-green-600' :
-                    receipt.extraction_status === 'processing' ? 'text-yellow-600' :
-                    'text-red-600'
+                    receipt.extraction_status === 'completed' ? 'text-green-600 dark:text-green-400' :
+                    receipt.extraction_status === 'processing' ? 'text-yellow-600 dark:text-yellow-400' :
+                    'text-red-600 dark:text-red-400'
                   }`}>
                     {receipt.extraction_status.charAt(0).toUpperCase() + receipt.extraction_status.slice(1)}
                   </span>
@@ -290,18 +290,18 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
               )}
               {receipt.is_edited && (
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Modified</span>
-                  <span className="text-blue-600 font-medium">Yes</span>
+                  <span className="text-slate-600 dark:text-gray-400">Modified</span>
+                  <span className="text-blue-600 dark:text-blue-400 font-medium">Yes</span>
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-slate-600">Created</span>
+                <span className="text-slate-600 dark:text-gray-400">Created</span>
                 <span className="text-slate-800 dark:text-white">
                   {new Date(receipt.created_at).toLocaleDateString()}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-600">Updated</span>
+                <span className="text-slate-600 dark:text-gray-400">Updated</span>
                 <span className="text-slate-800 dark:text-white">
                   {new Date(receipt.updated_at).toLocaleDateString()}
                 </span>

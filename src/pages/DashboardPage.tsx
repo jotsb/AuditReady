@@ -125,7 +125,7 @@ export function DashboardPage({ onViewReceipt }: DashboardPageProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-slate-600">Loading dashboard...</div>
+        <div className="text-slate-600 dark:text-gray-400">Loading dashboard...</div>
       </div>
     );
   }

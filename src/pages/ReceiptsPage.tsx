@@ -364,7 +364,7 @@ export function ReceiptsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-slate-600">Loading receipts...</div>
+        <div className="text-slate-600 dark:text-gray-400">Loading receipts...</div>
       </div>
     );
   }
@@ -568,7 +568,7 @@ export function ReceiptsPage() {
 
         {totalCount > itemsPerPage && (
           <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200">
-            <div className="text-sm text-slate-600">
+            <div className="text-sm text-slate-600 dark:text-gray-400">
               Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} receipts
             </div>
             <div className="flex gap-2">
@@ -628,7 +628,7 @@ export function ReceiptsPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg p-8 flex flex-col items-center gap-4">
             <Loader2 size={48} className="text-blue-600 animate-spin" />
             <p className="text-lg font-medium text-slate-800 dark:text-white">Extracting receipt data...</p>
-            <p className="text-sm text-slate-600">This may take a moment</p>
+            <p className="text-sm text-slate-600 dark:text-gray-400">This may take a moment</p>
           </div>
         </div>
       )}

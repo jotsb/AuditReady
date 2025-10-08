@@ -140,7 +140,7 @@ export function ProfileManagement() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-slate-600">Loading profile...</div>
+        <div className="text-slate-600 dark:text-gray-400">Loading profile...</div>
       </div>
     );
   }
@@ -149,7 +149,7 @@ export function ProfileManagement() {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-slate-800 mb-2">Profile Information</h3>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-slate-600 dark:text-gray-400">
           Update your personal information and email address
         </p>
       </div>

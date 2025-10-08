@@ -91,7 +91,7 @@ export function VerifyReceiptModal({ receiptId, extractedData, onConfirm, onClos
             onClick={onClose}
             className="p-2 hover:bg-slate-100 dark:hover:bg-gray-700 dark:bg-gray-700 rounded-lg transition"
           >
-            <X size={24} className="text-slate-600" />
+            <X size={24} className="text-slate-600 dark:text-gray-400" />
           </button>
         </div>
 

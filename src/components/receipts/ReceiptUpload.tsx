@@ -111,7 +111,7 @@ export function ReceiptUpload({ onUpload, onClose }: ReceiptUploadProps) {
             onClick={onClose}
             className="p-2 hover:bg-slate-100 dark:hover:bg-gray-700 dark:bg-gray-700 rounded-lg transition"
           >
-            <X size={24} className="text-slate-600" />
+            <X size={24} className="text-slate-600 dark:text-gray-400" />
           </button>
         </div>
 
@@ -128,14 +128,14 @@ export function ReceiptUpload({ onUpload, onClose }: ReceiptUploadProps) {
                     {converting || optimizing ? (
                       <>
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-                        <p className="text-sm text-slate-600">
+                        <p className="text-sm text-slate-600 dark:text-gray-400">
                           {converting ? 'Converting PDF...' : 'Optimizing image...'}
                         </p>
                       </>
                     ) : (
                       <>
                         <Upload size={48} className="text-slate-400 mb-4" />
-                        <p className="mb-2 text-sm text-slate-600">
+                        <p className="mb-2 text-sm text-slate-600 dark:text-gray-400">
                           <span className="font-semibold">Click to upload</span> or drag and drop
                         </p>
                         <p className="text-xs text-slate-500">PNG, JPG, PDF up to 50MB</p>
@@ -181,7 +181,7 @@ export function ReceiptUpload({ onUpload, onClose }: ReceiptUploadProps) {
                     <div className="flex items-center justify-center h-64 bg-slate-50">
                       <div className="text-center">
                         <Upload size={48} className="text-slate-400 mx-auto mb-2" />
-                        <p className="text-slate-600">{file?.name}</p>
+                        <p className="text-slate-600 dark:text-gray-400">{file?.name}</p>
                       </div>
                     </div>
                   )}

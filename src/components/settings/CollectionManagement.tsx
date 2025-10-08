@@ -251,7 +251,7 @@ export function CollectionManagement() {
             )}
 
             <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-              <div className="flex items-center gap-2 text-sm text-slate-600">
+              <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-gray-400">
                 <Users size={14} />
                 <span>{collection.business?.name || 'Unknown Business'}</span>
               </div>

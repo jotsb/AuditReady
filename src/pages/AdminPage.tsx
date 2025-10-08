@@ -149,7 +149,7 @@ export function AdminPage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 max-w-md w-full text-center">
           <AlertCircle className="mx-auto mb-4 text-red-600" size={48} />
           <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Access Denied</h2>
-          <p className="text-slate-600">You do not have permission to access this page.</p>
+          <p className="text-slate-600 dark:text-gray-400">You do not have permission to access this page.</p>
         </div>
       </div>
     );
@@ -158,7 +158,7 @@ export function AdminPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-gray-800 flex items-center justify-center">
-        <div className="text-slate-600">Loading admin dashboard...</div>
+        <div className="text-slate-600 dark:text-gray-400">Loading admin dashboard...</div>
       </div>
     );
   }
@@ -168,7 +168,7 @@ export function AdminPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">System Administration</h1>
-          <p className="text-slate-600">Manage all businesses and users across the platform</p>
+          <p className="text-slate-600 dark:text-gray-400">Manage all businesses and users across the platform</p>
         </div>
 
         <div className="mb-6">
@@ -315,16 +315,16 @@ export function AdminPage() {
                         <div className="text-sm font-medium text-slate-900">{business.name}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-600">{business.owner_email}</div>
+                        <div className="text-sm text-slate-600 dark:text-gray-400">{business.owner_email}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-600">{business.member_count}</div>
+                        <div className="text-sm text-slate-600 dark:text-gray-400">{business.member_count}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-600">{business.receipt_count}</div>
+                        <div className="text-sm text-slate-600 dark:text-gray-400">{business.receipt_count}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-600">
+                        <div className="text-sm text-slate-600 dark:text-gray-400">
                           {new Date(business.created_at).toLocaleDateString()}
                         </div>
                       </td>
@@ -337,7 +337,7 @@ export function AdminPage() {
 
           {totalBusinesses > itemsPerPage && (
             <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200">
-              <div className="text-sm text-slate-600">
+              <div className="text-sm text-slate-600 dark:text-gray-400">
                 Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalBusinesses)} of {totalBusinesses} businesses
               </div>
               <div className="flex gap-2">
@@ -544,7 +544,7 @@ function AuditLogsTab() {
   if (loading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-        <div className="text-center text-slate-600">Loading audit logs...</div>
+        <div className="text-center text-slate-600 dark:text-gray-400">Loading audit logs...</div>
       </div>
     );
   }
@@ -684,7 +684,7 @@ function AuditLogsTab() {
       {/* Logs Display */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
         <div className="px-6 py-4 bg-slate-50 dark:bg-gray-800 border-b border-slate-200">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-slate-600 dark:text-gray-400">
             Showing {filteredLogs.length} of {logs.length} total logs
           </p>
         </div>
@@ -786,7 +786,7 @@ function AnalyticsTab() {
   if (loading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-        <div className="text-center text-slate-600">Loading analytics...</div>
+        <div className="text-center text-slate-600 dark:text-gray-400">Loading analytics...</div>
       </div>
     );
   }
@@ -794,7 +794,7 @@ function AnalyticsTab() {
   if (!analytics) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-        <div className="text-center text-slate-600">No analytics data available</div>
+        <div className="text-center text-slate-600 dark:text-gray-400">No analytics data available</div>
       </div>
     );
   }
@@ -850,7 +850,7 @@ function AnalyticsTab() {
                 <div key={category}>
                   <div className="flex justify-between mb-1">
                     <span className="text-sm font-medium text-slate-700">{category}</span>
-                    <span className="text-sm text-slate-600">{count} receipts</span>
+                    <span className="text-sm text-slate-600 dark:text-gray-400">{count} receipts</span>
                   </div>
                   <div className="w-full bg-slate-200 dark:bg-gray-700 rounded-full h-2.5">
                     <div
@@ -870,13 +870,13 @@ function AnalyticsTab() {
           <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-4">Growth Metrics</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-gray-800 rounded-lg">
-              <span className="text-slate-600">Avg Receipts per Business</span>
+              <span className="text-slate-600 dark:text-gray-400">Avg Receipts per Business</span>
               <span className="font-bold text-slate-800 dark:text-white">
                 {(analytics.totalReceipts / analytics.totalBusinesses || 0).toFixed(1)}
               </span>
             </div>
             <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-gray-800 rounded-lg">
-              <span className="text-slate-600">Total Collections</span>
+              <span className="text-slate-600 dark:text-gray-400">Total Collections</span>
               <span className="font-bold text-slate-800 dark:text-white">{analytics.totalCollections}</span>
             </div>
           </div>
@@ -886,13 +886,13 @@ function AnalyticsTab() {
           <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-4">Activity Summary</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-gray-800 rounded-lg">
-              <span className="text-slate-600">Businesses Created Today</span>
+              <span className="text-slate-600 dark:text-gray-400">Businesses Created Today</span>
               <span className="font-bold text-slate-800 dark:text-white">
                 {analytics.recentBusinesses > 0 ? '🔥' : '—'}
               </span>
             </div>
             <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-gray-800 rounded-lg">
-              <span className="text-slate-600">Platform Status</span>
+              <span className="text-slate-600 dark:text-gray-400">Platform Status</span>
               <span className="font-bold text-green-600">Operational</span>
             </div>
           </div>

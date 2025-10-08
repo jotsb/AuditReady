@@ -210,7 +210,7 @@ export function EnhancedAuditLogsPage() {
         <div className="text-center">
           <Activity className="mx-auto mb-4 text-slate-400" size={48} />
           <h2 className="text-xl font-semibold text-slate-700 dark:text-gray-300 mb-2">No Business Selected</h2>
-          <p className="text-slate-600">Please select a business to view audit logs</p>
+          <p className="text-slate-600 dark:text-gray-400">Please select a business to view audit logs</p>
         </div>
       </div>
     );
@@ -219,7 +219,7 @@ export function EnhancedAuditLogsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-gray-800 flex items-center justify-center">
-        <div className="text-slate-600">Loading audit logs...</div>
+        <div className="text-slate-600 dark:text-gray-400">Loading audit logs...</div>
       </div>
     );
   }
@@ -242,7 +242,7 @@ export function EnhancedAuditLogsPage() {
               Export CSV
             </button>
           </div>
-          <p className="text-slate-600">
+          <p className="text-slate-600 dark:text-gray-400">
             Complete activity history for {selectedBusiness.name}
           </p>
         </div>
@@ -370,7 +370,7 @@ export function EnhancedAuditLogsPage() {
         {/* Logs Table */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
           <div className="px-6 py-4 bg-slate-50 dark:bg-gray-800 border-b border-slate-200">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-slate-600 dark:text-gray-400">
               Showing {filteredLogs.length} of {logs.length} logs on page {currentPage} (Total: {totalCount} logs)
             </p>
           </div>
@@ -393,7 +393,7 @@ export function EnhancedAuditLogsPage() {
 
           {totalCount > itemsPerPage && (
             <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-gray-700 bg-slate-50">
-              <div className="text-sm text-slate-600">
+              <div className="text-sm text-slate-600 dark:text-gray-400">
                 Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} logs
               </div>
               <div className="flex gap-2">

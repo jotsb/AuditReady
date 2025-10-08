@@ -88,7 +88,7 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
     <div className="w-full max-w-md mx-auto p-8 bg-white rounded-lg shadow-lg">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-slate-800 mb-2">Create Account</h1>
-        <p className="text-slate-600">Start managing your receipts today</p>
+        <p className="text-slate-600 dark:text-gray-400">Start managing your receipts today</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -198,7 +198,7 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
       </form>
 
       <div className="mt-6 text-center">
-        <p className="text-slate-600">
+        <p className="text-slate-600 dark:text-gray-400">
           Already have an account?{' '}
           <button
             onClick={onToggleMode}

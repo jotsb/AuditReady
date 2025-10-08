@@ -150,7 +150,7 @@ export function TaxSummaryReport() {
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
         <div className="mb-6">
           <h3 className="text-xl font-semibold text-slate-800 mb-2">Tax Summary Report</h3>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-slate-600 dark:text-gray-400">
             Generate a comprehensive GST and PST summary for tax filing purposes
           </p>
         </div>
@@ -218,7 +218,7 @@ export function TaxSummaryReport() {
                 <div className="p-2 bg-orange-100 rounded-lg">
                   <TrendingUp size={20} className="text-orange-600" />
                 </div>
-                <span className="text-sm text-slate-600">Total GST</span>
+                <span className="text-sm text-slate-600 dark:text-gray-400">Total GST</span>
               </div>
               <p className="text-2xl font-bold text-slate-800 dark:text-white">${summary.totalGST.toFixed(2)}</p>
             </div>
@@ -228,7 +228,7 @@ export function TaxSummaryReport() {
                 <div className="p-2 bg-red-100 rounded-lg">
                   <TrendingUp size={20} className="text-red-600" />
                 </div>
-                <span className="text-sm text-slate-600">Total PST</span>
+                <span className="text-sm text-slate-600 dark:text-gray-400">Total PST</span>
               </div>
               <p className="text-2xl font-bold text-slate-800 dark:text-white">${summary.totalPST.toFixed(2)}</p>
             </div>
@@ -238,7 +238,7 @@ export function TaxSummaryReport() {
                 <div className="p-2 bg-green-100 rounded-lg">
                   <DollarSign size={20} className="text-green-600" />
                 </div>
-                <span className="text-sm text-slate-600">Total Amount</span>
+                <span className="text-sm text-slate-600 dark:text-gray-400">Total Amount</span>
               </div>
               <p className="text-2xl font-bold text-slate-800 dark:text-white">${summary.totalAmount.toFixed(2)}</p>
             </div>
@@ -248,7 +248,7 @@ export function TaxSummaryReport() {
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <Calendar size={20} className="text-blue-600" />
                 </div>
-                <span className="text-sm text-slate-600">Receipts</span>
+                <span className="text-sm text-slate-600 dark:text-gray-400">Receipts</span>
               </div>
               <p className="text-2xl font-bold text-slate-800 dark:text-white">{summary.receiptCount}</p>
             </div>
@@ -294,7 +294,7 @@ export function TaxSummaryReport() {
             <TrendingUp size={32} className="text-slate-400" />
           </div>
           <h3 className="text-lg font-semibold text-slate-800 mb-2">No Report Generated</h3>
-          <p className="text-slate-600">
+          <p className="text-slate-600 dark:text-gray-400">
             Select a year and click "Generate Report" to view tax summary
           </p>
         </div>

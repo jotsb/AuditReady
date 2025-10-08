@@ -239,7 +239,7 @@ export function CollectionsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-slate-600">Loading collections...</div>
+        <div className="text-slate-600 dark:text-gray-400">Loading collections...</div>
       </div>
     );
   }
@@ -453,7 +453,7 @@ export function CollectionsPage() {
 
           {totalCollections > itemsPerPage && (
             <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-200">
-              <div className="text-sm text-slate-600">
+              <div className="text-sm text-slate-600 dark:text-gray-400">
                 Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCollections)} of {totalCollections} collections
               </div>
               <div className="flex gap-2">

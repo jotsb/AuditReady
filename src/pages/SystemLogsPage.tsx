@@ -224,7 +224,7 @@ export function SystemLogsPage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 max-w-md w-full text-center">
           <AlertCircle className="mx-auto mb-4 text-red-600" size={48} />
           <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Access Denied</h2>
-          <p className="text-slate-600">You do not have permission to view system logs.</p>
+          <p className="text-slate-600 dark:text-gray-400">You do not have permission to view system logs.</p>
         </div>
       </div>
     );
@@ -233,7 +233,7 @@ export function SystemLogsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-gray-800 flex items-center justify-center">
-        <div className="text-slate-600">Loading system logs...</div>
+        <div className="text-slate-600 dark:text-gray-400">Loading system logs...</div>
       </div>
     );
   }
@@ -269,7 +269,7 @@ export function SystemLogsPage() {
               </button>
             </div>
           </div>
-          <p className="text-slate-600">
+          <p className="text-slate-600 dark:text-gray-400">
             Infrastructure and application logs
           </p>
         </div>
@@ -402,7 +402,7 @@ export function SystemLogsPage() {
         {/* Logs Display */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
           <div className="px-6 py-4 bg-slate-50 dark:bg-gray-800 border-b border-slate-200">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-slate-600 dark:text-gray-400">
               Showing {filteredLogs.length} of {logs.length} logs on page {currentPage} (Total: {totalCount} logs)
             </p>
           </div>
@@ -425,7 +425,7 @@ export function SystemLogsPage() {
 
           {totalCount > itemsPerPage && (
             <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-gray-700 bg-slate-50">
-              <div className="text-sm text-slate-600">
+              <div className="text-sm text-slate-600 dark:text-gray-400">
                 Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} logs
               </div>
               <div className="flex gap-2">

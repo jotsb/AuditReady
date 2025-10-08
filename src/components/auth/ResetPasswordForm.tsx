@@ -101,7 +101,7 @@ export function ResetPasswordForm() {
       <div className="w-full max-w-md mx-auto p-8 bg-white rounded-lg shadow-lg">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-slate-800 mb-2">Set New Password</h1>
-          <p className="text-slate-600">Enter your new password below</p>
+          <p className="text-slate-600 dark:text-gray-400">Enter your new password below</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">

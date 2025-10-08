@@ -415,7 +415,7 @@ export function BusinessManagement() {
                   type="text"
                   value={transferringBusiness.name}
                   disabled
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg bg-slate-50 dark:bg-gray-800 text-slate-600"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg bg-slate-50 dark:bg-gray-800 text-slate-600 dark:text-gray-400"
                 />
               </div>
 
