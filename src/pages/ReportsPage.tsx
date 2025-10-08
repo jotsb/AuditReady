@@ -27,13 +27,15 @@ export function ReportsPage() {
   if (selectedReport) {
     return (
       <div className="space-y-6">
-        <button
-          onClick={handleBackClick}
-          className="flex items-center gap-2 text-slate-600 dark:text-gray-400 hover:text-slate-800 dark:hover:text-gray-200 transition"
-        >
-          <ArrowLeft size={20} />
-          <span>Back to Reports</span>
-        </button>
+        <div className="mt-4">
+          <button
+            onClick={handleBackClick}
+            className="flex items-center gap-2 text-slate-600 dark:text-gray-400 hover:text-slate-800 dark:hover:text-gray-200 transition"
+          >
+            <ArrowLeft size={20} />
+            <span>Back to Reports</span>
+          </button>
+        </div>
 
         {selectedReport === 'csv' && <CSVExportReport />}
         {selectedReport === 'tax' && <TaxSummaryReport />}
