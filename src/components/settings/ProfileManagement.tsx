@@ -168,7 +168,7 @@ export function ProfileManagement() {
 
       <form onSubmit={handleSaveProfile} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
+          <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
             <div className="flex items-center gap-2">
               <User size={16} />
               Full Name
@@ -178,13 +178,13 @@ export function ProfileManagement() {
             type="text"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Enter your full name"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
+          <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
             <div className="flex items-center gap-2">
               <Mail size={16} />
               Email Address
@@ -194,7 +194,7 @@ export function ProfileManagement() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="you@example.com"
             required
           />
@@ -204,7 +204,7 @@ export function ProfileManagement() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
+          <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
             <div className="flex items-center gap-2">
               <Phone size={16} />
               Phone Number
@@ -214,7 +214,7 @@ export function ProfileManagement() {
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="+1 (555) 123-4567"
           />
         </div>
@@ -246,14 +246,14 @@ export function ProfileManagement() {
       {showPasswordSection && (
         <form onSubmit={handleChangePassword} className="space-y-4 border-t border-slate-200 pt-6">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
               New Password
             </label>
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter new password"
               required
               minLength={8}
@@ -262,14 +262,14 @@ export function ProfileManagement() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
               Confirm New Password
             </label>
             <input
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Confirm new password"
               required
               minLength={8}
@@ -285,7 +285,7 @@ export function ProfileManagement() {
                 setConfirmPassword('');
                 setError('');
               }}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-6 py-2 rounded-lg transition"
+              className="bg-slate-100 dark:bg-gray-700 hover:bg-slate-200 dark:bg-gray-700 text-slate-700 dark:text-gray-300 font-medium px-6 py-2 rounded-lg transition"
             >
               Cancel
             </button>

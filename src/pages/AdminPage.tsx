@@ -145,7 +145,7 @@ export function AdminPage() {
 
   if (!isSystemAdmin) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-gray-800 flex items-center justify-center">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 max-w-md w-full text-center">
           <AlertCircle className="mx-auto mb-4 text-red-600" size={48} />
           <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Access Denied</h2>
@@ -157,7 +157,7 @@ export function AdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-gray-800 flex items-center justify-center">
         <div className="text-slate-600">Loading admin dashboard...</div>
       </div>
     );
@@ -179,7 +179,7 @@ export function AdminPage() {
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition ${
                   activeTab === 'overview'
                     ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:text-gray-300 hover:border-slate-300'
                 }`}
               >
                 <Building2 className="inline mr-2" size={18} />
@@ -190,7 +190,7 @@ export function AdminPage() {
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition ${
                   activeTab === 'users'
                     ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:text-gray-300 hover:border-slate-300'
                 }`}
               >
                 <UserCog className="inline mr-2" size={18} />
@@ -201,7 +201,7 @@ export function AdminPage() {
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition ${
                   activeTab === 'logs'
                     ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:text-gray-300 hover:border-slate-300'
                 }`}
               >
                 <Activity className="inline mr-2" size={18} />
@@ -212,7 +212,7 @@ export function AdminPage() {
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition ${
                   activeTab === 'analytics'
                     ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:text-gray-300 hover:border-slate-300'
                 }`}
               >
                 <BarChart3 className="inline mr-2" size={18} />
@@ -282,21 +282,21 @@ export function AdminPage() {
 
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-200">
+              <thead className="bg-slate-50 dark:bg-gray-800 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
                     Business Name
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
                     Owner Email
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
                     Members
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
                     Receipts
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
                     Created At
                   </th>
                 </tr>
@@ -310,7 +310,7 @@ export function AdminPage() {
                   </tr>
                 ) : (
                   businesses.map((business) => (
-                    <tr key={business.id} className="hover:bg-slate-50 transition">
+                    <tr key={business.id} className="hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 transition">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-slate-900">{business.name}</div>
                       </td>
@@ -344,7 +344,7 @@ export function AdminPage() {
                 <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   Previous
                 </button>
@@ -367,7 +367,7 @@ export function AdminPage() {
                             className={`px-3 py-2 text-sm font-medium rounded-lg transition ${
                               currentPage === page
                                 ? 'bg-blue-600 text-white'
-                                : 'text-slate-700 bg-white border border-slate-300 hover:bg-slate-50'
+                                : 'text-slate-700 dark:text-gray-300 bg-white border border-slate-300 dark:border-gray-600 hover:bg-slate-50'
                             }`}
                           >
                             {page}
@@ -379,7 +379,7 @@ export function AdminPage() {
                 <button
                   onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalBusinesses / itemsPerPage), p + 1))}
                   disabled={currentPage >= Math.ceil(totalBusinesses / itemsPerPage)}
-                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   Next
                 </button>
@@ -562,7 +562,7 @@ function AuditLogsTab() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <FilterIcon className="text-slate-500 mr-2" size={20} />
+            <FilterIcon className="text-slate-500 dark:text-gray-400 mr-2" size={20} />
             <h3 className="font-semibold text-slate-800">Filters</h3>
           </div>
           <div className="flex gap-3">
@@ -592,7 +592,7 @@ function AuditLogsTab() {
               placeholder="Search logs..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
         </div>
@@ -600,11 +600,11 @@ function AuditLogsTab() {
         {/* Filter Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Action</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">Action</label>
             <select
               value={filterAction}
               onChange={(e) => setFilterAction(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               {actionTypes.map(action => (
                 <option key={action} value={action}>
@@ -615,11 +615,11 @@ function AuditLogsTab() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Resource Type</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">Resource Type</label>
             <select
               value={filterResource}
               onChange={(e) => setFilterResource(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               {resourceTypes.map(resource => (
                 <option key={resource} value={resource}>
@@ -630,11 +630,11 @@ function AuditLogsTab() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">Status</label>
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               {statuses.map(status => (
                 <option key={status} value={status}>
@@ -645,11 +645,11 @@ function AuditLogsTab() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">Role</label>
             <select
               value={filterRole}
               onChange={(e) => setFilterRole(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               {roles.map(role => (
                 <option key={role} value={role}>
@@ -660,22 +660,22 @@ function AuditLogsTab() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Start Date</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">Start Date</label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">End Date</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">End Date</label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
         </div>
@@ -683,7 +683,7 @@ function AuditLogsTab() {
 
       {/* Logs Display */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
+        <div className="px-6 py-4 bg-slate-50 dark:bg-gray-800 border-b border-slate-200">
           <p className="text-sm text-slate-600">
             Showing {filteredLogs.length} of {logs.length} total logs
           </p>
@@ -693,7 +693,7 @@ function AuditLogsTab() {
           {filteredLogs.length === 0 ? (
             <div className="px-6 py-12 text-center">
               <Activity className="mx-auto mb-3 text-slate-300" size={48} />
-              <p className="text-slate-500 font-medium">No audit logs found</p>
+              <p className="text-slate-500 dark:text-gray-400 font-medium">No audit logs found</p>
               <p className="text-slate-400 text-sm mt-1">
                 Try adjusting your filters or search criteria
               </p>
@@ -852,7 +852,7 @@ function AnalyticsTab() {
                     <span className="text-sm font-medium text-slate-700">{category}</span>
                     <span className="text-sm text-slate-600">{count} receipts</span>
                   </div>
-                  <div className="w-full bg-slate-200 rounded-full h-2.5">
+                  <div className="w-full bg-slate-200 dark:bg-gray-700 rounded-full h-2.5">
                     <div
                       className={`${colors[index]} h-2.5 rounded-full transition-all duration-500`}
                       style={{ width: `${percentage}%` }}
@@ -869,13 +869,13 @@ function AnalyticsTab() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-4">Growth Metrics</h3>
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-gray-800 rounded-lg">
               <span className="text-slate-600">Avg Receipts per Business</span>
               <span className="font-bold text-slate-800">
                 {(analytics.totalReceipts / analytics.totalBusinesses || 0).toFixed(1)}
               </span>
             </div>
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-gray-800 rounded-lg">
               <span className="text-slate-600">Total Collections</span>
               <span className="font-bold text-slate-800">{analytics.totalCollections}</span>
             </div>
@@ -885,13 +885,13 @@ function AnalyticsTab() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-4">Activity Summary</h3>
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-gray-800 rounded-lg">
               <span className="text-slate-600">Businesses Created Today</span>
               <span className="font-bold text-slate-800">
                 {analytics.recentBusinesses > 0 ? '🔥' : '—'}
               </span>
             </div>
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-gray-800 rounded-lg">
               <span className="text-slate-600">Platform Status</span>
               <span className="font-bold text-green-600">Operational</span>
             </div>

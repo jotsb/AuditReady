@@ -300,7 +300,7 @@ export function BusinessManagement() {
       </div>
 
       {businesses.length === 0 && (
-        <div className="text-center py-12 bg-slate-50 rounded-lg border border-slate-200">
+        <div className="text-center py-12 bg-slate-50 dark:bg-gray-800 rounded-lg border border-slate-200">
           <Building2 size={48} className="mx-auto text-slate-400 mb-4" />
           <h3 className="text-lg font-semibold text-slate-800 mb-2">No businesses yet</h3>
           <p className="text-slate-600 mb-4">Create your first business to start managing receipts</p>
@@ -323,7 +323,7 @@ export function BusinessManagement() {
 
             <form onSubmit={editingBusiness ? handleUpdate : handleCreate} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">
                   Business Name *
                 </label>
                 <input
@@ -332,12 +332,12 @@ export function BusinessManagement() {
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
                   placeholder="e.g., Acme Corp"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">
                   Tax ID / Business Number
                 </label>
                 <input
@@ -345,19 +345,19 @@ export function BusinessManagement() {
                   value={formData.tax_id}
                   onChange={(e) => setFormData({ ...formData, tax_id: e.target.value })}
                   placeholder="e.g., 123456789"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">
                   Currency *
                 </label>
                 <select
                   value={formData.currency}
                   onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
                   required
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   {CURRENCIES.map((currency) => (
                     <option key={currency.code} value={currency.code}>
@@ -377,7 +377,7 @@ export function BusinessManagement() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition"
+                  className="flex-1 px-4 py-2 border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-gray-300 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 transition"
                 >
                   Cancel
                 </button>
@@ -408,19 +408,19 @@ export function BusinessManagement() {
 
             <form onSubmit={handleTransferOwnership} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">
                   Business
                 </label>
                 <input
                   type="text"
                   value={transferringBusiness.name}
                   disabled
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-600"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg bg-slate-50 dark:bg-gray-800 text-slate-600"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">
                   New Owner User ID *
                 </label>
                 <input
@@ -429,9 +429,9 @@ export function BusinessManagement() {
                   onChange={(e) => setTransferEmail(e.target.value)}
                   required
                   placeholder="Enter user ID (UUID)"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-slate-500 dark:text-gray-400 mt-1">
                   Enter the UUID of the user you want to transfer ownership to
                 </p>
               </div>
@@ -446,7 +446,7 @@ export function BusinessManagement() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition"
+                  className="flex-1 px-4 py-2 border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-gray-300 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 transition"
                 >
                   Cancel
                 </button>

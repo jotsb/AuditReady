@@ -109,7 +109,7 @@ export function ReceiptUpload({ onUpload, onClose }: ReceiptUploadProps) {
           <h2 className="text-2xl font-bold text-slate-800">Upload Receipt</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-lg transition"
+            className="p-2 hover:bg-slate-100 dark:hover:bg-gray-700 dark:bg-gray-700 rounded-lg transition"
           >
             <X size={24} className="text-slate-600" />
           </button>
@@ -117,13 +117,13 @@ export function ReceiptUpload({ onUpload, onClose }: ReceiptUploadProps) {
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-4">
+            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-4">
               Select Receipt Image or PDF
             </label>
 
             {!preview ? (
               <div className="space-y-4">
-                <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition">
+                <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-slate-300 dark:border-gray-600 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition">
                   <div className="flex flex-col items-center justify-center pt-5 pb-6">
                     {converting || optimizing ? (
                       <>
@@ -160,7 +160,7 @@ export function ReceiptUpload({ onUpload, onClose }: ReceiptUploadProps) {
                   </div>
                 </div>
 
-                <label className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-slate-100 text-slate-700 rounded-lg cursor-pointer hover:bg-slate-200 transition">
+                <label className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-gray-300 rounded-lg cursor-pointer hover:bg-slate-200 dark:bg-gray-700 transition">
                   <Camera size={20} />
                   <span className="font-medium">Take Photo</span>
                   <input
@@ -211,7 +211,7 @@ export function ReceiptUpload({ onUpload, onClose }: ReceiptUploadProps) {
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-3 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition"
+              className="px-6 py-3 bg-slate-200 dark:bg-gray-700 text-slate-700 dark:text-gray-300 rounded-lg hover:bg-slate-300 dark:hover:bg-gray-600 transition"
             >
               Cancel
             </button>

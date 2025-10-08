@@ -28,7 +28,7 @@ export function AuditLogEntry({ log }: AuditLogEntryProps) {
       case 'success': return 'bg-green-100 text-green-800';
       case 'failure': return 'bg-red-100 text-red-800';
       case 'denied': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-slate-100 text-slate-800';
+      default: return 'bg-slate-100 dark:bg-gray-700 text-slate-800';
     }
   };
 
@@ -38,7 +38,7 @@ export function AuditLogEntry({ log }: AuditLogEntryProps) {
     if (action.startsWith('delete')) return 'bg-red-100 text-red-800';
     if (action.includes('approve')) return 'bg-green-100 text-green-800';
     if (action.includes('reject')) return 'bg-red-100 text-red-800';
-    return 'bg-slate-100 text-slate-800';
+    return 'bg-slate-100 dark:bg-gray-700 text-slate-800';
   };
 
   const formatActionName = (action: string) => {
@@ -49,7 +49,7 @@ export function AuditLogEntry({ log }: AuditLogEntryProps) {
 
   const renderSnapshotComparison = () => {
     if (!log.snapshot_before && !log.snapshot_after) {
-      return <div className="text-sm text-slate-500 italic">No snapshot data available</div>;
+      return <div className="text-sm text-slate-500 dark:text-gray-400 italic">No snapshot data available</div>;
     }
 
     const before = log.snapshot_before || {};
@@ -62,12 +62,12 @@ export function AuditLogEntry({ log }: AuditLogEntryProps) {
     );
 
     if (filteredKeys.length === 0) {
-      return <div className="text-sm text-slate-500 italic">No changes to display</div>;
+      return <div className="text-sm text-slate-500 dark:text-gray-400 italic">No changes to display</div>;
     }
 
     return (
       <div className="mt-4 border border-slate-200 rounded-lg overflow-hidden">
-        <div className="bg-slate-50 px-4 py-2 border-b border-slate-200">
+        <div className="bg-slate-50 dark:bg-gray-800 px-4 py-2 border-b border-slate-200">
           <h4 className="font-semibold text-slate-700">Changes</h4>
         </div>
         <div className="overflow-x-auto">
@@ -116,7 +116,7 @@ export function AuditLogEntry({ log }: AuditLogEntryProps) {
   };
 
   return (
-    <div className="border-b border-slate-200 hover:bg-slate-50 transition">
+    <div className="border-b border-slate-200 hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 transition">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full px-6 py-4 text-left"
@@ -137,7 +137,7 @@ export function AuditLogEntry({ log }: AuditLogEntryProps) {
                 {log.status}
               </span>
               {log.actor_role && (
-                <span className="px-2 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-700">
+                <span className="px-2 py-1 text-xs font-medium rounded-full bg-slate-100 dark:bg-gray-700 text-slate-700">
                   {log.actor_role}
                 </span>
               )}
@@ -146,9 +146,9 @@ export function AuditLogEntry({ log }: AuditLogEntryProps) {
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium text-slate-900 truncate">
                 {log.profiles?.full_name || 'Unknown User'}
-                <span className="text-slate-500 font-normal"> • {log.resource_type}</span>
+                <span className="text-slate-500 dark:text-gray-400 font-normal"> • {log.resource_type}</span>
               </div>
-              <div className="text-xs text-slate-500 mt-1">
+              <div className="text-xs text-slate-500 dark:text-gray-400 mt-1">
                 {new Date(log.created_at).toLocaleString()}
               </div>
             </div>

@@ -124,7 +124,7 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
               </div>
               <button
                 onClick={() => setEditingReceipt(receipt)}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition"
+                className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-gray-300 rounded-lg hover:bg-slate-200 dark:hover:bg-gray-600 dark:bg-gray-700 transition"
               >
                 <Edit2 size={16} />
                 <span>Edit</span>
@@ -244,7 +244,7 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
                   <div className="text-slate-800">
                     {receipt.payment_method}
                     {receipt.extraction_data?.card_last_digits && (
-                      <span className="text-slate-500 ml-2">(...{receipt.extraction_data.card_last_digits})</span>
+                      <span className="text-slate-500 dark:text-gray-400 ml-2">(...{receipt.extraction_data.card_last_digits})</span>
                     )}
                   </div>
                 </div>
@@ -265,7 +265,7 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
               {receipt.notes && (
                 <div className="pt-4 border-t border-slate-200">
                   <div className="text-sm text-slate-600 dark:text-gray-400 mb-2">Notes</div>
-                  <div className="text-slate-800 dark:text-white bg-slate-50 p-3 rounded-lg">
+                  <div className="text-slate-800 dark:text-white bg-slate-50 dark:bg-gray-800 p-3 rounded-lg">
                     {receipt.notes}
                   </div>
                 </div>
@@ -332,7 +332,7 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
               />
             </div>
           ) : (
-            <div className="flex items-center justify-center h-96 bg-slate-50 rounded-lg border border-slate-200">
+            <div className="flex items-center justify-center h-96 bg-slate-50 dark:bg-gray-800 rounded-lg border border-slate-200">
               <div className="text-center text-slate-500">
                 <FileText size={48} className="mx-auto mb-2 opacity-50" />
                 <p>No image available</p>

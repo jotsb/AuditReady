@@ -30,7 +30,7 @@ export function RecentReceipts({ receipts, onViewReceipt }: RecentReceiptsProps)
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Recent Receipts</h3>
-        <Receipt size={20} className="text-slate-400 dark:text-gray-500" />
+        <Receipt size={20} className="text-slate-400 dark:text-gray-400" />
       </div>
 
       <div className="space-y-3">
@@ -58,7 +58,7 @@ export function RecentReceipts({ receipts, onViewReceipt }: RecentReceiptsProps)
                     )}
                   </div>
                   {receipt.collections && (
-                    <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-gray-500">
+                    <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-gray-400">
                       <Folder size={12} />
                       <span>
                         {receipt.collections.businesses?.name} - {receipt.collections.name}

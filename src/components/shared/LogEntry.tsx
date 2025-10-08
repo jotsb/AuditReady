@@ -53,7 +53,7 @@ export function LogEntry({ log }: LogEntryProps) {
       case 'success': return 'bg-green-100 text-green-800';
       case 'failure': return 'bg-red-100 text-red-800';
       case 'denied': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-slate-100 text-slate-800';
+      default: return 'bg-slate-100 dark:bg-gray-700 text-slate-800';
     }
   };
 
@@ -63,17 +63,17 @@ export function LogEntry({ log }: LogEntryProps) {
     if (action.startsWith('delete')) return 'bg-red-100 text-red-800';
     if (action.includes('approve')) return 'bg-green-100 text-green-800';
     if (action.includes('reject')) return 'bg-red-100 text-red-800';
-    return 'bg-slate-100 text-slate-800';
+    return 'bg-slate-100 dark:bg-gray-700 text-slate-800';
   };
 
   const getLevelColor = (level: string) => {
     switch (level) {
-      case 'DEBUG': return 'bg-slate-100 text-slate-800';
+      case 'DEBUG': return 'bg-slate-100 dark:bg-gray-700 text-slate-800';
       case 'INFO': return 'bg-blue-100 text-blue-800';
       case 'WARN': return 'bg-yellow-100 text-yellow-800';
       case 'ERROR': return 'bg-red-100 text-red-800';
       case 'CRITICAL': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-slate-100 text-slate-800';
+      default: return 'bg-slate-100 dark:bg-gray-700 text-slate-800';
     }
   };
 
@@ -86,7 +86,7 @@ export function LogEntry({ log }: LogEntryProps) {
       case 'CLIENT_ERROR': return 'bg-red-100 text-red-800';
       case 'SECURITY': return 'bg-orange-100 text-orange-800';
       case 'PERFORMANCE': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-slate-100 text-slate-800';
+      default: return 'bg-slate-100 dark:bg-gray-700 text-slate-800';
     }
   };
 
@@ -99,7 +99,7 @@ export function LogEntry({ log }: LogEntryProps) {
   // Render audit log snapshot comparison
   const renderAuditDetails = (auditLog: AuditLog) => {
     if (!auditLog.snapshot_before && !auditLog.snapshot_after) {
-      return <div className="text-sm text-slate-500 italic">No snapshot data available</div>;
+      return <div className="text-sm text-slate-500 dark:text-gray-400 italic">No snapshot data available</div>;
     }
 
     const before = auditLog.snapshot_before || {};
@@ -111,12 +111,12 @@ export function LogEntry({ log }: LogEntryProps) {
     );
 
     if (filteredKeys.length === 0) {
-      return <div className="text-sm text-slate-500 italic">No changes to display</div>;
+      return <div className="text-sm text-slate-500 dark:text-gray-400 italic">No changes to display</div>;
     }
 
     return (
       <div className="mt-4 border border-slate-200 rounded-lg overflow-hidden">
-        <div className="bg-slate-50 px-4 py-2 border-b border-slate-200">
+        <div className="bg-slate-50 dark:bg-gray-800 px-4 py-2 border-b border-slate-200">
           <h4 className="font-semibold text-slate-700">Changes</h4>
         </div>
         <div className="overflow-x-auto">
@@ -168,15 +168,15 @@ export function LogEntry({ log }: LogEntryProps) {
     const hasDetails = (sysLog.metadata && Object.keys(sysLog.metadata).length > 0) || sysLog.stack_trace;
 
     if (!hasDetails) {
-      return <div className="text-sm text-slate-500 italic">No additional details</div>;
+      return <div className="text-sm text-slate-500 dark:text-gray-400 italic">No additional details</div>;
     }
 
     return (
       <div className="space-y-3">
         {sysLog.metadata && Object.keys(sysLog.metadata).length > 0 && (
-          <div className="p-3 bg-slate-50 rounded border border-slate-200">
-            <div className="text-xs font-semibold text-slate-700 mb-2">Metadata</div>
-            <pre className="text-xs font-mono text-slate-700 whitespace-pre-wrap overflow-x-auto">
+          <div className="p-3 bg-slate-50 dark:bg-gray-800 rounded border border-slate-200">
+            <div className="text-xs font-semibold text-slate-700 dark:text-gray-300 mb-2">Metadata</div>
+            <pre className="text-xs font-mono text-slate-700 dark:text-gray-300 whitespace-pre-wrap overflow-x-auto">
               {JSON.stringify(sysLog.metadata, null, 2)}
             </pre>
           </div>
@@ -227,7 +227,7 @@ export function LogEntry({ log }: LogEntryProps) {
             {auditLog.status}
           </span>
           {auditLog.actor_role && (
-            <span className="px-2 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-700">
+            <span className="px-2 py-1 text-xs font-medium rounded-full bg-slate-100 dark:bg-gray-700 text-slate-700">
               {auditLog.actor_role}
             </span>
           )}
@@ -241,7 +241,7 @@ export function LogEntry({ log }: LogEntryProps) {
             {sysLog.category}
           </span>
           {sysLog.execution_time_ms && (
-            <span className="px-2 py-1 text-xs font-medium rounded bg-slate-100 text-slate-700">
+            <span className="px-2 py-1 text-xs font-medium rounded bg-slate-100 dark:bg-gray-700 text-slate-700">
               {sysLog.execution_time_ms}ms
             </span>
           )}
@@ -275,7 +275,7 @@ export function LogEntry({ log }: LogEntryProps) {
       return (
         <>
           {auditLog.profiles?.full_name || 'Unknown User'}
-          <span className="text-slate-500 font-normal"> • {auditLog.resource_type}</span>
+          <span className="text-slate-500 dark:text-gray-400 font-normal"> • {auditLog.resource_type}</span>
         </>
       );
     } else {
@@ -314,7 +314,7 @@ export function LogEntry({ log }: LogEntryProps) {
   };
 
   return (
-    <div className="border-b border-slate-200 hover:bg-slate-50 transition">
+    <div className="border-b border-slate-200 hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 transition">
       <button
         onClick={() => hasExpandableContent && setIsExpanded(!isExpanded)}
         className={`w-full px-6 py-4 text-left ${hasExpandableContent ? 'cursor-pointer' : 'cursor-default'}`}
@@ -341,7 +341,7 @@ export function LogEntry({ log }: LogEntryProps) {
               <div className="text-sm font-medium text-slate-900 truncate">
                 {getMainText()}
               </div>
-              <div className="text-xs text-slate-500 mt-1">
+              <div className="text-xs text-slate-500 dark:text-gray-400 mt-1">
                 {getTimestamp()}
                 {getSecondaryInfo()}
               </div>
@@ -360,7 +360,7 @@ export function LogEntry({ log }: LogEntryProps) {
                       {receiptDetails.amount && (
                         <>
                           {receiptDetails.category && <span className="text-slate-400"> • </span>}
-                          <span className="text-slate-700 font-semibold">${parseFloat(receiptDetails.amount).toFixed(2)}</span>
+                          <span className="text-slate-700 dark:text-gray-300 font-semibold">${parseFloat(receiptDetails.amount).toFixed(2)}</span>
                         </>
                       )}
                       {receiptDetails.date && (

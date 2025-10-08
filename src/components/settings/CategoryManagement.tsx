@@ -153,10 +153,10 @@ export function CategoryManagement() {
       </div>
 
       {showAddForm && (
-        <form onSubmit={handleAddCategory} className="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+        <form onSubmit={handleAddCategory} className="mb-6 p-4 bg-slate-50 dark:bg-gray-800 rounded-lg border border-slate-200">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">
                 Category Name *
               </label>
               <input
@@ -165,11 +165,11 @@ export function CategoryManagement() {
                 value={newCategory.name}
                 onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
                 placeholder="e.g., Vehicle Expenses"
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">
                 Description
               </label>
               <input
@@ -177,7 +177,7 @@ export function CategoryManagement() {
                 value={newCategory.description}
                 onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
                 placeholder="Brief description of this category"
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
             <div className="flex gap-2">
@@ -202,7 +202,7 @@ export function CategoryManagement() {
                   setNewCategory({ name: '', description: '' });
                   setError(null);
                 }}
-                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition"
+                className="px-4 py-2 border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-gray-300 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 transition"
               >
                 Cancel
               </button>
@@ -225,7 +225,7 @@ export function CategoryManagement() {
           categories.map((category) => (
             <div
               key={category.id}
-              className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:border-slate-300 transition"
+              className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:border-slate-300 dark:border-gray-600 transition"
             >
               <div className="flex-1">
                 <div className="font-medium text-slate-800">{category.name}</div>
@@ -255,14 +255,14 @@ export function CategoryManagement() {
             <button
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               Previous
             </button>
             <button
               onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalCategories / itemsPerPage), p + 1))}
               disabled={currentPage >= Math.ceil(totalCategories / itemsPerPage)}
-              className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               Next
             </button>

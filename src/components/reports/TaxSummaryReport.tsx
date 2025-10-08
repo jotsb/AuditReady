@@ -157,13 +157,13 @@ export function TaxSummaryReport() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 ">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
               Year
             </label>
             <select
               value={year}
               onChange={(e) => setYear(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               {years.map(y => (
                 <option key={y} value={y}>{y}</option>
@@ -172,13 +172,13 @@ export function TaxSummaryReport() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
               Business
             </label>
             <select
               value={selectedBusiness}
               onChange={(e) => setSelectedBusiness(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">All Businesses</option>
               {businesses.map(b => (
@@ -270,12 +270,12 @@ export function TaxSummaryReport() {
                   {summary.monthlyBreakdown.map((item, index) => (
                     <tr key={index} className="border-b border-slate-100 hover:bg-slate-50">
                       <td className="py-3 px-4 text-sm text-slate-700">{item.month}</td>
-                      <td className="py-3 px-4 text-sm text-slate-700 text-right">${item.gst.toFixed(2)}</td>
-                      <td className="py-3 px-4 text-sm text-slate-700 text-right">${item.pst.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-sm text-slate-700 dark:text-gray-300 text-right">${item.gst.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-sm text-slate-700 dark:text-gray-300 text-right">${item.pst.toFixed(2)}</td>
                       <td className="py-3 px-4 text-sm font-medium text-slate-800 text-right">${item.total.toFixed(2)}</td>
                     </tr>
                   ))}
-                  <tr className="bg-slate-50 font-semibold">
+                  <tr className="bg-slate-50 dark:bg-gray-800 font-semibold">
                     <td className="py-3 px-4 text-sm text-slate-800">TOTAL</td>
                     <td className="py-3 px-4 text-sm text-slate-800 text-right">${summary.totalGST.toFixed(2)}</td>
                     <td className="py-3 px-4 text-sm text-slate-800 text-right">${summary.totalPST.toFixed(2)}</td>
@@ -290,7 +290,7 @@ export function TaxSummaryReport() {
 
       {!summary && !loading && (
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-12 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 dark:bg-gray-700 rounded-full mb-4">
             <TrendingUp size={32} className="text-slate-400" />
           </div>
           <h3 className="text-lg font-semibold text-slate-800 mb-2">No Report Generated</h3>

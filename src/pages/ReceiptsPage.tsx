@@ -388,7 +388,7 @@ export function ReceiptsPage() {
             <select
               value={selectedCollection}
               onChange={(e) => handleCollectionChange(e.target.value)}
-              className="w-full md:w-auto px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full md:w-auto px-4 py-2 border border-slate-300 dark:border-gray-600 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
               {collections.map((col) => (
                 <option key={col.id} value={col.id}>
@@ -424,7 +424,7 @@ export function ReceiptsPage() {
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
               placeholder="Search receipts..."
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
 
@@ -433,7 +433,7 @@ export function ReceiptsPage() {
             <select
               value={filterCategory}
               onChange={(e) => handleCategoryFilterChange(e.target.value)}
-              className="w-full md:w-auto pl-10 pr-8 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full md:w-auto pl-10 pr-8 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">All Categories</option>
               <option value="Meals & Entertainment">Meals & Entertainment</option>
@@ -448,7 +448,7 @@ export function ReceiptsPage() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead className="bg-slate-50 dark:bg-gray-800 border-b border-slate-200">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
                   Vendor
@@ -474,7 +474,7 @@ export function ReceiptsPage() {
               {filteredReceipts.map((receipt) => (
                 <tr
                   key={receipt.id}
-                  className="hover:bg-slate-50 transition cursor-pointer"
+                  className="hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 transition cursor-pointer"
                   onClick={() => handleViewClick(receipt.id)}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -537,7 +537,7 @@ export function ReceiptsPage() {
                           e.stopPropagation();
                           handleEditClick(receipt);
                         }}
-                        className="p-2 text-slate-600 hover:bg-slate-50 rounded-lg transition"
+                        className="p-2 text-slate-600 hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 rounded-lg transition"
                         title="Edit receipt"
                       >
                         <Edit2 size={16} />
@@ -575,7 +575,7 @@ export function ReceiptsPage() {
               <button
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-slate-300 dark:border-gray-600 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
               >
                 Previous
               </button>
@@ -598,7 +598,7 @@ export function ReceiptsPage() {
                           className={`px-3 py-2 text-sm font-medium rounded-lg transition ${
                             currentPage === page
                               ? 'bg-blue-600 text-white'
-                              : 'text-slate-700 bg-white border border-slate-300 hover:bg-slate-50'
+                              : 'text-slate-700 dark:text-gray-300 bg-white border border-slate-300 dark:border-gray-600 hover:bg-slate-50'
                           }`}
                         >
                           {page}
@@ -610,7 +610,7 @@ export function ReceiptsPage() {
               <button
                 onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalCount / itemsPerPage), p + 1))}
                 disabled={currentPage >= Math.ceil(totalCount / itemsPerPage)}
-                className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-slate-300 dark:border-gray-600 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
               >
                 Next
               </button>

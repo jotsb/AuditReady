@@ -257,7 +257,7 @@ export function CollectionsPage() {
           </button>
         </div>
       )}
-      <div className="bg-white dark:bg-gray-800rounded-lg shadow-sm border border-slate-200 dark:border-gray-700p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold text-slate-800">Businesses</h3>
           <button
@@ -270,10 +270,10 @@ export function CollectionsPage() {
         </div>
 
         {showNewBusinessForm && (
-          <form onSubmit={createBusiness} className="mb-6 p-4 border border-slate-200 dark:border-gray-700rounded-lg">
+          <form onSubmit={createBusiness} className="mb-6 p-4 border border-slate-200 dark:border-gray-700 rounded-lg">
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
                   Business Name
                 </label>
                 <input
@@ -281,7 +281,7 @@ export function CollectionsPage() {
                   value={newBusinessName}
                   onChange={(e) => setNewBusinessName(e.target.value)}
                   required
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="My Business Inc."
                 />
               </div>
@@ -295,7 +295,7 @@ export function CollectionsPage() {
                 <button
                   type="button"
                   onClick={() => setShowNewBusinessForm(false)}
-                  className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300"
+                  className="px-4 py-2 bg-slate-200 dark:bg-gray-700 text-slate-700 dark:text-gray-300 rounded-lg hover:bg-slate-300"
                 >
                   Cancel
                 </button>
@@ -312,7 +312,7 @@ export function CollectionsPage() {
                 className={`px-4 py-2 rounded-lg transition ${
                   selectedBusiness === business.id
                     ? 'bg-blue-600 text-white'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    : 'bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-gray-300 hover:bg-slate-200'
                 }`}
               >
                 {business.name}
@@ -336,7 +336,7 @@ export function CollectionsPage() {
       </div>
 
       {selectedBusiness && (
-        <div className="bg-white dark:bg-gray-800rounded-lg shadow-sm border border-slate-200 dark:border-gray-700p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-slate-800">Collections</h3>
             <button
@@ -349,10 +349,10 @@ export function CollectionsPage() {
           </div>
 
           {showNewCollectionForm && (
-            <form onSubmit={createCollection} className="mb-6 p-4 border border-slate-200 dark:border-gray-700rounded-lg">
+            <form onSubmit={createCollection} className="mb-6 p-4 border border-slate-200 dark:border-gray-700 rounded-lg">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
                     Collection Name
                   </label>
                   <input
@@ -360,12 +360,12 @@ export function CollectionsPage() {
                     value={newCollectionName}
                     onChange={(e) => setNewCollectionName(e.target.value)}
                     required
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     placeholder="2025 Tax Year"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
                     Year
                   </label>
                   <input
@@ -373,17 +373,17 @@ export function CollectionsPage() {
                     value={newCollectionYear}
                     onChange={(e) => setNewCollectionYear(parseInt(e.target.value))}
                     required
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
                     Description (Optional)
                   </label>
                   <textarea
                     value={newCollectionDesc}
                     onChange={(e) => setNewCollectionDesc(e.target.value)}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     placeholder="Add notes about this collection..."
                     rows={3}
                   />
@@ -398,7 +398,7 @@ export function CollectionsPage() {
                   <button
                     type="button"
                     onClick={() => setShowNewCollectionForm(false)}
-                    className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300"
+                    className="px-4 py-2 bg-slate-200 dark:bg-gray-700 text-slate-700 dark:text-gray-300 rounded-lg hover:bg-slate-300"
                   >
                     Cancel
                   </button>
@@ -411,7 +411,7 @@ export function CollectionsPage() {
             {collections.map((collection) => (
               <div
                 key={collection.id}
-                className="p-6 border border-slate-200 dark:border-gray-700rounded-lg hover:border-blue-300 hover:shadow-md transition relative group"
+                className="p-6 border border-slate-200 dark:border-gray-700 rounded-lg hover:border-blue-300 hover:shadow-md transition relative group"
               >
                 <button
                   onClick={() => deleteCollection(collection.id, collection.name)}
@@ -425,9 +425,9 @@ export function CollectionsPage() {
                     <FolderOpen size={24} className="text-blue-600" />
                   </div>
                   <div className="flex-1">
-                    <h4 className="font-semibold text-slate-800 dark:text-whitemb-1">{collection.name}</h4>
+                    <h4 className="font-semibold text-slate-800 dark:text-white mb-1">{collection.name}</h4>
                     {collection.description && (
-                      <p className="text-sm text-slate-600 dark:text-gray-400mb-3">{collection.description}</p>
+                      <p className="text-sm text-slate-600 dark:text-gray-400 mb-3">{collection.description}</p>
                     )}
                     <div className="flex items-center gap-4 text-sm text-slate-500">
                       <div className="flex items-center gap-1">
@@ -460,14 +460,14 @@ export function CollectionsPage() {
                 <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   Previous
                 </button>
                 <button
                   onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalCollections / itemsPerPage), p + 1))}
                   disabled={currentPage >= Math.ceil(totalCollections / itemsPerPage)}
-                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   Next
                 </button>

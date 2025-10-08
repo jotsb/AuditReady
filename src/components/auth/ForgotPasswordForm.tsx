@@ -55,7 +55,7 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
 
         <button
           onClick={onBack}
-          className="w-full mt-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-3 px-4 rounded-lg transition flex items-center justify-center gap-2"
+          className="w-full mt-6 bg-slate-100 dark:bg-gray-700 hover:bg-slate-200 dark:bg-gray-700 text-slate-700 dark:text-gray-300 font-medium py-3 px-4 rounded-lg transition flex items-center justify-center gap-2"
         >
           <ArrowLeft size={20} />
           Back to Login
@@ -73,7 +73,7 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
+          <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
             Email Address
           </label>
           <input
@@ -82,7 +82,7 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            className="w-full px-4 py-3 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
             placeholder="you@example.com"
           />
         </div>

@@ -206,10 +206,10 @@ export function EnhancedAuditLogsPage() {
 
   if (!selectedBusiness) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-gray-800 flex items-center justify-center">
         <div className="text-center">
           <Activity className="mx-auto mb-4 text-slate-400" size={48} />
-          <h2 className="text-xl font-semibold text-slate-700 mb-2">No Business Selected</h2>
+          <h2 className="text-xl font-semibold text-slate-700 dark:text-gray-300 mb-2">No Business Selected</h2>
           <p className="text-slate-600">Please select a business to view audit logs</p>
         </div>
       </div>
@@ -218,14 +218,14 @@ export function EnhancedAuditLogsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-gray-800 flex items-center justify-center">
         <div className="text-slate-600">Loading audit logs...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-gray-800 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
@@ -258,7 +258,7 @@ export function EnhancedAuditLogsPage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
-              <Filter className="text-slate-500 mr-2" size={20} />
+              <Filter className="text-slate-500 dark:text-gray-400 mr-2" size={20} />
               <h3 className="font-semibold text-slate-800">Filters</h3>
             </div>
             <button
@@ -278,7 +278,7 @@ export function EnhancedAuditLogsPage() {
                 placeholder="Search logs..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
           </div>
@@ -286,11 +286,11 @@ export function EnhancedAuditLogsPage() {
           {/* Filter Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Action</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">Action</label>
               <select
                 value={filterAction}
                 onChange={(e) => setFilterAction(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 {actionTypes.map(action => (
                   <option key={action} value={action}>
@@ -301,11 +301,11 @@ export function EnhancedAuditLogsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Resource</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">Resource</label>
               <select
                 value={filterResource}
                 onChange={(e) => setFilterResource(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 {resourceTypes.map(resource => (
                   <option key={resource} value={resource}>
@@ -316,11 +316,11 @@ export function EnhancedAuditLogsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">Status</label>
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 {statuses.map(status => (
                   <option key={status} value={status}>
@@ -331,11 +331,11 @@ export function EnhancedAuditLogsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">Role</label>
               <select
                 value={filterRole}
                 onChange={(e) => setFilterRole(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 {roles.map(role => (
                   <option key={role} value={role}>
@@ -346,22 +346,22 @@ export function EnhancedAuditLogsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Start Date</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">Start Date</label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">End Date</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">End Date</label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
           </div>
@@ -369,7 +369,7 @@ export function EnhancedAuditLogsPage() {
 
         {/* Logs Table */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-          <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
+          <div className="px-6 py-4 bg-slate-50 dark:bg-gray-800 border-b border-slate-200">
             <p className="text-sm text-slate-600">
               Showing {filteredLogs.length} of {logs.length} logs on page {currentPage} (Total: {totalCount} logs)
             </p>
@@ -379,7 +379,7 @@ export function EnhancedAuditLogsPage() {
             {filteredLogs.length === 0 ? (
               <div className="px-6 py-12 text-center">
                 <Activity className="mx-auto mb-3 text-slate-300" size={48} />
-                <p className="text-slate-500 font-medium">No audit logs found</p>
+                <p className="text-slate-500 dark:text-gray-400 font-medium">No audit logs found</p>
                 <p className="text-slate-400 text-sm mt-1">
                   Try adjusting your filters or search criteria
                 </p>
@@ -400,7 +400,7 @@ export function EnhancedAuditLogsPage() {
                 <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   Previous
                 </button>
@@ -423,7 +423,7 @@ export function EnhancedAuditLogsPage() {
                             className={`px-3 py-2 text-sm font-medium rounded-lg transition ${
                               currentPage === page
                                 ? 'bg-blue-600 text-white'
-                                : 'text-slate-700 bg-white border border-slate-300 hover:bg-slate-50'
+                                : 'text-slate-700 dark:text-gray-300 bg-white border border-slate-300 dark:border-gray-600 hover:bg-slate-50'
                             }`}
                           >
                             {page}
@@ -435,7 +435,7 @@ export function EnhancedAuditLogsPage() {
                 <button
                   onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalCount / itemsPerPage), p + 1))}
                   disabled={currentPage >= Math.ceil(totalCount / itemsPerPage)}
-                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   Next
                 </button>

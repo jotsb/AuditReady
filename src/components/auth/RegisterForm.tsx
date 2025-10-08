@@ -69,7 +69,7 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
             <li>Click the link to verify your email address</li>
             <li>Return here and sign in to start using AuditReady</li>
           </ol>
-          <p className="text-xs text-slate-500 pt-2">
+          <p className="text-xs text-slate-500 dark:text-gray-400 pt-2">
             If you don't see the email, check your spam folder.
           </p>
         </div>
@@ -93,7 +93,7 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label htmlFor="fullName" className="block text-sm font-medium text-slate-700 mb-2">
+          <label htmlFor="fullName" className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
             Full Name
           </label>
           <input
@@ -102,13 +102,13 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             required
-            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            className="w-full px-4 py-3 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
             placeholder="John Doe"
           />
         </div>
 
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
+          <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
             Email Address
           </label>
           <input
@@ -117,13 +117,13 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            className="w-full px-4 py-3 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
             placeholder="you@example.com"
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
+          <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
             Password
           </label>
           <input
@@ -132,7 +132,7 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            className="w-full px-4 py-3 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
             placeholder="Create a strong password"
           />
 
@@ -143,7 +143,7 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
                   {passwordStrength.label}
                 </span>
               </div>
-              <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-slate-200 dark:bg-gray-700 rounded-full overflow-hidden">
                 <div
                   className={`h-full ${passwordStrength.bgColor} transition-all duration-300`}
                   style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
@@ -161,7 +161,7 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
         </div>
 
         <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 mb-2">
+          <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
             Confirm Password
           </label>
           <input
@@ -170,7 +170,7 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
-            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            className="w-full px-4 py-3 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
             placeholder="Re-enter your password"
           />
         </div>
