@@ -100,42 +100,109 @@ Deno.serve(async (req: Request) => {
     
     const dataUrl = `data:image/${imageFormat};base64,${base64File}`;
 
+    const promptText = `Analyze this receipt and extract the following information. Return ONLY a valid JSON object with no additional text:\n\n{\n  \"vendor_name\": \"business name\",\n  \"vendor_address\": \"full address if visible\",\n  \"transaction_date\": \"YYYY-MM-DD format\",\n  \"transaction_time\": \"HH:MM format if visible\",\n  \"total_amount\": \"numeric value only\",\n  \"subtotal\": \"numeric value only\",\n  \"gst_amount\": \"GST/tax amount if visible\",\n  \"pst_amount\": \"PST amount if visible\",\n  \"gst_percent\": \"GST percentage if visible (just number)\",\n  \"pst_percent\": \"PST percentage if visible (just number)\",\n  \"card_last_digits\": \"last 4 digits of card if visible\",\n  \"customer_name\": \"customer name if visible\",\n  \"category\": \"Choose from: ${categoryList}\",\n  \"payment_method\": \"Cash, Credit Card, Debit Card, or Unknown\"\n}\n\nRules:\n- Return ONLY the JSON object, no other text\n- Use null for missing string values\n- Use 0 for missing amounts\n- For category: Choose the MOST APPROPRIATE category from the provided list. If none match well, use \"Miscellaneous\"\n- Extract amounts without currency symbols or percentage signs`;
+
+    const requestPayload = {
+      model: "gpt-5",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: promptText
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: dataUrl
+              }
+            }
+          ]
+        }
+      ],
+      max_completion_tokens: 500
+    };
+
+    // Log OpenAI request
+    await supabase.rpc('log_system_event', {
+      p_level: 'INFO',
+      p_category: 'EXTERNAL_API',
+      p_message: 'Sending request to OpenAI API',
+      p_metadata: {
+        filePath,
+        collectionId,
+        model: requestPayload.model,
+        prompt: promptText,
+        maxTokens: requestPayload.max_completion_tokens
+      },
+      p_user_id: null,
+      p_session_id: null,
+      p_ip_address: null,
+      p_user_agent: req.headers.get('user-agent'),
+      p_stack_trace: null,
+      p_execution_time_ms: null
+    });
+
+    const apiStartTime = Date.now();
     const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${openaiApiKey}`,
       },
-      body: JSON.stringify({
-        model: "gpt-5",
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: `Analyze this receipt and extract the following information. Return ONLY a valid JSON object with no additional text:\n\n{\n  \"vendor_name\": \"business name\",\n  \"vendor_address\": \"full address if visible\",\n  \"transaction_date\": \"YYYY-MM-DD format\",\n  \"transaction_time\": \"HH:MM format if visible\",\n  \"total_amount\": \"numeric value only\",\n  \"subtotal\": \"numeric value only\",\n  \"gst_amount\": \"GST/tax amount if visible\",\n  \"pst_amount\": \"PST amount if visible\",\n  \"gst_percent\": \"GST percentage if visible (just number)\",\n  \"pst_percent\": \"PST percentage if visible (just number)\",\n  \"card_last_digits\": \"last 4 digits of card if visible\",\n  \"customer_name\": \"customer name if visible\",\n  \"category\": \"Choose from: ${categoryList}\",\n  \"payment_method\": \"Cash, Credit Card, Debit Card, or Unknown\"\n}\n\nRules:\n- Return ONLY the JSON object, no other text\n- Use null for missing string values\n- Use 0 for missing amounts\n- For category: Choose the MOST APPROPRIATE category from the provided list. If none match well, use \"Miscellaneous\"\n- Extract amounts without currency symbols or percentage signs`
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: dataUrl
-                }
-              }
-            ]
-          }
-        ],
-        max_completion_tokens: 500
-      }),
+      body: JSON.stringify(requestPayload),
     });
+
+    const apiExecutionTime = Date.now() - apiStartTime;
 
     if (!openaiResponse.ok) {
       const errorText = await openaiResponse.text();
+
+      // Log OpenAI error response
+      await supabase.rpc('log_system_event', {
+        p_level: 'ERROR',
+        p_category: 'EXTERNAL_API',
+        p_message: 'OpenAI API returned error',
+        p_metadata: {
+          filePath,
+          collectionId,
+          statusCode: openaiResponse.status,
+          errorResponse: errorText
+        },
+        p_user_id: null,
+        p_session_id: null,
+        p_ip_address: null,
+        p_user_agent: req.headers.get('user-agent'),
+        p_stack_trace: null,
+        p_execution_time_ms: apiExecutionTime
+      });
+
       throw new Error(`OpenAI API error: ${errorText}`);
     }
 
     const openaiData = await openaiResponse.json();
     const responseText = openaiData.choices[0].message.content;
+
+    // Log OpenAI successful response
+    await supabase.rpc('log_system_event', {
+      p_level: 'INFO',
+      p_category: 'EXTERNAL_API',
+      p_message: 'Received response from OpenAI API',
+      p_metadata: {
+        filePath,
+        collectionId,
+        model: openaiData.model,
+        responseContent: responseText,
+        usage: openaiData.usage
+      },
+      p_user_id: null,
+      p_session_id: null,
+      p_ip_address: null,
+      p_user_agent: req.headers.get('user-agent'),
+      p_stack_trace: null,
+      p_execution_time_ms: apiExecutionTime
+    });
 
     if (!responseText || responseText.trim() === "") {
       throw new Error("Empty response from OpenAI API");
