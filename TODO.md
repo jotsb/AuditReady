@@ -834,10 +834,11 @@
 3. ✅ ~~Date timezone conversion causing unintended date changes in audit logs~~ - Fixed (2025-10-07)
 4. ✅ ~~WebP image uploads failing due to MIME type restrictions~~ - Fixed (2025-10-07)
 5. ✅ ~~No pagination causes performance issues with many receipts~~ - Fixed (2025-10-07)
-6. Bundle size is large (~969KB) - needs optimization
-7. MFA database fields exist but no UI implementation
-8. Team management UI exists but backend integration incomplete
-9. Approval workflow database exists but no UI implementation
+6. ✅ ~~Page refresh redirects to dashboard instead of staying on current page~~ - Fixed (2025-10-08)
+7. Bundle size is large (~969KB) - needs optimization
+8. MFA database fields exist but no UI implementation
+9. Team management UI exists but backend integration incomplete
+10. Approval workflow database exists but no UI implementation
 
 ### Performance Benchmarks
 - Target: First Contentful Paint < 1.5s
