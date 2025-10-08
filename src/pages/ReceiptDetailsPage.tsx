@@ -100,7 +100,7 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
 
   return (
     <div>
-      <div className="p-4 md:p-0 md:mb-6">
+      <div className="p-4 md:p-0 md:mb-6 mt-4">
         <button
           onClick={onBack}
           className="flex items-center gap-2 text-slate-600 dark:text-gray-400 hover:text-slate-800 dark:text-white transition"
