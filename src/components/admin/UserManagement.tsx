@@ -322,7 +322,8 @@ export function UserManagement() {
         </div>
       )}
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow -mx-4 sm:mx-0">
+        <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
@@ -451,6 +452,7 @@ export function UserManagement() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* User Details Modal */}

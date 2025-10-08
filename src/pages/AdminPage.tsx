@@ -165,13 +165,13 @@ export function AdminPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
+      <div className="max-w-7xl mx-auto py-8">
+        <div className="mb-8 px-4 sm:px-6 lg:px-8">
           <h1 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">System Administration</h1>
           <p className="text-slate-600 dark:text-gray-400">Manage all businesses and users across the platform</p>
         </div>
 
-        <div className="mb-6">
+        <div className="mb-6 px-4 sm:px-6 lg:px-8">
           <div className="border-b border-slate-200">
             <nav className="flex space-x-8">
               <button
@@ -223,11 +223,12 @@ export function AdminPage() {
         </div>
 
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mx-4 sm:mx-6 lg:mx-8">
             {error}
           </div>
         )}
 
+        <div className="px-4 sm:px-6 lg:px-8">
         {activeTab === 'overview' && (
           <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -401,6 +402,7 @@ export function AdminPage() {
         {activeTab === 'analytics' && (
           <AnalyticsTab />
         )}
+        </div>
       </div>
     </div>
   );
