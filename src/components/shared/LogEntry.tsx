@@ -320,61 +320,63 @@ export function LogEntry({ log }: LogEntryProps) {
         className={`w-full px-6 py-4 text-left ${hasExpandableContent ? 'cursor-pointer' : 'cursor-default'}`}
         disabled={!hasExpandableContent}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center flex-1 min-w-0 gap-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start flex-1 min-w-0 gap-2 md:gap-4">
             {hasExpandableContent ? (
               isExpanded ? (
-                <ChevronDown size={20} className="text-slate-400 dark:text-gray-500 mr-3 flex-shrink-0" />
+                <ChevronDown size={20} className="text-slate-400 dark:text-gray-500 flex-shrink-0 mt-0.5" />
               ) : (
-                <ChevronRight size={20} className="text-slate-400 dark:text-gray-500 mr-3 flex-shrink-0" />
+                <ChevronRight size={20} className="text-slate-400 dark:text-gray-500 flex-shrink-0 mt-0.5" />
               )
             ) : (
-              <div className="w-8 mr-3 flex-shrink-0" />
+              <div className="w-5 flex-shrink-0" />
             )}
 
-            <div className="flex items-center flex-wrap gap-2 flex-shrink-0">
-              {getPrimaryBadge()}
-              {getSecondaryBadges()}
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-slate-900 dark:text-white truncate">
-                {getMainText()}
+            <div className="flex flex-col gap-2 flex-1 min-w-0">
+              <div className="flex items-center flex-wrap gap-2">
+                {getPrimaryBadge()}
+                {getSecondaryBadges()}
               </div>
-              <div className="text-xs text-slate-500 dark:text-gray-400 mt-1">
-                {getTimestamp()}
-                {getSecondaryInfo()}
-              </div>
-            </div>
 
-            {(() => {
-              const receiptDetails = getReceiptDetails();
-              if (receiptDetails) {
-                return (
-                  <div className="flex-shrink-0 min-w-0 max-w-xs">
-                    <div className="text-sm font-medium text-slate-900 dark:text-white truncate">
-                      {receiptDetails.vendor || 'N/A'}
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-slate-900 dark:text-white break-words">
+                  {getMainText()}
+                </div>
+                <div className="text-xs text-slate-500 dark:text-gray-400 mt-1 break-words">
+                  {getTimestamp()}
+                  {getSecondaryInfo()}
+                </div>
+              </div>
+
+              {(() => {
+                const receiptDetails = getReceiptDetails();
+                if (receiptDetails) {
+                  return (
+                    <div className="min-w-0 mt-2 md:mt-0">
+                      <div className="text-sm font-medium text-slate-900 dark:text-white break-words">
+                        {receiptDetails.vendor || 'N/A'}
+                      </div>
+                      <div className="text-xs text-slate-600 mt-1 break-words">
+                        {receiptDetails.category && <span className="text-slate-500 dark:text-gray-400">{receiptDetails.category}</span>}
+                        {receiptDetails.amount && (
+                          <>
+                            {receiptDetails.category && <span className="text-slate-400 dark:text-gray-500"> • </span>}
+                            <span className="text-slate-700 dark:text-gray-300 font-semibold">${parseFloat(receiptDetails.amount).toFixed(2)}</span>
+                          </>
+                        )}
+                        {receiptDetails.date && (
+                          <>
+                            {(receiptDetails.category || receiptDetails.amount) && <span className="text-slate-400 dark:text-gray-500"> • </span>}
+                            <span className="text-slate-500 dark:text-gray-400">{new Date(receiptDetails.date).toLocaleDateString()}</span>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-xs text-slate-600 mt-1">
-                      {receiptDetails.category && <span className="text-slate-500 dark:text-gray-400">{receiptDetails.category}</span>}
-                      {receiptDetails.amount && (
-                        <>
-                          {receiptDetails.category && <span className="text-slate-400 dark:text-gray-500"> • </span>}
-                          <span className="text-slate-700 dark:text-gray-300 font-semibold">${parseFloat(receiptDetails.amount).toFixed(2)}</span>
-                        </>
-                      )}
-                      {receiptDetails.date && (
-                        <>
-                          {(receiptDetails.category || receiptDetails.amount) && <span className="text-slate-400 dark:text-gray-500"> • </span>}
-                          <span className="text-slate-500 dark:text-gray-400">{new Date(receiptDetails.date).toLocaleDateString()}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                );
-              }
-              return null;
-            })()}
+                  );
+                }
+                return null;
+              })()}
+            </div>
           </div>
 
           {showWarningIcon() && (
