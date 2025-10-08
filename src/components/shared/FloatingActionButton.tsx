@@ -52,20 +52,20 @@ export function FloatingActionButton({ onTakePhotoClick, onUploadClick, onManual
         />
       )}
 
-      <div className="fixed bottom-6 right-6 z-50">
-        <div className={`flex flex-col-reverse items-end gap-3 mb-3 transition-all duration-300 ${isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+      <div className="fixed bottom-6 right-6 z-50 flex items-end gap-3">
+        <div className={`flex flex-col gap-3 transition-all duration-300 ${isOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4 pointer-events-none'}`}>
           <button
-            onClick={handleManualEntry}
-            className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-800 text-slate-800 dark:text-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 border border-slate-200 dark:border-gray-700"
-            title="Manual Entry"
+            onClick={handleTakePhoto}
+            className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-800 text-slate-800 dark:text-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 border border-slate-200 dark:border-gray-700 whitespace-nowrap"
+            title="Take Photo"
           >
-            <FileText size={20} />
-            <span className="font-medium">Manual Entry</span>
+            <Camera size={20} />
+            <span className="font-medium">Take Photo</span>
           </button>
 
           <button
             onClick={handleUpload}
-            className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-800 text-slate-800 dark:text-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 border border-slate-200 dark:border-gray-700"
+            className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-800 text-slate-800 dark:text-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 border border-slate-200 dark:border-gray-700 whitespace-nowrap"
             title="Upload Receipt (Image/PDF)"
           >
             <Upload size={20} />
@@ -73,12 +73,12 @@ export function FloatingActionButton({ onTakePhotoClick, onUploadClick, onManual
           </button>
 
           <button
-            onClick={handleTakePhoto}
-            className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-800 text-slate-800 dark:text-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 border border-slate-200 dark:border-gray-700"
-            title="Take Photo"
+            onClick={handleManualEntry}
+            className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-800 text-slate-800 dark:text-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 border border-slate-200 dark:border-gray-700 whitespace-nowrap"
+            title="Manual Entry"
           >
-            <Camera size={20} />
-            <span className="font-medium">Take Photo</span>
+            <FileText size={20} />
+            <span className="font-medium">Manual Entry</span>
           </button>
         </div>
 
