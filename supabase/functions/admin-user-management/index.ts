@@ -29,7 +29,13 @@ interface ForceLogoutRequest {
   targetUserId: string;
 }
 
-type AdminRequest = ChangePasswordRequest | HardDeleteRequest | UpdateEmailRequest | ForceLogoutRequest;
+interface ResetMFARequest {
+  action: 'reset_mfa';
+  targetUserId: string;
+  reason: string;
+}
+
+type AdminRequest = ChangePasswordRequest | HardDeleteRequest | UpdateEmailRequest | ForceLogoutRequest | ResetMFARequest;
 
 async function checkSystemAdmin(supabase: any, userId: string): Promise<boolean> {
   const { data, error } = await supabase
@@ -411,6 +417,80 @@ Deno.serve(async (req: Request) => {
 
         return new Response(
           JSON.stringify({ success: true, message: 'User logged out from all devices' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'reset_mfa': {
+        const { targetUserId, reason } = requestData;
+        const actionStartTime = Date.now();
+
+        // Get all MFA factors for the user
+        const { data: { factors }, error: factorsError } = await supabase.auth.admin.mfa.listFactors(targetUserId);
+
+        if (factorsError) {
+          throw new Error(`Failed to list MFA factors: ${factorsError.message}`);
+        }
+
+        // Unenroll all factors
+        if (factors && factors.length > 0) {
+          for (const factor of factors) {
+            const { error: unenrollError } = await supabase.auth.admin.mfa.deleteFactor(factor.id);
+            if (unenrollError) {
+              throw new Error(`Failed to unenroll MFA factor: ${unenrollError.message}`);
+            }
+          }
+        }
+
+        // Update profile to disable MFA
+        await supabase
+          .from('profiles')
+          .update({
+            mfa_enabled: false,
+            mfa_method: null,
+            trusted_devices: null
+          })
+          .eq('id', targetUserId);
+
+        // Delete all recovery codes
+        await supabase
+          .from('recovery_codes')
+          .delete()
+          .eq('user_id', targetUserId);
+
+        // Log to audit_logs
+        await supabase.from('audit_logs').insert({
+          user_id: user.id,
+          action: 'admin_reset_mfa',
+          resource_type: 'profile',
+          resource_id: targetUserId,
+          details: { reason, via: 'edge_function', factors_removed: factors?.length || 0 }
+        });
+
+        // Log to system_logs
+        const actionTime = Date.now() - actionStartTime;
+        await supabase.rpc('log_system_event', {
+          p_level: 'WARN',
+          p_category: 'SECURITY',
+          p_message: 'Admin reset user MFA',
+          p_metadata: {
+            action: 'reset_mfa',
+            targetUserId,
+            adminUserId: user.id,
+            reason,
+            factors_removed: factors?.length || 0,
+            function: 'admin-user-management'
+          },
+          p_user_id: user.id,
+          p_session_id: null,
+          p_ip_address: null,
+          p_user_agent: req.headers.get('user-agent'),
+          p_stack_trace: null,
+          p_execution_time_ms: actionTime
+        });
+
+        return new Response(
+          JSON.stringify({ success: true, message: 'MFA reset successfully', factors_removed: factors?.length || 0 }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }

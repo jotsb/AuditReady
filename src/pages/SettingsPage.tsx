@@ -4,6 +4,7 @@ import { BusinessCollectionManagement } from '../components/settings/BusinessCol
 import { CategoryManagement } from '../components/settings/CategoryManagement';
 import { ProfileManagement } from '../components/settings/ProfileManagement';
 import { ThemeSettings } from '../components/settings/ThemeSettings';
+import { MFAManagement } from '../components/settings/MFAManagement';
 import { usePageTracking } from '../hooks/usePageTracking';
 import { actionTracker } from '../lib/actionTracker';
 
@@ -119,19 +120,7 @@ export function SettingsPage() {
         <div className="p-6">
           {activeTab === 'profile' && <ProfileManagement />}
 
-          {activeTab === '2fa' && (
-            <div>
-              <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-4">Two-Factor Authentication</h3>
-              <p className="text-sm text-slate-600 dark:text-gray-400 mb-4">
-                Secure your account with 2FA using authenticator app or SMS
-              </p>
-              <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                <p className="text-sm text-amber-800 dark:text-amber-300">
-                  <strong>Important:</strong> 2FA setup will be implemented before production use.
-                </p>
-              </div>
-            </div>
-          )}
+          {activeTab === '2fa' && <MFAManagement />}
 
           {activeTab === 'businesses' && <BusinessCollectionManagement />}
 

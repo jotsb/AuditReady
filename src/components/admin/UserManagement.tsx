@@ -13,6 +13,7 @@ import {
   getUserDetails,
   validatePassword,
   forceLogoutUser,
+  resetUserMFA,
   type UserDetails,
 } from '../../lib/adminService';
 import {
@@ -29,6 +30,7 @@ import {
   Eye,
   EyeOff,
   LogOut,
+  ShieldOff,
 } from 'lucide-react';
 
 interface User {
@@ -55,12 +57,15 @@ export function UserManagement() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showMFAResetModal, setShowMFAResetModal] = useState(false);
 
   // Form states
   const [suspendReason, setSuspendReason] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
+  const [mfaResetReason, setMfaResetReason] = useState('');
+  const [mfaResetPassword, setMfaResetPassword] = useState('');
   const [editForm, setEditForm] = useState({
     full_name: '',
     email: '',
@@ -279,6 +284,29 @@ export function UserManagement() {
     }
   };
 
+  const handleResetMFA = async () => {
+    if (!selectedUser || !mfaResetReason.trim() || !mfaResetPassword) {
+      setActionError('Please enter both password and reason');
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      setActionError('');
+      await resetUserMFA(selectedUser.id, mfaResetReason, mfaResetPassword, currentUser!.id);
+      setActionSuccess('User MFA reset successfully');
+      setShowMFAResetModal(false);
+      setMfaResetReason('');
+      setMfaResetPassword('');
+      await loadUsers();
+      setTimeout(() => setActionSuccess(''), 3000);
+    } catch (err: any) {
+      setActionError(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const openEditModal = (user: User) => {
     setSelectedUser(user);
     setEditForm({
@@ -483,6 +511,9 @@ export function UserManagement() {
                   <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">MFA Enabled</p>
                     <p className="font-medium">{userDetails.mfa_enabled ? 'Yes' : 'No'}</p>
+                    {userDetails.mfa_enabled && userDetails.mfa_method && (
+                      <p className="text-xs text-gray-500">Method: {userDetails.mfa_method}</p>
+                    )}
                   </div>
                   <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Businesses Owned</p>
@@ -509,6 +540,17 @@ export function UserManagement() {
                   <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <p className="font-medium text-yellow-800">Suspension Reason:</p>
                     <p className="text-yellow-700">{userDetails.suspension_reason || 'No reason provided'}</p>
+                  </div>
+                )}
+                {userDetails.mfa_enabled && (
+                  <div className="mt-4">
+                    <button
+                      onClick={() => { setSelectedUser({ ...selectedUser, id: userDetails.id, email: userDetails.email, full_name: userDetails.full_name, created_at: userDetails.created_at, last_login_at: userDetails.last_login_at, suspended: userDetails.suspended, deleted_at: userDetails.deleted_at }); setShowMFAResetModal(true); }}
+                      className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+                    >
+                      <ShieldOff className="w-4 h-4" />
+                      Reset MFA (Emergency)
+                    </button>
                   </div>
                 )}
               </div>
@@ -676,6 +718,56 @@ export function UserManagement() {
               </button>
               <button
                 onClick={() => setShowEditModal(false)}
+                className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMFAResetModal && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <AlertTriangle className="w-6 h-6 text-orange-600" />
+              <h3 className="text-xl font-bold">Reset User MFA</h3>
+            </div>
+            <p className="text-gray-600 mb-2">User: {selectedUser.email}</p>
+            <p className="text-sm text-gray-500 mb-4">
+              This will disable MFA for this user, remove all authenticators, delete recovery codes, and clear trusted devices.
+              The user will be able to set up MFA again after their next login.
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Your Admin Password</label>
+              <input
+                type="password"
+                value={mfaResetPassword}
+                onChange={(e) => setMfaResetPassword(e.target.value)}
+                placeholder="Enter your password to confirm"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+              />
+            </div>
+
+            <textarea
+              value={mfaResetReason}
+              onChange={(e) => setMfaResetReason(e.target.value)}
+              placeholder="Reason for MFA reset (required for audit trail)..."
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4"
+              rows={4}
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={handleResetMFA}
+                disabled={actionLoading || !mfaResetReason.trim() || !mfaResetPassword}
+                className="flex-1 bg-orange-600 text-white py-2 rounded-lg hover:bg-orange-700 disabled:opacity-50"
+              >
+                {actionLoading ? 'Resetting...' : 'Reset MFA'}
+              </button>
+              <button
+                onClick={() => { setShowMFAResetModal(false); setMfaResetReason(''); setMfaResetPassword(''); }}
                 className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400"
               >
                 Cancel

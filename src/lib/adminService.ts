@@ -635,3 +635,84 @@ export async function validatePassword(password: string): Promise<{ valid: boole
     errors,
   };
 }
+
+export async function resetUserMFA(
+  targetUserId: string,
+  reason: string,
+  adminPassword: string,
+  adminUserId: string
+): Promise<void> {
+  await ensureSystemAdmin(adminUserId);
+
+  if (!reason || reason.trim().length === 0) {
+    throw new Error('Reason is required for MFA reset');
+  }
+
+  const { data: adminProfile } = await supabase
+    .from('profiles')
+    .select('email')
+    .eq('id', adminUserId)
+    .single();
+
+  if (!adminProfile?.email) {
+    throw new Error('Admin email not found');
+  }
+
+  const { error: authError } = await supabase.auth.signInWithPassword({
+    email: adminProfile.email,
+    password: adminPassword
+  });
+
+  if (authError) {
+    throw new Error('Invalid admin password');
+  }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    throw new Error('No active session');
+  }
+
+  const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-user-management`;
+  const response = await fetch(functionUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'reset_mfa',
+      targetUserId,
+      reason,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to reset MFA');
+  }
+
+  const { data: targetProfile } = await supabase
+    .from('profiles')
+    .select('email')
+    .eq('id', targetUserId)
+    .single();
+
+  logger.mfa('admin_reset_mfa', {
+    target_user_id: targetUserId,
+    target_user_email: targetProfile?.email,
+    admin_email: adminProfile.email,
+    reason
+  }, 'WARN');
+
+  await supabase.from('audit_logs').insert({
+    user_id: adminUserId,
+    action: 'admin_reset_mfa',
+    resource_type: 'profile',
+    resource_id: targetUserId,
+    details: {
+      reason,
+      admin_email: adminProfile.email,
+      target_user_email: targetProfile?.email
+    },
+  });
+}
