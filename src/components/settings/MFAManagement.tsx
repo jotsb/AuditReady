@@ -21,12 +21,14 @@ export function MFAManagement() {
   const [mfaMethod, setMfaMethod] = useState<string | null>(null);
   const [showSetup, setShowSetup] = useState(false);
   const [showDisableModal, setShowDisableModal] = useState(false);
+  const [showMFAVerifyModal, setShowMFAVerifyModal] = useState(false);
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
   const [newRecoveryCodes, setNewRecoveryCodes] = useState<string[]>([]);
   const [trustedDevices, setTrustedDevices] = useState<TrustedDevice[]>([]);
   const [recoveryCodesCount, setRecoveryCodesCount] = useState(0);
   const [factorId, setFactorId] = useState<string | null>(null);
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [verifyCode, setVerifyCode] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -91,6 +93,7 @@ export function MFAManagement() {
     try {
       setError('');
 
+      // Re-authenticate with password
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: user?.email || '',
         password: confirmPassword
@@ -101,6 +104,19 @@ export function MFAManagement() {
         return;
       }
 
+      // Check if we need to verify MFA first (AAL2 required)
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentAAL = session?.user?.aal;
+
+      if (currentAAL !== 'aal2') {
+        // Need to challenge and verify MFA first
+        setError('Please verify your authenticator code before disabling MFA');
+        setShowDisableModal(false);
+        setShowMFAVerifyModal(true);
+        return;
+      }
+
+      // Now we can unenroll
       await unenrollFactor(factorId);
 
       setShowDisableModal(false);
@@ -110,6 +126,56 @@ export function MFAManagement() {
       loadMFAStatus();
     } catch (err: any) {
       setError(err.message || 'Failed to disable MFA');
+    }
+  };
+
+  const handleVerifyForDisable = async () => {
+    if (!verifyCode || verifyCode.length !== 6) {
+      setError('Please enter a 6-digit code');
+      return;
+    }
+
+    if (!factorId) {
+      setError('No MFA factor found');
+      return;
+    }
+
+    try {
+      setError('');
+
+      // Challenge the factor
+      const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
+        factorId
+      });
+
+      if (challengeError || !challenge) {
+        setError('Failed to create MFA challenge');
+        return;
+      }
+
+      // Verify the code
+      const { error: verifyError } = await supabase.auth.mfa.verify({
+        factorId,
+        challengeId: challenge.id,
+        code: verifyCode
+      });
+
+      if (verifyError) {
+        setError('Invalid code. Please try again.');
+        return;
+      }
+
+      // Now we have AAL2, unenroll the factor
+      await unenrollFactor(factorId);
+
+      setShowMFAVerifyModal(false);
+      setVerifyCode('');
+      setConfirmPassword('');
+      setSuccess('Two-factor authentication disabled successfully');
+      setTimeout(() => setSuccess(''), 5000);
+      loadMFAStatus();
+    } catch (err: any) {
+      setError(err.message || 'Failed to verify MFA');
     }
   };
 
@@ -344,6 +410,56 @@ export function MFAManagement() {
                 onClick={() => {
                   setShowDisableModal(false);
                   setConfirmPassword('');
+                  setError('');
+                }}
+                className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMFAVerifyModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+            <h3 className="text-xl font-bold mb-4">Verify Authenticator Code</h3>
+
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              To disable MFA, please enter the 6-digit code from your authenticator app.
+            </p>
+
+            <div className="mb-4">
+              <input
+                type="text"
+                value={verifyCode}
+                onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-2xl tracking-widest"
+                placeholder="000000"
+                maxLength={6}
+                autoFocus
+              />
+            </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
+                {error}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleVerifyForDisable}
+                disabled={loading || verifyCode.length !== 6}
+                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
+              >
+                {loading ? 'Verifying...' : 'Verify & Disable'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowMFAVerifyModal(false);
+                  setVerifyCode('');
                   setError('');
                 }}
                 className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 font-medium"
