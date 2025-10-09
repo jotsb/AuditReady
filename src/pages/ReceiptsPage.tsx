@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Upload, CreditCard as Edit, Search, Filter, Calendar, DollarSign, Trash2, Loader2, Eye, CreditCard as Edit2 } from 'lucide-react';
+import { Plus, Upload, CreditCard as Edit, Search, Filter, Calendar, DollarSign, Trash2, Loader2, Eye, CreditCard as Edit2, CheckSquare, Square } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { ReceiptUpload } from '../components/receipts/ReceiptUpload';
@@ -7,6 +7,10 @@ import { ManualEntryForm } from '../components/receipts/ManualEntryForm';
 import { VerifyReceiptModal } from '../components/receipts/VerifyReceiptModal';
 import { EditReceiptModal } from '../components/receipts/EditReceiptModal';
 import { ReceiptDetailsPage } from './ReceiptDetailsPage';
+import { BulkActionToolbar } from '../components/receipts/BulkActionToolbar';
+import { BulkCategoryModal } from '../components/receipts/BulkCategoryModal';
+import { BulkMoveModal } from '../components/receipts/BulkMoveModal';
+import { AdvancedFilterPanel } from '../components/receipts/AdvancedFilterPanel';
 import { convertLocalDateToUTC } from '../lib/dateUtils';
 import { usePageTracking, useDataLoadTracking } from '../hooks/usePageTracking';
 import { actionTracker } from '../lib/actionTracker';
@@ -54,6 +58,24 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const itemsPerPage = 20;
+
+  // Bulk selection state
+  const [selectedReceipts, setSelectedReceipts] = useState<Set<string>>(new Set());
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectAll, setSelectAll] = useState(false);
+  const [showBulkCategoryModal, setShowBulkCategoryModal] = useState(false);
+  const [showBulkMoveModal, setShowBulkMoveModal] = useState(false);
+
+  // Advanced filters
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState({
+    dateFrom: '',
+    dateTo: '',
+    amountMin: '',
+    amountMax: '',
+    paymentMethod: '',
+    categories: [] as string[],
+  });
 
   usePageTracking('Receipts', { section: 'receipts' });
   const logDataLoad = useDataLoadTracking('receipts');
@@ -372,6 +394,302 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
     setSelectedReceiptId(receiptId);
   };
 
+  // Bulk selection handlers
+  const toggleSelectMode = () => {
+    setIsSelectMode(!isSelectMode);
+    setSelectedReceipts(new Set());
+    setSelectAll(false);
+  };
+
+  const toggleReceiptSelection = (receiptId: string) => {
+    const newSelected = new Set(selectedReceipts);
+    if (newSelected.has(receiptId)) {
+      newSelected.delete(receiptId);
+    } else {
+      newSelected.add(receiptId);
+    }
+    setSelectedReceipts(newSelected);
+    setSelectAll(newSelected.size === filteredReceipts.length && filteredReceipts.length > 0);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectAll) {
+      setSelectedReceipts(new Set());
+      setSelectAll(false);
+    } else {
+      setSelectedReceipts(new Set(filteredReceipts.map(r => r.id)));
+      setSelectAll(true);
+    }
+  };
+
+  // Bulk operations
+  const handleBulkDelete = async () => {
+    if (selectedReceipts.size === 0) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${selectedReceipts.size} receipt(s)? This action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    const startTime = Date.now();
+    const receiptIds = Array.from(selectedReceipts);
+
+    try {
+      // Get file paths for storage cleanup
+      const { data: receiptsToDelete } = await supabase
+        .from('receipts')
+        .select('id, file_path, vendor_name, total_amount')
+        .in('id', receiptIds);
+
+      // Delete from database (triggers will handle audit logs)
+      const { error } = await supabase
+        .from('receipts')
+        .delete()
+        .in('id', receiptIds);
+
+      if (error) throw error;
+
+      // Delete files from storage
+      const filePaths = receiptsToDelete
+        ?.filter(r => r.file_path)
+        .map(r => r.file_path) || [];
+
+      if (filePaths.length > 0) {
+        await supabase.storage.from('receipts').remove(filePaths);
+      }
+
+      // System logging
+      await supabase.from('system_logs').insert({
+        level: 'INFO',
+        category: 'USER_ACTION',
+        message: `Bulk deleted ${receiptIds.length} receipts`,
+        metadata: {
+          user_id: user?.id,
+          collection_id: selectedCollection,
+          receipt_count: receiptIds.length,
+          execution_time_ms: Date.now() - startTime,
+          action: 'bulk_delete'
+        }
+      });
+
+      // Reload receipts
+      await loadReceipts();
+
+      // Clear selection
+      setSelectedReceipts(new Set());
+      setIsSelectMode(false);
+      setSelectAll(false);
+
+      alert(`Successfully deleted ${receiptIds.length} receipt(s)`);
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      alert('Failed to delete receipts. Please try again.');
+
+      // Log error
+      await supabase.from('system_logs').insert({
+        level: 'ERROR',
+        category: 'USER_ACTION',
+        message: `Bulk delete failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        metadata: {
+          user_id: user?.id,
+          collection_id: selectedCollection,
+          receipt_count: receiptIds.length,
+          error: error instanceof Error ? error.message : String(error),
+          action: 'bulk_delete'
+        }
+      });
+    }
+  };
+
+  const handleBulkCategorize = async (category: string) => {
+    const receiptIds = Array.from(selectedReceipts);
+    const startTime = Date.now();
+
+    try {
+      const { error } = await supabase
+        .from('receipts')
+        .update({ category, is_edited: true })
+        .in('id', receiptIds);
+
+      if (error) throw error;
+
+      // System logging
+      await supabase.from('system_logs').insert({
+        level: 'INFO',
+        category: 'USER_ACTION',
+        message: `Bulk categorized ${receiptIds.length} receipts as "${category}"`,
+        metadata: {
+          user_id: user?.id,
+          collection_id: selectedCollection,
+          receipt_count: receiptIds.length,
+          category,
+          execution_time_ms: Date.now() - startTime,
+          action: 'bulk_categorize'
+        }
+      });
+
+      await loadReceipts();
+      setSelectedReceipts(new Set());
+      setIsSelectMode(false);
+      setSelectAll(false);
+
+      alert(`Successfully categorized ${receiptIds.length} receipt(s)`);
+    } catch (error) {
+      console.error('Bulk categorize error:', error);
+      alert('Failed to categorize receipts. Please try again.');
+
+      await supabase.from('system_logs').insert({
+        level: 'ERROR',
+        category: 'USER_ACTION',
+        message: `Bulk categorize failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        metadata: {
+          user_id: user?.id,
+          collection_id: selectedCollection,
+          receipt_count: receiptIds.length,
+          category,
+          error: error instanceof Error ? error.message : String(error),
+          action: 'bulk_categorize'
+        }
+      });
+    }
+  };
+
+  const handleBulkMove = async (targetCollectionId: string) => {
+    const receiptIds = Array.from(selectedReceipts);
+    const startTime = Date.now();
+
+    try {
+      const { error } = await supabase
+        .from('receipts')
+        .update({ collection_id: targetCollectionId })
+        .in('id', receiptIds);
+
+      if (error) throw error;
+
+      // System logging
+      await supabase.from('system_logs').insert({
+        level: 'INFO',
+        category: 'USER_ACTION',
+        message: `Bulk moved ${receiptIds.length} receipts to different collection`,
+        metadata: {
+          user_id: user?.id,
+          from_collection_id: selectedCollection,
+          to_collection_id: targetCollectionId,
+          receipt_count: receiptIds.length,
+          execution_time_ms: Date.now() - startTime,
+          action: 'bulk_move'
+        }
+      });
+
+      await loadReceipts();
+      setSelectedReceipts(new Set());
+      setIsSelectMode(false);
+      setSelectAll(false);
+
+      alert(`Successfully moved ${receiptIds.length} receipt(s)`);
+    } catch (error) {
+      console.error('Bulk move error:', error);
+      alert('Failed to move receipts. Please try again.');
+
+      await supabase.from('system_logs').insert({
+        level: 'ERROR',
+        category: 'USER_ACTION',
+        message: `Bulk move failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        metadata: {
+          user_id: user?.id,
+          from_collection_id: selectedCollection,
+          receipt_count: receiptIds.length,
+          error: error instanceof Error ? error.message : String(error),
+          action: 'bulk_move'
+        }
+      });
+    }
+  };
+
+  const handleBulkExportCSV = async () => {
+    const receiptIds = Array.from(selectedReceipts);
+    if (receiptIds.length === 0) return;
+
+    try {
+      const { data: receiptsToExport, error } = await supabase
+        .from('receipts')
+        .select('*')
+        .in('id', receiptIds)
+        .order('transaction_date', { ascending: false });
+
+      if (error) throw error;
+
+      // Generate CSV content
+      const headers = ['Date', 'Vendor', 'Category', 'Payment Method', 'Subtotal', 'GST', 'PST', 'Total', 'Notes'];
+      const csvRows = [headers.join(',')];
+
+      receiptsToExport?.forEach((receipt) => {
+        const row = [
+          receipt.transaction_date || '',
+          `"${(receipt.vendor_name || '').replace(/"/g, '""')}"`,
+          receipt.category || '',
+          receipt.payment_method || '',
+          receipt.subtotal?.toFixed(2) || '0.00',
+          receipt.gst_amount?.toFixed(2) || '0.00',
+          receipt.pst_amount?.toFixed(2) || '0.00',
+          receipt.total_amount?.toFixed(2) || '0.00',
+          `"${(receipt.notes || '').replace(/"/g, '""')}"`
+        ];
+        csvRows.push(row.join(','));
+      });
+
+      const csvContent = csvRows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `receipts-export-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      // System logging
+      await supabase.from('system_logs').insert({
+        level: 'INFO',
+        category: 'USER_ACTION',
+        message: `Bulk exported ${receiptIds.length} receipts to CSV`,
+        metadata: {
+          user_id: user?.id,
+          collection_id: selectedCollection,
+          receipt_count: receiptIds.length,
+          action: 'bulk_export_csv'
+        }
+      });
+
+      alert(`Successfully exported ${receiptIds.length} receipt(s) to CSV`);
+    } catch (error) {
+      console.error('Bulk export CSV error:', error);
+      alert('Failed to export receipts. Please try again.');
+    }
+  };
+
+  const handleBulkExportPDF = async () => {
+    const receiptIds = Array.from(selectedReceipts);
+    if (receiptIds.length === 0) return;
+
+    alert('PDF export coming soon! For now, please use CSV export.');
+
+    // System logging
+    await supabase.from('system_logs').insert({
+      level: 'INFO',
+      category: 'USER_ACTION',
+      message: `Attempted bulk PDF export of ${receiptIds.length} receipts`,
+      metadata: {
+        user_id: user?.id,
+        collection_id: selectedCollection,
+        receipt_count: receiptIds.length,
+        action: 'bulk_export_pdf_attempted'
+      }
+    });
+  };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'No date';
     const date = new Date(dateString);
@@ -379,12 +697,36 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
   };
 
   const filteredReceipts = receipts.filter((receipt) => {
+    // Basic search
     const matchesSearch =
       !searchQuery ||
       receipt.vendor_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       receipt.category?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    // Legacy category filter (keep for backwards compatibility)
     const matchesCategory = !filterCategory || receipt.category === filterCategory;
-    return matchesSearch && matchesCategory;
+
+    // Advanced filters
+    const matchesDateFrom = !advancedFilters.dateFrom ||
+      (receipt.transaction_date && receipt.transaction_date >= advancedFilters.dateFrom);
+
+    const matchesDateTo = !advancedFilters.dateTo ||
+      (receipt.transaction_date && receipt.transaction_date <= advancedFilters.dateTo);
+
+    const matchesAmountMin = !advancedFilters.amountMin ||
+      receipt.total_amount >= parseFloat(advancedFilters.amountMin);
+
+    const matchesAmountMax = !advancedFilters.amountMax ||
+      receipt.total_amount <= parseFloat(advancedFilters.amountMax);
+
+    const matchesPaymentMethod = !advancedFilters.paymentMethod ||
+      receipt.payment_method === advancedFilters.paymentMethod;
+
+    const matchesCategories = advancedFilters.categories.length === 0 ||
+      (receipt.category && advancedFilters.categories.includes(receipt.category));
+
+    return matchesSearch && matchesCategory && matchesDateFrom && matchesDateTo &&
+           matchesAmountMin && matchesAmountMax && matchesPaymentMethod && matchesCategories;
   });
 
   if (selectedReceiptId) {
@@ -463,6 +805,17 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
 
           <div className="flex gap-2">
             <button
+              onClick={toggleSelectMode}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
+                isSelectMode
+                  ? 'bg-slate-200 dark:bg-gray-700 text-slate-700 dark:text-gray-300'
+                  : 'bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-gray-400 hover:bg-slate-200 dark:hover:bg-gray-600'
+              }`}
+            >
+              <CheckSquare size={20} />
+              <span>{isSelectMode ? 'Cancel' : 'Select'}</span>
+            </button>
+            <button
               onClick={handleUploadClick}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
             >
@@ -496,7 +849,7 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
             <select
               value={filterCategory}
               onChange={(e) => handleCategoryFilterChange(e.target.value)}
-              className="w-full md:w-auto pl-10 pr-8 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full md:w-auto pl-10 pr-8 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
               <option value="">All Categories</option>
               <option value="Meals & Entertainment">Meals & Entertainment</option>
@@ -505,6 +858,20 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
               <option value="Miscellaneous">Miscellaneous</option>
             </select>
           </div>
+
+          <button
+            onClick={() => setShowAdvancedFilters(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-gray-300 rounded-lg hover:bg-slate-200 dark:hover:bg-gray-600 transition"
+          >
+            <Filter size={20} />
+            <span>Advanced</span>
+            {(advancedFilters.dateFrom || advancedFilters.dateTo || advancedFilters.amountMin ||
+              advancedFilters.amountMax || advancedFilters.paymentMethod || advancedFilters.categories.length > 0) && (
+              <span className="ml-1 px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
+                Active
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
@@ -513,6 +880,20 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
           <table className="w-full">
             <thead className="bg-slate-50 dark:bg-gray-800 border-b border-slate-200">
               <tr>
+                {isSelectMode && (
+                  <th className="px-4 py-3 text-left">
+                    <button
+                      onClick={toggleSelectAll}
+                      className="p-1 hover:bg-slate-200 dark:hover:bg-gray-700 rounded transition"
+                    >
+                      {selectAll ? (
+                        <CheckSquare size={20} className="text-blue-600 dark:text-blue-400" />
+                      ) : (
+                        <Square size={20} className="text-slate-400 dark:text-gray-500" />
+                      )}
+                    </button>
+                  </th>
+                )}
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-gray-300 uppercase tracking-wider">
                   Vendor
                 </th>
@@ -537,9 +918,32 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
               {filteredReceipts.map((receipt) => (
                 <tr
                   key={receipt.id}
-                  className="hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 transition cursor-pointer"
-                  onClick={() => handleViewClick(receipt.id)}
+                  className={`hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 transition ${
+                    isSelectMode ? 'cursor-default' : 'cursor-pointer'
+                  } ${selectedReceipts.has(receipt.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+                  onClick={(e) => {
+                    if (!isSelectMode && !(e.target as HTMLElement).closest('button')) {
+                      handleViewClick(receipt.id);
+                    }
+                  }}
                 >
+                  {isSelectMode && (
+                    <td className="px-4 py-4">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleReceiptSelection(receipt.id);
+                        }}
+                        className="p-1 hover:bg-slate-200 dark:hover:bg-gray-700 rounded transition"
+                      >
+                        {selectedReceipts.has(receipt.id) ? (
+                          <CheckSquare size={20} className="text-blue-600 dark:text-blue-400" />
+                        ) : (
+                          <Square size={20} className="text-slate-400 dark:text-gray-500" />
+                        )}
+                      </button>
+                    </td>
+                  )}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <div>
@@ -724,6 +1128,50 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
             setEditingReceipt(null);
             loadReceipts();
           }}
+        />
+      )}
+
+      <BulkActionToolbar
+        selectedCount={selectedReceipts.size}
+        onDelete={handleBulkDelete}
+        onCategorize={() => setShowBulkCategoryModal(true)}
+        onMove={() => setShowBulkMoveModal(true)}
+        onExportCSV={handleBulkExportCSV}
+        onExportPDF={handleBulkExportPDF}
+        onCancel={toggleSelectMode}
+      />
+
+      {showBulkCategoryModal && (
+        <BulkCategoryModal
+          selectedCount={selectedReceipts.size}
+          onConfirm={handleBulkCategorize}
+          onClose={() => setShowBulkCategoryModal(false)}
+        />
+      )}
+
+      {showBulkMoveModal && (
+        <BulkMoveModal
+          selectedCount={selectedReceipts.size}
+          currentCollectionId={selectedCollection}
+          onConfirm={handleBulkMove}
+          onClose={() => setShowBulkMoveModal(false)}
+        />
+      )}
+
+      {showAdvancedFilters && (
+        <AdvancedFilterPanel
+          filters={advancedFilters}
+          onChange={setAdvancedFilters}
+          onClear={() => setAdvancedFilters({
+            dateFrom: '',
+            dateTo: '',
+            amountMin: '',
+            amountMax: '',
+            paymentMethod: '',
+            categories: [],
+          })}
+          onClose={() => setShowAdvancedFilters(false)}
+          categories={['Meals & Entertainment', 'Transportation', 'Office Supplies', 'Miscellaneous']}
         />
       )}
     </div>
