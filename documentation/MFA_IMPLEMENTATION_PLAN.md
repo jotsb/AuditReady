@@ -591,15 +591,388 @@ export function generateDeviceFingerprint(): string {
 
 ---
 
-## 📝 Open Questions
+## 🔧 Admin MFA Reset Feature (REQUIRED)
 
-1. Should system admins be required to use MFA? (Recommend: Yes)
-2. Should we send email notification when MFA is enabled/disabled? (Recommend: Yes)
-3. Should we support multiple authenticator enrollments? (Recommend: Phase 2)
-4. What should happen to active sessions when MFA is disabled? (Recommend: Invalidate all)
+### Problem Statement
+Users may lose access to their authenticator app AND all recovery codes, requiring admin intervention.
+
+### Admin Capabilities Required
+
+#### 1. View User MFA Status
+In UserManagement component, display:
+- MFA Enabled: Yes/No
+- MFA Method: authenticator/sms
+- Recovery Codes Remaining: X/10
+- Trusted Devices: Count
+
+#### 2. Reset MFA for User
+New admin action: "Reset MFA"
+- **Purpose:** Disable MFA for locked-out user
+- **Flow:**
+  1. Admin clicks "Reset MFA" button
+  2. Modal requires:
+     - Admin password confirmation
+     - Reason for reset (audit trail)
+  3. System performs:
+     - Disables MFA (`mfa_enabled = false`)
+     - Unenrolls all TOTP factors via Supabase API
+     - Invalidates all recovery codes
+     - Clears trusted devices
+     - Logs event to audit_logs and system_logs
+     - Sends email notification to user
+  4. User receives email:
+     - "Your MFA has been reset by system administrator"
+     - "Please log in and set up MFA again"
+     - Link to login page
+
+#### 3. Implementation Details
+
+**New Admin Function in `adminService.ts`:**
+```typescript
+export async function resetUserMFA(
+  userId: string,
+  reason: string,
+  adminId: string
+): Promise<void> {
+  // 1. Verify admin has permission
+  // 2. Unenroll all MFA factors
+  // 3. Update profile: mfa_enabled = false
+  // 4. Delete recovery codes
+  // 5. Clear trusted devices
+  // 6. Log to audit_logs and system_logs
+  // 7. Trigger email notification
+}
+```
+
+**New Button in UserManagement.tsx:**
+```tsx
+{userDetails.mfa_enabled && (
+  <button
+    onClick={() => handleResetMFA(user)}
+    className="text-orange-600 hover:text-orange-700"
+    title="Reset User MFA (Emergency)"
+  >
+    <ShieldOff className="w-5 h-5" />
+  </button>
+)}
+```
+
+#### 4. Security Considerations
+- Require admin password confirmation
+- Log all MFA resets with reason
+- Rate limit: Max 3 MFA resets per user per 24 hours
+- Send notification emails to both user and admin
+- Create audit trail entry
 
 ---
 
-**Estimated Total Effort:** 4-5 days
+## 📊 Logging Requirements for MFA
+
+MFA events MUST be logged to **BOTH** system_logs and audit_logs for complete visibility.
+
+### Events to Log
+
+#### 1. MFA Enrollment Events
+**Action:** `enable_mfa`
+**Log to:** audit_logs + system_logs
+
+**audit_logs:**
+```json
+{
+  "action": "enable_mfa",
+  "actor_id": "user-id",
+  "resource_type": "profile",
+  "resource_id": "user-id",
+  "details": {
+    "mfa_method": "authenticator",
+    "recovery_codes_generated": 10
+  },
+  "status": "success"
+}
+```
+
+**system_logs:**
+```json
+{
+  "level": "INFO",
+  "category": "SECURITY",
+  "message": "User enabled MFA with TOTP authenticator",
+  "metadata": {
+    "user_id": "user-id",
+    "mfa_method": "authenticator",
+    "recovery_codes_count": 10
+  }
+}
+```
+
+#### 2. MFA Verification Events
+**Action:** `mfa_verification_success` / `mfa_verification_failure`
+**Log to:** system_logs (high volume, not audit_logs)
+
+**system_logs:**
+```json
+{
+  "level": "INFO",
+  "category": "AUTH",
+  "message": "MFA verification succeeded",
+  "metadata": {
+    "user_id": "user-id",
+    "method": "totp",
+    "trusted_device": false
+  }
+}
+```
+
+After 3 consecutive failures, also log to audit_logs:
+```json
+{
+  "action": "mfa_verification_failed_multiple",
+  "actor_id": "user-id",
+  "details": {
+    "failure_count": 3,
+    "ip_address": "xxx.xxx.xxx.xxx"
+  },
+  "status": "failure"
+}
+```
+
+#### 3. Recovery Code Usage
+**Action:** `recovery_code_used`
+**Log to:** audit_logs + system_logs
+
+**audit_logs:**
+```json
+{
+  "action": "recovery_code_used",
+  "actor_id": "user-id",
+  "resource_type": "recovery_code",
+  "resource_id": "code-id",
+  "details": {
+    "remaining_codes": 9
+  },
+  "status": "success"
+}
+```
+
+**system_logs:**
+```json
+{
+  "level": "WARN",
+  "category": "SECURITY",
+  "message": "User logged in using recovery code",
+  "metadata": {
+    "user_id": "user-id",
+    "codes_remaining": 9,
+    "ip_address": "xxx.xxx.xxx.xxx"
+  }
+}
+```
+
+#### 4. MFA Disabled
+**Action:** `disable_mfa`
+**Log to:** audit_logs + system_logs
+
+**audit_logs:**
+```json
+{
+  "action": "disable_mfa",
+  "actor_id": "user-id",
+  "resource_type": "profile",
+  "resource_id": "user-id",
+  "details": {
+    "reason": "user_requested"
+  },
+  "status": "success"
+}
+```
+
+**system_logs:**
+```json
+{
+  "level": "WARN",
+  "category": "SECURITY",
+  "message": "User disabled MFA",
+  "metadata": {
+    "user_id": "user-id",
+    "reason": "user_requested"
+  }
+}
+```
+
+#### 5. Admin MFA Reset (NEW)
+**Action:** `admin_reset_mfa`
+**Log to:** audit_logs + system_logs
+
+**audit_logs:**
+```json
+{
+  "action": "admin_reset_mfa",
+  "actor_id": "admin-id",
+  "resource_type": "profile",
+  "resource_id": "user-id",
+  "details": {
+    "reason": "User lost access to authenticator app",
+    "admin_email": "admin@example.com",
+    "target_user_email": "user@example.com"
+  },
+  "status": "success"
+}
+```
+
+**system_logs:**
+```json
+{
+  "level": "WARN",
+  "category": "SECURITY",
+  "message": "Admin reset user MFA",
+  "metadata": {
+    "admin_id": "admin-id",
+    "target_user_id": "user-id",
+    "reason": "User lost access to authenticator app",
+    "ip_address": "admin-ip"
+  }
+}
+```
+
+#### 6. Trusted Device Management
+**Action:** `add_trusted_device` / `remove_trusted_device`
+**Log to:** system_logs only (audit_logs trigger handles profile changes)
+
+**system_logs:**
+```json
+{
+  "level": "INFO",
+  "category": "AUTH",
+  "message": "User added trusted device",
+  "metadata": {
+    "user_id": "user-id",
+    "device_fingerprint": "hash",
+    "device_name": "Chrome on Mac",
+    "expires_at": "2025-11-08"
+  }
+}
+```
+
+#### 7. Recovery Codes Regenerated
+**Action:** `regenerate_recovery_codes`
+**Log to:** audit_logs + system_logs
+
+**audit_logs:**
+```json
+{
+  "action": "regenerate_recovery_codes",
+  "actor_id": "user-id",
+  "resource_type": "recovery_codes",
+  "details": {
+    "new_codes_count": 10,
+    "old_codes_invalidated": 5
+  },
+  "status": "success"
+}
+```
+
+**system_logs:**
+```json
+{
+  "level": "INFO",
+  "category": "SECURITY",
+  "message": "User regenerated recovery codes",
+  "metadata": {
+    "user_id": "user-id",
+    "codes_generated": 10,
+    "previous_codes_invalidated": 5
+  }
+}
+```
+
+### Logging Helper Functions
+
+Update `src/lib/logger.ts` with MFA-specific functions:
+
+```typescript
+export async function logMFAEvent(
+  userId: string,
+  action: string,
+  details: Record<string, any>,
+  level: 'INFO' | 'WARN' | 'ERROR' = 'INFO'
+): Promise<void> {
+  // Log to system_logs
+  await logSystemEvent({
+    level,
+    category: 'SECURITY',
+    message: `MFA: ${action}`,
+    metadata: { user_id: userId, ...details },
+    user_id: userId
+  });
+
+  // Certain events also go to audit_logs
+  const auditActions = [
+    'enable_mfa', 'disable_mfa', 'admin_reset_mfa',
+    'recovery_code_used', 'regenerate_recovery_codes'
+  ];
+
+  if (auditActions.includes(action)) {
+    await logAuditEvent({
+      action,
+      actor_id: userId,
+      resource_type: 'profile',
+      resource_id: userId,
+      details,
+      status: 'success'
+    });
+  }
+}
+```
+
+---
+
+## ✅ Updated Configuration (User Confirmed)
+
+1. **MFA Method:** TOTP only (no SMS)
+2. **MFA Mode:** Optional for all users
+3. **Admin Enforcement:** No (optional for everyone including admins)
+4. **Trust Device Duration:** 30 days
+5. **Email Notifications:** Yes (on enable/disable/reset)
+
+---
+
+## 📝 Implementation Checklist (Updated)
+
+### Phase 1: Core MFA (Days 1-3)
+- [ ] Create recovery_codes table migration
+- [ ] Add MFA logging functions to logger.ts
+- [ ] Install dependencies (qrcode, bcryptjs)
+- [ ] Build MFASetup wizard component
+- [ ] Create MFAVerification login component
+- [ ] Build MFAManagement settings component
+- [ ] Create RecoveryCodesDisplay component
+- [ ] Build mfaUtils helper library
+- [ ] Create useMFA hook
+- [ ] Integrate MFA into AuthContext
+- [ ] Add MFA section to SettingsPage
+- [ ] Test basic MFA flow
+
+### Phase 2: Admin & Advanced Features (Day 4)
+- [ ] Add resetUserMFA function to adminService.ts
+- [ ] Add MFA reset button to UserManagement.tsx
+- [ ] Build MFA reset modal with confirmation
+- [ ] Create email notification edge function
+- [ ] Add MFA status display in user details
+- [ ] Implement trusted device management
+- [ ] Add rate limiting for MFA attempts
+- [ ] Test admin reset flow
+
+### Phase 3: Logging & Polish (Day 5)
+- [ ] Verify all MFA events logged to system_logs
+- [ ] Verify critical events logged to audit_logs
+- [ ] Test logging with different scenarios
+- [ ] Add MFA metrics to dashboard (optional)
+- [ ] Final end-to-end testing
+- [ ] Documentation updates
+- [ ] npm run build verification
+
+---
+
+**Estimated Total Effort:** 5 days (updated with admin reset + logging)
 **Priority:** Critical (🚨)
 **Business Value:** High - Required for enterprise customers and compliance
