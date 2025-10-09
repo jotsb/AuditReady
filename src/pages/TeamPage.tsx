@@ -101,7 +101,7 @@ export default function TeamPage() {
 
         supabase
           .from('invitations')
-          .select('*, token')
+          .select('id, email, role, status, expires_at, created_at, token')
           .eq('business_id', memberData.business_id)
           .eq('status', 'pending')
           .order('created_at', { ascending: false })
