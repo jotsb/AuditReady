@@ -37,19 +37,19 @@ class Logger {
     }
   }
 
-  debug(message: string, metadata?: Record<string, any>): void {
+  debug(message: string, metadata?: Record<string, any>, category: LogCategory = 'CLIENT_ERROR'): void {
     console.debug(message, metadata);
-    this.sendToServer({ level: 'DEBUG', category: 'CLIENT_ERROR', message, metadata });
+    this.sendToServer({ level: 'DEBUG', category, message, metadata });
   }
 
-  info(message: string, metadata?: Record<string, any>): void {
+  info(message: string, metadata?: Record<string, any>, category: LogCategory = 'CLIENT_ERROR'): void {
     console.info(message, metadata);
-    this.sendToServer({ level: 'INFO', category: 'CLIENT_ERROR', message, metadata });
+    this.sendToServer({ level: 'INFO', category, message, metadata });
   }
 
-  warn(message: string, metadata?: Record<string, any>): void {
+  warn(message: string, metadata?: Record<string, any>, category: LogCategory = 'CLIENT_ERROR'): void {
     console.warn(message, metadata);
-    this.sendToServer({ level: 'WARN', category: 'CLIENT_ERROR', message, metadata });
+    this.sendToServer({ level: 'WARN', category, message, metadata });
   }
 
   error(message: string, error?: Error, metadata?: Record<string, any>): void {
@@ -147,6 +147,41 @@ class Logger {
       message: `Data loaded: ${count} ${resourceType}`,
       metadata: { resourceType, count, filters: filters || {} }
     });
+  }
+
+  database(operation: string, table: string, success: boolean, metadata?: Record<string, any>): void {
+    const level = success ? 'INFO' : 'ERROR';
+    this.sendToServer({
+      level,
+      category: 'DATABASE',
+      message: `Database ${operation} on ${table}: ${success ? 'success' : 'failed'}`,
+      metadata: { ...metadata, operation, table, success }
+    });
+  }
+
+  api(endpoint: string, method: string, statusCode: number, metadata?: Record<string, any>): void {
+    const level = statusCode >= 400 ? 'ERROR' : statusCode >= 300 ? 'WARN' : 'INFO';
+    this.sendToServer({
+      level,
+      category: 'API',
+      message: `API ${method} ${endpoint} - ${statusCode}`,
+      metadata: { ...metadata, endpoint, method, statusCode }
+    });
+  }
+
+  edgeFunction(functionName: string, success: boolean, metadata?: Record<string, any>): void {
+    const level = success ? 'INFO' : 'ERROR';
+    this.sendToServer({
+      level,
+      category: 'EDGE_FUNCTION',
+      message: `Edge function ${functionName}: ${success ? 'success' : 'failed'}`,
+      metadata: { ...metadata, functionName, success }
+    });
+  }
+
+  trace(message: string, metadata?: Record<string, any>): void {
+    console.trace(message, metadata);
+    this.sendToServer({ level: 'DEBUG', category: 'CLIENT_ERROR', message, metadata });
   }
 }
 

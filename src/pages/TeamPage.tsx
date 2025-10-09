@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { usePageTracking } from '../hooks/usePageTracking';
 import { actionTracker } from '../lib/actionTracker';
+import { logger } from '../lib/logger';
 
 interface TeamMember {
   id: string;
@@ -60,6 +61,9 @@ export default function TeamPage() {
   const loadTeamData = async () => {
     if (!user) return;
 
+    const startTime = performance.now();
+    logger.info('Loading team data', { userId: user.id, membersPage: currentMembersPage, invitesPage: currentInvitesPage });
+
     try {
       setLoading(true);
       setError('');
@@ -70,8 +74,12 @@ export default function TeamPage() {
         .eq('user_id', user.id)
         .single();
 
-      if (memberError) throw memberError;
+      if (memberError) {
+        logger.error('Failed to fetch user business membership', memberError, { userId: user.id });
+        throw memberError;
+      }
 
+      logger.debug('User business membership loaded', { businessId: memberData.business_id, role: memberData.role });
       setBusinessId(memberData.business_id);
       setUserRole(memberData.role);
 
@@ -108,8 +116,14 @@ export default function TeamPage() {
           .range(invitesStartIndex, invitesEndIndex)
       ]);
 
-      if (membersResult.error) throw membersResult.error;
-      if (invitationsResult.error) throw invitationsResult.error;
+      if (membersResult.error) {
+        logger.error('Failed to fetch team members', membersResult.error, { businessId: memberData.business_id });
+        throw membersResult.error;
+      }
+      if (invitationsResult.error) {
+        logger.error('Failed to fetch invitations', invitationsResult.error, { businessId: memberData.business_id });
+        throw invitationsResult.error;
+      }
 
       const enrichedMembers = await Promise.all(
         (membersResult.data || []).map(async (member: any) => {
@@ -133,8 +147,18 @@ export default function TeamPage() {
       setInvitations(invitationsResult.data || []);
       setTotalMembers(membersCountResult.count || 0);
       setTotalInvites(invitationsCountResult.count || 0);
+
+      const executionTime = performance.now() - startTime;
+      logger.performance('loadTeamData', executionTime, {
+        membersCount: membersCountResult.count || 0,
+        invitesCount: invitationsCountResult.count || 0
+      });
+      logger.info('Team data loaded successfully', {
+        membersCount: membersCountResult.count || 0,
+        invitesCount: invitationsCountResult.count || 0
+      });
     } catch (err: any) {
-      console.error('Error loading team data:', err);
+      logger.error('Error loading team data', err, { userId: user.id });
       setError(err.message);
     } finally {
       setLoading(false);
@@ -144,6 +168,8 @@ export default function TeamPage() {
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!businessId || !user) return;
+
+    logger.info('Starting team invitation', { email: inviteEmail, role: inviteRole, businessId });
 
     try {
       setError('');
@@ -157,10 +183,12 @@ export default function TeamPage() {
         .maybeSingle();
 
       if (existingInvite) {
+        logger.warn('Duplicate invitation attempted', { email: inviteEmail, businessId });
         setError('An invitation has already been sent to this email');
         return;
       }
 
+      logger.debug('Inserting invitation record', { email: inviteEmail, role: inviteRole, businessId });
       const { error: inviteError } = await supabase
         .from('invitations')
         .insert({
@@ -170,20 +198,26 @@ export default function TeamPage() {
           invited_by: user.id
         });
 
-      if (inviteError) throw inviteError;
+      if (inviteError) {
+        logger.error('Failed to create invitation', inviteError, { email: inviteEmail, role: inviteRole, businessId });
+        throw inviteError;
+      }
 
+      logger.info('Team invitation sent successfully', { email: inviteEmail, role: inviteRole });
       setShowInviteModal(false);
       setInviteEmail('');
       setInviteRole('member');
       await loadTeamData();
     } catch (err: any) {
-      console.error('Error sending invitation:', err);
+      logger.error('Error sending invitation', err, { email: inviteEmail, role: inviteRole, businessId });
       setError(err.message);
     }
   };
 
   const handleRoleChange = async (memberId: string, newRole: 'owner' | 'manager' | 'member') => {
     if (!businessId) return;
+
+    logger.info('Changing team member role', { memberId, newRole, businessId });
 
     try {
       setError('');
@@ -193,11 +227,15 @@ export default function TeamPage() {
         .update({ role: newRole })
         .eq('id', memberId);
 
-      if (error) throw error;
+      if (error) {
+        logger.error('Failed to update team member role', error, { memberId, newRole, businessId });
+        throw error;
+      }
 
+      logger.info('Team member role updated successfully', { memberId, newRole });
       await loadTeamData();
     } catch (err: any) {
-      console.error('Error updating role:', err);
+      logger.error('Error updating role', err, { memberId, newRole, businessId });
       setError(err.message);
     }
   };
@@ -205,6 +243,8 @@ export default function TeamPage() {
   const handleRemoveMember = async (memberId: string) => {
     if (!confirm('Are you sure you want to remove this team member?')) return;
     if (!businessId) return;
+
+    logger.info('Removing team member', { memberId, businessId });
 
     try {
       setError('');
@@ -214,17 +254,23 @@ export default function TeamPage() {
         .delete()
         .eq('id', memberId);
 
-      if (error) throw error;
+      if (error) {
+        logger.error('Failed to remove team member', error, { memberId, businessId });
+        throw error;
+      }
 
+      logger.info('Team member removed successfully', { memberId });
       await loadTeamData();
     } catch (err: any) {
-      console.error('Error removing member:', err);
+      logger.error('Error removing member', err, { memberId, businessId });
       setError(err.message);
     }
   };
 
   const handleCancelInvitation = async (invitationId: string) => {
     if (!businessId) return;
+
+    logger.info('Canceling invitation', { invitationId, businessId });
 
     try {
       setError('');
@@ -234,11 +280,15 @@ export default function TeamPage() {
         .update({ status: 'expired' })
         .eq('id', invitationId);
 
-      if (error) throw error;
+      if (error) {
+        logger.error('Failed to cancel invitation', error, { invitationId, businessId });
+        throw error;
+      }
 
+      logger.info('Invitation canceled successfully', { invitationId });
       await loadTeamData();
     } catch (err: any) {
-      console.error('Error canceling invitation:', err);
+      logger.error('Error canceling invitation', err, { invitationId, businessId });
       setError(err.message);
     }
   };
@@ -246,12 +296,16 @@ export default function TeamPage() {
   const handleCopyInviteLink = (token: string) => {
     const baseUrl = import.meta.env.VITE_PUBLIC_URL || window.location.origin;
     const inviteLink = `${baseUrl}/accept-invite?token=${token}`;
+    logger.debug('Copying invitation link', { token: token.substring(0, 8) + '...' });
     navigator.clipboard.writeText(inviteLink);
     setCopiedToken(token);
     setTimeout(() => setCopiedToken(null), 2000);
+    logger.info('Invitation link copied to clipboard');
   };
 
   const handleResendInvitation = async (invitationId: string) => {
+    logger.info('Resending invitation', { invitationId });
+
     try {
       setError('');
 
@@ -261,7 +315,10 @@ export default function TeamPage() {
         .eq('id', invitationId)
         .single();
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        logger.error('Failed to fetch invitation for resend', fetchError, { invitationId });
+        throw fetchError;
+      }
 
       const { error: updateError } = await supabase
         .from('invitations')
@@ -271,7 +328,10 @@ export default function TeamPage() {
         })
         .eq('id', invitationId);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        logger.error('Failed to update invitation expiry', updateError, { invitationId });
+        throw updateError;
+      }
 
       actionTracker.buttonClick('resend_invitation', {
         invitationId,
@@ -279,11 +339,12 @@ export default function TeamPage() {
         role: invitation.role
       });
 
+      logger.info('Invitation resent successfully', { invitationId, email: invitation.email });
       await loadTeamData();
       setError('');
       alert('Invitation resent successfully!');
     } catch (err: any) {
-      console.error('Error resending invitation:', err);
+      logger.error('Error resending invitation', err, { invitationId });
       setError(err.message);
     }
   };
