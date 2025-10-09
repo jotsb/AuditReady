@@ -620,21 +620,41 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
 
       if (error) throw error;
 
-      // Generate CSV content
-      const headers = ['Date', 'Vendor', 'Category', 'Payment Method', 'Subtotal', 'GST', 'PST', 'Total', 'Notes'];
+      // Generate CSV content with comprehensive fields
+      const headers = [
+        'Transaction Date',
+        'Vendor Name',
+        'Vendor Address',
+        'Category',
+        'Payment Method',
+        'Subtotal',
+        'GST',
+        'PST',
+        'Total Amount',
+        'Notes',
+        'Extraction Status',
+        'Edited',
+        'Created Date',
+        'Receipt ID'
+      ];
       const csvRows = [headers.join(',')];
 
       receiptsToExport?.forEach((receipt) => {
         const row = [
           receipt.transaction_date || '',
           `"${(receipt.vendor_name || '').replace(/"/g, '""')}"`,
+          `"${(receipt.vendor_address || '').replace(/"/g, '""')}"`,
           receipt.category || '',
           receipt.payment_method || '',
           receipt.subtotal?.toFixed(2) || '0.00',
           receipt.gst_amount?.toFixed(2) || '0.00',
           receipt.pst_amount?.toFixed(2) || '0.00',
           receipt.total_amount?.toFixed(2) || '0.00',
-          `"${(receipt.notes || '').replace(/"/g, '""')}"`
+          `"${(receipt.notes || '').replace(/"/g, '""')}"`,
+          receipt.extraction_status || '',
+          receipt.is_edited ? 'Yes' : 'No',
+          receipt.created_at?.split('T')[0] || '',
+          receipt.id
         ];
         csvRows.push(row.join(','));
       });
@@ -679,53 +699,99 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
       const { default: jsPDF } = await import('jspdf');
       const autoTable = (await import('jspdf-autotable')).default;
 
-      // Get selected receipts data
-      const selectedReceiptsData = receipts.filter(r => receiptIds.includes(r.id));
+      // Get full receipt data from database
+      const { data: receiptsToExport, error } = await supabase
+        .from('receipts')
+        .select('*')
+        .in('id', receiptIds)
+        .order('transaction_date', { ascending: false });
 
-      // Create PDF document
-      const doc = new jsPDF();
+      if (error) throw error;
+      if (!receiptsToExport || receiptsToExport.length === 0) {
+        throw new Error('No receipts found to export');
+      }
+
+      // Create PDF document in landscape orientation
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
       // Add title
-      doc.setFontSize(18);
-      doc.text('Receipt Export', 14, 20);
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Receipt Export Report', 14, 15);
 
       // Add metadata
-      doc.setFontSize(10);
-      doc.text(`Export Date: ${new Date().toLocaleDateString()}`, 14, 30);
-      doc.text(`Total Receipts: ${selectedReceiptsData.length}`, 14, 36);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Export Date: ${new Date().toLocaleDateString()}`, 14, 22);
+      doc.text(`Total Receipts: ${receiptsToExport.length}`, 14, 27);
 
       // Calculate totals
-      const totalAmount = selectedReceiptsData.reduce((sum, r) => sum + r.total_amount, 0);
-      const totalGST = selectedReceiptsData.reduce((sum, r) => sum + (r.gst_amount || 0), 0);
-      const totalPST = selectedReceiptsData.reduce((sum, r) => sum + (r.pst_amount || 0), 0);
+      const totalAmount = receiptsToExport.reduce((sum, r) => sum + (r.total_amount || 0), 0);
+      const totalSubtotal = receiptsToExport.reduce((sum, r) => sum + (r.subtotal || 0), 0);
+      const totalGST = receiptsToExport.reduce((sum, r) => sum + (r.gst_amount || 0), 0);
+      const totalPST = receiptsToExport.reduce((sum, r) => sum + (r.pst_amount || 0), 0);
 
-      doc.text(`Total Amount: $${totalAmount.toFixed(2)}`, 14, 42);
-      doc.text(`Total GST: $${totalGST.toFixed(2)} | Total PST: $${totalPST.toFixed(2)}`, 14, 48);
+      doc.text(`Subtotal: $${totalSubtotal.toFixed(2)} | GST: $${totalGST.toFixed(2)} | PST: $${totalPST.toFixed(2)} | Total: $${totalAmount.toFixed(2)}`, 14, 32);
 
-      // Prepare table data
-      const tableData = selectedReceiptsData.map(receipt => [
+      // Prepare comprehensive table data
+      const tableData = receiptsToExport.map(receipt => [
         formatDate(receipt.transaction_date),
         receipt.vendor_name || 'Unknown',
+        receipt.vendor_address || '',
         receipt.category || 'Uncategorized',
         receipt.payment_method || '-',
-        `$${receipt.total_amount.toFixed(2)}`
+        `$${(receipt.subtotal || 0).toFixed(2)}`,
+        `$${(receipt.gst_amount || 0).toFixed(2)}`,
+        `$${(receipt.pst_amount || 0).toFixed(2)}`,
+        `$${(receipt.total_amount || 0).toFixed(2)}`,
+        receipt.is_edited ? 'Yes' : 'No',
+        receipt.notes || ''
       ]);
 
-      // Add table
+      // Add comprehensive table with landscape layout
       autoTable(doc, {
-        startY: 55,
-        head: [['Date', 'Vendor', 'Category', 'Payment', 'Amount']],
+        startY: 38,
+        head: [[
+          'Date',
+          'Vendor',
+          'Address',
+          'Category',
+          'Payment',
+          'Subtotal',
+          'GST',
+          'PST',
+          'Total',
+          'Edited',
+          'Notes'
+        ]],
         body: tableData,
         theme: 'grid',
-        headStyles: { fillColor: [37, 99, 235] }, // blue-600
-        styles: { fontSize: 9 },
+        headStyles: {
+          fillColor: [37, 99, 235],
+          fontSize: 8,
+          fontStyle: 'bold',
+          halign: 'center'
+        },
+        styles: {
+          fontSize: 7,
+          cellPadding: 2,
+          overflow: 'linebreak',
+          cellWidth: 'wrap'
+        },
         columnStyles: {
-          0: { cellWidth: 30 },
-          1: { cellWidth: 50 },
-          2: { cellWidth: 35 },
-          3: { cellWidth: 30 },
-          4: { cellWidth: 25, halign: 'right' }
-        }
+          0: { cellWidth: 22, halign: 'left' },    // Date
+          1: { cellWidth: 35, halign: 'left' },    // Vendor
+          2: { cellWidth: 40, halign: 'left', fontSize: 6 },    // Address
+          3: { cellWidth: 25, halign: 'left' },    // Category
+          4: { cellWidth: 20, halign: 'center' },  // Payment
+          5: { cellWidth: 20, halign: 'right' },   // Subtotal
+          6: { cellWidth: 18, halign: 'right' },   // GST
+          7: { cellWidth: 18, halign: 'right' },   // PST
+          8: { cellWidth: 20, halign: 'right' },   // Total
+          9: { cellWidth: 15, halign: 'center' },  // Edited
+          10: { cellWidth: 44, halign: 'left', fontSize: 6 }   // Notes
+        },
+        margin: { left: 14, right: 14 }
       });
 
       // Save the PDF
