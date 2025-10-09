@@ -3,6 +3,20 @@ import { supabase } from '../lib/supabase';
 import { generateRecoveryCodes, hashRecoveryCode, createTrustedDevice, isDeviceTrusted, type TrustedDevice } from '../lib/mfaUtils';
 import { logger } from '../lib/logger';
 
+// Helper to create audit log entries
+const createAuditLog = async (action: string, details: Record<string, unknown> = {}) => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  await supabase.from('audit_logs').insert({
+    user_id: user.id,
+    action,
+    resource_type: 'mfa',
+    resource_id: user.id,
+    details,
+  });
+};
+
 interface MFAFactor {
   id: string;
   friendly_name: string;
@@ -40,6 +54,11 @@ export function useMFA() {
 
       await logger.mfa('mfa_enrollment_started', {
         friendly_name: friendlyName
+      });
+
+      await createAuditLog('mfa_enrollment_started', {
+        friendly_name: friendlyName,
+        factor_type: 'totp'
       });
 
       return data as { id: string; type: 'totp'; totp: { qr_code: string; secret: string; uri: string } };
@@ -85,6 +104,12 @@ export function useMFA() {
         factor_id: factorId
       });
 
+      await createAuditLog('enable_mfa', {
+        mfa_method: 'authenticator',
+        factor_id: factorId,
+        verification_method: 'totp'
+      });
+
       return true;
     } catch (err: any) {
       const message = err.message || 'Failed to verify MFA code';
@@ -121,11 +146,68 @@ export function useMFA() {
         count: codes.length
       });
 
+      await createAuditLog('generate_recovery_codes', {
+        count: codes.length,
+        action_type: 'created'
+      });
+
       return codes;
     } catch (err: any) {
       const message = err.message || 'Failed to generate recovery codes';
       setError(message);
       await logger.mfa('generate_recovery_codes_failed', { error: message }, 'ERROR');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const regenerateRecoveryCodes = useCallback(async (userId: string): Promise<string[]> => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Delete all existing codes (both used and unused)
+      const { error: deleteError } = await supabase
+        .from('recovery_codes')
+        .delete()
+        .eq('user_id', userId);
+
+      if (deleteError) throw deleteError;
+
+      // Generate new codes
+      const codes = generateRecoveryCodes(10);
+
+      const hashedCodes = await Promise.all(
+        codes.map(async (code) => ({
+          user_id: userId,
+          code_hash: await hashRecoveryCode(code),
+          used: false
+        }))
+      );
+
+      const { error: insertError } = await supabase
+        .from('recovery_codes')
+        .insert(hashedCodes);
+
+      if (insertError) throw insertError;
+
+      await logger.mfa('regenerate_recovery_codes', {
+        count: codes.length,
+        action_type: 'regenerated'
+      });
+
+      await createAuditLog('regenerate_recovery_codes', {
+        count: codes.length,
+        action_type: 'regenerated',
+        old_codes_deleted: true
+      });
+
+      return codes;
+    } catch (err: any) {
+      const message = err.message || 'Failed to regenerate recovery codes';
+      setError(message);
+      await logger.mfa('regenerate_recovery_codes_failed', { error: message }, 'ERROR');
       throw err;
     } finally {
       setLoading(false);
@@ -235,6 +317,12 @@ export function useMFA() {
         factor_id: factorId,
         reason: 'user_requested'
       }, 'WARN');
+
+      await createAuditLog('disable_mfa', {
+        factor_id: factorId,
+        reason: 'user_requested',
+        recovery_codes_deleted: true
+      });
     } catch (err: any) {
       const message = err.message || 'Failed to unenroll MFA';
       setError(message);
@@ -282,6 +370,12 @@ export function useMFA() {
       localStorage.setItem('mfa_device_id', device.id);
 
       await logger.mfa('add_trusted_device', {
+        device_name: device.name,
+        device_id: device.id,
+        expires_at: device.expires_at
+      });
+
+      await createAuditLog('add_trusted_device', {
         device_name: device.name,
         device_id: device.id,
         expires_at: device.expires_at
@@ -346,6 +440,10 @@ export function useMFA() {
       await logger.mfa('remove_trusted_device', {
         device_id: deviceId
       });
+
+      await createAuditLog('remove_trusted_device', {
+        device_id: deviceId
+      });
     } catch (err: any) {
       const message = err.message || 'Failed to remove trusted device';
       setError(message);
@@ -361,6 +459,7 @@ export function useMFA() {
     enrollMFA,
     verifyEnrollment,
     generateAndStoreRecoveryCodes,
+    regenerateRecoveryCodes,
     listFactors,
     challengeFactor,
     verifyChallenge,

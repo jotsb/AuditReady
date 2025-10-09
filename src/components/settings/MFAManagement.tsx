@@ -13,6 +13,7 @@ export function MFAManagement() {
     listFactors,
     unenrollFactor,
     generateAndStoreRecoveryCodes,
+    regenerateRecoveryCodes,
     removeTrustedDevice,
     loading
   } = useMFA();
@@ -26,6 +27,7 @@ export function MFAManagement() {
   const [newRecoveryCodes, setNewRecoveryCodes] = useState<string[]>([]);
   const [trustedDevices, setTrustedDevices] = useState<TrustedDevice[]>([]);
   const [recoveryCodesCount, setRecoveryCodesCount] = useState(0);
+  const [expiringCodesWarning, setExpiringCodesWarning] = useState<{ count: number; days: number } | null>(null);
   const [factorId, setFactorId] = useState<string | null>(null);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [verifyCode, setVerifyCode] = useState('');
@@ -67,6 +69,22 @@ export function MFAManagement() {
         .gte('expires_at', new Date().toISOString());
 
       setRecoveryCodesCount(count || 0);
+
+      // Check for expiring codes
+      if (profile?.mfa_enabled) {
+        const { data: expiringData } = await supabase.rpc('check_expiring_recovery_codes', {
+          p_user_id: user.id
+        });
+
+        if (expiringData && expiringData.has_expiring_codes) {
+          setExpiringCodesWarning({
+            count: expiringData.expiring_count,
+            days: Math.floor(expiringData.days_until_expiry)
+          });
+        } else {
+          setExpiringCodesWarning(null);
+        }
+      }
     } catch (err) {
       console.error('Failed to load MFA status:', err);
     }
@@ -182,17 +200,19 @@ export function MFAManagement() {
   const handleRegenerateRecoveryCodes = async () => {
     if (!user) return;
 
+    if (!confirm('Are you sure you want to regenerate recovery codes? All existing codes will be invalidated.')) {
+      return;
+    }
+
     try {
       setError('');
 
-      await supabase
-        .from('recovery_codes')
-        .delete()
-        .eq('user_id', user.id);
-
-      const codes = await generateAndStoreRecoveryCodes(user.id);
+      const codes = await regenerateRecoveryCodes(user.id);
       setNewRecoveryCodes(codes);
       setShowRegenerateModal(false);
+      setSuccess('Recovery codes regenerated successfully! Save your new codes.');
+      setTimeout(() => setSuccess(''), 5000);
+      loadMFAStatus();
     } catch (err: any) {
       setError(err.message || 'Failed to regenerate recovery codes');
     }
@@ -291,6 +311,46 @@ export function MFAManagement() {
 
         {mfaEnabled && (
           <div className="space-y-4 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            {/* Low Recovery Codes Warning */}
+            {recoveryCodesCount > 0 && recoveryCodesCount < 3 && (
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-300 px-4 py-3 rounded-lg flex items-start gap-2">
+                <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium">Low on Recovery Codes</p>
+                  <p className="text-sm mt-1">
+                    You only have {recoveryCodesCount} recovery code{recoveryCodesCount === 1 ? '' : 's'} left.
+                    Consider regenerating codes to ensure you always have backup access to your account.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {recoveryCodesCount === 0 && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 px-4 py-3 rounded-lg flex items-start gap-2">
+                <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium">No Recovery Codes Left!</p>
+                  <p className="text-sm mt-1">
+                    You've used all your recovery codes. Generate new ones immediately to maintain backup access to your account.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Expiring Codes Warning */}
+            {expiringCodesWarning && (
+              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 text-orange-800 dark:text-orange-300 px-4 py-3 rounded-lg flex items-start gap-2">
+                <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium">Recovery Codes Expiring Soon</p>
+                  <p className="text-sm mt-1">
+                    {expiringCodesWarning.count} recovery code{expiringCodesWarning.count === 1 ? '' : 's'} will expire in {expiringCodesWarning.days} day{expiringCodesWarning.days === 1 ? '' : 's'}.
+                    Regenerate your codes to maintain backup access to your account.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Recovery Codes</p>

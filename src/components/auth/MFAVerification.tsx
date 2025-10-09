@@ -23,6 +23,8 @@ export function MFAVerification({ onSuccess, onCancel }: MFAVerificationProps) {
   const [factorId, setFactorId] = useState<string>('');
   const [challengeId, setChallengeId] = useState<string>('');
   const [attemptCount, setAttemptCount] = useState(0);
+  const [isLockedOut, setIsLockedOut] = useState(false);
+  const [lockoutUntil, setLockoutUntil] = useState<Date | null>(null);
 
   useEffect(() => {
     initializeChallenge();
@@ -32,6 +34,18 @@ export function MFAVerification({ onSuccess, onCancel }: MFAVerificationProps) {
     try {
       if (!user) {
         setError('No user session found');
+        return;
+      }
+
+      // Check for lockout
+      const { data: lockoutData } = await supabase.rpc('check_mfa_lockout', {
+        p_user_id: user.id
+      });
+
+      if (lockoutData && lockoutData.is_locked_out) {
+        setIsLockedOut(true);
+        setLockoutUntil(new Date(lockoutData.lockout_until));
+        setError(lockoutData.message);
         return;
       }
 
@@ -63,14 +77,27 @@ export function MFAVerification({ onSuccess, onCancel }: MFAVerificationProps) {
       return;
     }
 
+    if (isLockedOut) {
+      setError('Account is temporarily locked. Please wait before trying again.');
+      return;
+    }
+
     try {
       setError('');
       const success = await verifyChallenge(factorId, challengeId, cleanTOTPCode(code));
 
       if (success) {
-        if (trustDevice && user) {
-          await addTrustedDevice(user.id, 30);
+        // Clear failed attempts on success
+        if (user) {
+          await supabase.rpc('clear_mfa_failed_attempts', {
+            p_user_id: user.id
+          });
+
+          if (trustDevice) {
+            await addTrustedDevice(user.id, 30);
+          }
         }
+
         await logger.mfa('mfa_verification_success', {
           method: 'totp',
           trusted_device: trustDevice
@@ -78,20 +105,40 @@ export function MFAVerification({ onSuccess, onCancel }: MFAVerificationProps) {
         completeMFA();
         onSuccess();
       } else {
+        // Record failed attempt
+        if (user) {
+          await supabase.rpc('record_mfa_failed_attempt', {
+            p_user_id: user.id,
+            p_attempt_type: 'totp'
+          });
+
+          // Check if now locked out
+          const { data: lockoutData } = await supabase.rpc('check_mfa_lockout', {
+            p_user_id: user.id
+          });
+
+          if (lockoutData && lockoutData.is_locked_out) {
+            setIsLockedOut(true);
+            setLockoutUntil(new Date(lockoutData.lockout_until));
+            setError(lockoutData.message);
+
+            await logger.mfa('mfa_account_locked', {
+              attempt_count: lockoutData.attempt_count,
+              lockout_minutes: lockoutData.lockout_duration_minutes,
+              method: 'totp'
+            }, 'WARN');
+            return;
+          }
+        }
+
         const newAttemptCount = attemptCount + 1;
         setAttemptCount(newAttemptCount);
         setError('Invalid code. Please try again.');
 
-        if (newAttemptCount >= 3) {
-          await logger.mfa('mfa_verification_failed_multiple', {
-            failure_count: newAttemptCount,
-            method: 'totp'
-          }, 'WARN');
-        }
-
-        if (newAttemptCount >= 5) {
-          setError('Too many failed attempts. Please wait a few minutes before trying again.');
-        }
+        await logger.mfa('mfa_verification_failed_multiple', {
+          failure_count: newAttemptCount,
+          method: 'totp'
+        }, 'WARN');
       }
     } catch (err: any) {
       setError(err.message || 'Verification failed');
@@ -101,6 +148,11 @@ export function MFAVerification({ onSuccess, onCancel }: MFAVerificationProps) {
   const handleVerifyRecoveryCode = async () => {
     if (!recoveryCodeInput.trim() || recoveryCodeInput.length < 8) {
       setError('Please enter a valid recovery code');
+      return;
+    }
+
+    if (isLockedOut) {
+      setError('Account is temporarily locked. Please wait before trying again.');
       return;
     }
 
@@ -133,6 +185,30 @@ export function MFAVerification({ onSuccess, onCancel }: MFAVerificationProps) {
       }
 
       if (!matchedCode) {
+        // Record failed attempt
+        await supabase.rpc('record_mfa_failed_attempt', {
+          p_user_id: user.id,
+          p_attempt_type: 'recovery_code'
+        });
+
+        // Check if now locked out
+        const { data: lockoutData } = await supabase.rpc('check_mfa_lockout', {
+          p_user_id: user.id
+        });
+
+        if (lockoutData && lockoutData.is_locked_out) {
+          setIsLockedOut(true);
+          setLockoutUntil(new Date(lockoutData.lockout_until));
+          setError(lockoutData.message);
+
+          await logger.mfa('mfa_account_locked', {
+            attempt_count: lockoutData.attempt_count,
+            lockout_minutes: lockoutData.lockout_duration_minutes,
+            method: 'recovery_code'
+          }, 'WARN');
+          return;
+        }
+
         setError('Invalid recovery code. Please try again.');
         return;
       }
@@ -156,9 +232,26 @@ export function MFAVerification({ onSuccess, onCancel }: MFAVerificationProps) {
 
       const remainingCount = remainingCodes?.length || 0;
 
+      // Clear failed attempts on success
+      await supabase.rpc('clear_mfa_failed_attempts', {
+        p_user_id: user.id
+      });
+
       await logger.mfa('recovery_code_used', {
         remaining_codes: remainingCount
       }, 'WARN');
+
+      // Add audit log entry
+      await supabase.from('audit_logs').insert({
+        user_id: user.id,
+        action: 'recovery_code_used',
+        resource_type: 'mfa',
+        resource_id: user.id,
+        details: {
+          remaining_codes: remainingCount,
+          low_codes_warning: remainingCount < 3
+        }
+      });
 
       onSuccess();
     } catch (err: any) {
