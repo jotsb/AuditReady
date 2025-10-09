@@ -116,27 +116,48 @@ export function PDFExportReport() {
       const htmlContent = await generateHTMLReport(receipts, includeImages);
       console.log('HTML content generated, length:', htmlContent.length);
 
-      const iframe = document.createElement('iframe');
-      iframe.style.position = 'fixed';
-      iframe.style.right = '0';
-      iframe.style.bottom = '0';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      iframe.style.border = 'none';
-      document.body.appendChild(iframe);
+      // Create a blob URL for the HTML content
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const blobUrl = URL.createObjectURL(blob);
 
-      const iframeDoc = iframe.contentWindow?.document;
-      if (iframeDoc) {
-        iframeDoc.open();
-        iframeDoc.write(htmlContent);
-        iframeDoc.close();
+      // Open in new window for mobile compatibility
+      const printWindow = window.open(blobUrl, '_blank');
 
-        setTimeout(() => {
-          iframe.contentWindow?.print();
+      if (printWindow) {
+        // Wait for content to load then trigger print
+        printWindow.onload = () => {
           setTimeout(() => {
-            document.body.removeChild(iframe);
-          }, 1000);
-        }, 500);
+            printWindow.print();
+            // Clean up blob URL after a delay
+            setTimeout(() => {
+              URL.revokeObjectURL(blobUrl);
+            }, 1000);
+          }, 500);
+        };
+      } else {
+        // Fallback to iframe method if popup blocked
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = 'none';
+        document.body.appendChild(iframe);
+
+        const iframeDoc = iframe.contentWindow?.document;
+        if (iframeDoc) {
+          iframeDoc.open();
+          iframeDoc.write(htmlContent);
+          iframeDoc.close();
+
+          setTimeout(() => {
+            iframe.contentWindow?.print();
+            setTimeout(() => {
+              document.body.removeChild(iframe);
+            }, 1000);
+          }, 500);
+        }
       }
     } catch (error) {
       console.error('Error generating PDF:', error);
