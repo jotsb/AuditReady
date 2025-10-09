@@ -8,7 +8,12 @@ import { logger } from '../lib/logger';
 import { useNavigate } from '../components/auth/useNavigateCompat';
 
 export function AuthPage() {
-  const [mode, setMode] = useState<'login' | 'register' | 'forgot' | 'mfa'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot' | 'mfa'>(() => {
+    // Check if we're in MFA pending state
+    const mfaPendingEmail = sessionStorage.getItem('mfa_pending_email');
+    console.log('=== AuthPage initial mode, mfaPendingEmail:', mfaPendingEmail, '===');
+    return mfaPendingEmail ? 'mfa' : 'login';
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
