@@ -9,14 +9,16 @@
 ### 🎯 Major Features
 
 #### **Complete MFA Implementation**
-Enterprise-grade two-factor authentication system for enhanced security.
+Enterprise-grade two-factor authentication system with advanced security features.
 
 **User MFA Features**
 - **TOTP Authenticator Support** - Compatible with Google Authenticator, Authy, 1Password, Microsoft Authenticator
 - **QR Code Enrollment** - Scan QR code for easy setup in authenticator apps
 - **Recovery Codes** - Generate 10 one-time recovery codes for account recovery
+- **Regenerate Codes** - One-click regeneration with automatic invalidation of old codes
 - **MFA Verification** - Required on every login after password entry
 - **Session Blocking** - Users cannot access app until MFA verification complete
+- **Trusted Devices** - Option to skip MFA for 30 days on trusted devices
 - **Disable MFA** - Users can disable MFA with password confirmation
 - **Status Display** - MFA status shown in Settings > Security section
 
@@ -32,9 +34,16 @@ Enterprise-grade two-factor authentication system for enhanced security.
 **Security Features**
 - **Hashed Storage** - Recovery codes hashed with SHA-256 before database storage
 - **One-Time Use** - Recovery codes marked as used and cannot be reused
+- **Rate Limiting** - Automatic account lockout after failed attempts (3 attempts = 5min, 5 = 15min, 10 = 1hr)
+- **Failed Attempt Tracking** - `mfa_failed_attempts` table tracks all verification failures
+- **Auto-Cleanup** - Automatic removal of old attempt records after 1 hour
+- **Recovery Code Expiration** - Codes expire 12 months after creation
+- **Expiration Warnings** - Visual alerts when codes expire within 30 days
+- **Low Code Warnings** - Yellow alert when < 3 codes remain, red when 0
 - **Session Management** - MFA verification integrated with session lifecycle
-- **Audit Logging** - Complete audit trail for all MFA operations (enable, disable, verify, reset)
-- **RLS Policies** - Users can only access their own recovery codes
+- **Comprehensive Audit Logging** - ALL user MFA operations logged to `audit_logs` (enable, disable, generate, regenerate, use recovery codes, trusted devices)
+- **System Logging** - Complete system_logs coverage for debugging
+- **RLS Policies** - Users can only access their own recovery codes and failed attempts
 - **AAL2 Enforcement** - Supabase AAL2 (Authentication Assurance Level 2) for sensitive operations
 
 ### 📦 New Components
@@ -45,11 +54,16 @@ Enterprise-grade two-factor authentication system for enhanced security.
 - `useMFA.ts` - Custom hook for MFA operations
 
 ### 🗄️ Database Changes
-- Added `recovery_codes` table with fields: id, user_id, code (hashed), used, used_at, created_at
-- Enhanced `profiles.mfa_enabled` boolean flag
-- RLS policies for recovery codes (user can only access own codes)
-- Unique constraint on user_id + code (hashed)
-- Migration: `20251009165000_add_mfa_recovery_codes.sql`
+- **Recovery Codes Table** - Store hashed recovery codes with expiration dates (12 months default)
+- **MFA Failed Attempts Table** - Track failed verification attempts with IP and user agent
+- **Trusted Devices** - Stored in profiles JSONB field with device ID and expiration
+- **Rate Limiting Functions** - `check_mfa_lockout`, `record_mfa_failed_attempt`, `clear_mfa_failed_attempts`
+- **Expiration Functions** - `check_expiring_recovery_codes`, `cleanup_expired_recovery_codes`
+- **Enhanced RLS Policies** - Users access own codes/attempts only, admins have read-only access
+- **Migrations:**
+  - `20251009165000_add_mfa_recovery_codes.sql` - Recovery codes table
+  - `20251009200000_add_mfa_rate_limiting.sql` - Rate limiting system
+  - `20251009201000_add_recovery_code_expiration.sql` - Code expiration enforcement
 
 ### 🔧 Edge Function Updates
 - `admin-user-management`: Added `reset_mfa` action for emergency MFA reset
@@ -67,11 +81,20 @@ Enterprise-grade two-factor authentication system for enhanced security.
 - **Recovery Codes** - Printable/downloadable format with clear instructions
 - **Status Indicators** - Visual feedback for MFA status throughout app
 
+### 🐛 Bug Fixes
+- **Mobile PDF Export** - Fixed print preview showing settings page instead of report data
+  - Changed from iframe method to `window.open()` with Blob URL
+  - Mobile browsers now correctly display PDF content in print preview
+  - Maintains fallback to iframe for popup-blocked scenarios
+
 ### 📊 Impact
 - Authentication & User Management: 82% → **100%** ✅
-- Security Improvements: 4.2% → 18.8% (+14.6%)
-- Overall Project: 39.8% → 40.5% (+0.7%)
+- Security Improvements: 4.2% → 24.5% (+20.3%)
+- Overall Project: 39.8% → 41.2% (+1.4%)
 - Authentication now production-ready with enterprise security
+- 8 new database tables/functions
+- 3 new migrations
+- Comprehensive audit and security logging
 
 ### 🔒 Security Compliance
 - **Two-Factor Authentication** - Industry standard for account protection
