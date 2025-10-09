@@ -162,6 +162,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       (async () => {
+        // Check if we're in an MFA pending state - if so, don't update user yet
+        const mfaPendingEmail = sessionStorage.getItem('mfa_pending_email');
+        if (mfaPendingEmail && session?.user) {
+          // User just signed in but needs MFA verification - don't treat as fully authenticated
+          return;
+        }
+
         setUser(session?.user ?? null);
         if (session?.user) {
           await checkAdminStatus(session.user.id);
@@ -308,10 +315,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(SELECTED_BUSINESS_KEY);
   };
 
-  const completeMFA = () => {
+  const completeMFA = async () => {
     setMfaPending(false);
     sessionStorage.removeItem('mfa_pending_email');
-    logger.auth('mfa_verification_complete', true, { userId: user?.id });
+
+    // Now that MFA is complete, update user state and load businesses
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      setUser(session.user);
+      await checkAdminStatus(session.user.id);
+      await loadBusinesses(session.user.id);
+      logger.auth('mfa_verification_complete', true, { userId: session.user.id });
+    }
   };
 
   return (
