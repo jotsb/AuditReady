@@ -95,7 +95,7 @@ export default function TeamPage() {
 
         supabase
           .from('invitations')
-          .select('*', { count: 'exact', head: true })
+          .select('id', { count: 'exact', head: true })
           .eq('business_id', memberData.business_id)
           .eq('status', 'pending'),
 
