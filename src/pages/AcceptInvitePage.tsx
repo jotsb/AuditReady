@@ -47,6 +47,23 @@ export default function AcceptInvitePage() {
     loadInvitation(inviteToken);
   }, []);
 
+  useEffect(() => {
+    if (invitation && !user) {
+      checkIfUserExists(invitation.email);
+    }
+  }, [invitation, user]);
+
+  const checkIfUserExists = async (email: string) => {
+    try {
+      const { data, error } = await supabase.rpc('check_user_exists', { user_email: email });
+      if (!error && !data) {
+        setShowSignupForm(true);
+      }
+    } catch (err) {
+      console.error('Error checking user:', err);
+    }
+  };
+
   const loadInvitation = async (inviteToken: string) => {
     try {
       setLoading(true);
@@ -326,21 +343,26 @@ export default function AcceptInvitePage() {
         ) : (
           <>
             {!showSignupForm ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm text-blue-800 dark:text-blue-300">
+                    You already have an account with this email. Please log in to accept the invitation.
+                  </p>
+                </div>
                 <button
                   onClick={() => navigate(`/auth?email=${encodeURIComponent(invitation.email)}`)}
                   className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                 >
                   Log In to Accept
                 </button>
-                <button
-                  onClick={() => setShowSignupForm(true)}
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
-                >
-                  Create Account
-                </button>
               </div>
             ) : (
+              <>
+                <div className="mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                  <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                    Please create an account to accept this invitation. Your email is already verified.
+                  </p>
+                </div>
               <form onSubmit={handleSignupAndAccept} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -427,30 +449,22 @@ export default function AcceptInvitePage() {
                   />
                 </div>
 
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowSignupForm(false)}
-                    className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={processing}
-                    className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {processing ? (
-                      <>
-                        <Loader className="w-5 h-5 animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      'Create Account'
-                    )}
-                  </button>
-                </div>
+                <button
+                  type="submit"
+                  disabled={processing}
+                  className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {processing ? (
+                    <>
+                      <Loader className="w-5 h-5 animate-spin" />
+                      Creating Account...
+                    </>
+                  ) : (
+                    'Create Account & Accept Invitation'
+                  )}
+                </button>
               </form>
+              </>
             )}
           </>
         )}

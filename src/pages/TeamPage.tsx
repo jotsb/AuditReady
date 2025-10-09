@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Mail, UserPlus, Shield, Trash2, X, Link2, Copy } from 'lucide-react';
+import { Users, Mail, UserPlus, Shield, Trash2, X, Link2, Copy, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { usePageTracking } from '../hooks/usePageTracking';
@@ -251,6 +251,42 @@ export default function TeamPage() {
     setTimeout(() => setCopiedToken(null), 2000);
   };
 
+  const handleResendInvitation = async (invitationId: string) => {
+    try {
+      setError('');
+
+      const { data: invitation, error: fetchError } = await supabase
+        .from('invitations')
+        .select('email, role')
+        .eq('id', invitationId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const { error: updateError } = await supabase
+        .from('invitations')
+        .update({
+          created_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+        })
+        .eq('id', invitationId);
+
+      if (updateError) throw updateError;
+
+      await actionTracker.trackAction('resend_invitation', 'invitation', invitationId, {
+        email: invitation.email,
+        role: invitation.role
+      });
+
+      await loadTeamData();
+      setError('');
+      alert('Invitation resent successfully!');
+    } catch (err: any) {
+      console.error('Error resending invitation:', err);
+      setError(err.message);
+    }
+  };
+
   const canManageTeam = userRole === 'owner';
 
   if (loading) {
@@ -389,7 +425,7 @@ export default function TeamPage() {
                   {invitation.token && (
                     <button
                       onClick={() => handleCopyInviteLink(invitation.token!)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                       title="Copy invitation link"
                     >
                       {copiedToken === invitation.token ? (
@@ -400,12 +436,22 @@ export default function TeamPage() {
                     </button>
                   )}
                   {canManageTeam && (
-                    <button
-                      onClick={() => handleCancelInvitation(invitation.id)}
-                      className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
+                    <>
+                      <button
+                        onClick={() => handleResendInvitation(invitation.id)}
+                        className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+                        title="Resend invitation"
+                      >
+                        <RefreshCw className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleCancelInvitation(invitation.id)}
+                        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        title="Delete invitation"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
