@@ -35,6 +35,7 @@ export default function TeamPage() {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [businessId, setBusinessId] = useState<string | null>(null);
+  const [businessOwnerId, setBusinessOwnerId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -84,6 +85,16 @@ export default function TeamPage() {
       logger.database('select', 'business_members', true, { userId: user.id, businessId: memberData.business_id });
       setBusinessId(memberData.business_id);
       setUserRole(memberData.role);
+
+      const { data: businessData } = await supabase
+        .from('businesses')
+        .select('owner_id')
+        .eq('id', memberData.business_id)
+        .single();
+
+      if (businessData) {
+        setBusinessOwnerId(businessData.owner_id);
+      }
 
       const membersStartIndex = (currentMembersPage - 1) * itemsPerPage;
       const membersEndIndex = membersStartIndex + itemsPerPage - 1;
@@ -472,7 +483,8 @@ export default function TeamPage() {
     }
   };
 
-  const canManageTeam = userRole === 'owner';
+  const canManageTeam = userRole === 'owner' || userRole === 'manager';
+  const isOwner = userRole === 'owner';
 
   if (loading) {
     return (
@@ -526,7 +538,7 @@ export default function TeamPage() {
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                {canManageTeam && member.role !== 'owner' ? (
+                {canManageTeam && member.user_id !== businessOwnerId ? (
                   <select
                     value={member.role}
                     onChange={(e) => handleRoleChange(member.id, e.target.value as any)}
@@ -534,7 +546,7 @@ export default function TeamPage() {
                   >
                     <option value="member">Member</option>
                     <option value="manager">Manager</option>
-                    <option value="owner">Owner</option>
+                    {isOwner && <option value="owner">Owner</option>}
                   </select>
                 ) : (
                   <span className={`px-3 py-1 rounded-full text-sm font-medium ${
@@ -546,7 +558,7 @@ export default function TeamPage() {
                     {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
                   </span>
                 )}
-                {canManageTeam && member.role !== 'owner' && (
+                {canManageTeam && member.user_id !== businessOwnerId && (
                   <button
                     onClick={() => handleRemoveMember(member.id)}
                     className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -699,8 +711,8 @@ export default function TeamPage() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="member">Member - Can view and create receipts</option>
-                  <option value="manager">Manager - Can manage receipts and collections</option>
-                  <option value="owner">Owner - Full access</option>
+                  <option value="manager">Manager - Can manage team and all receipts</option>
+                  {isOwner && <option value="owner">Owner - Full access</option>}
                 </select>
               </div>
               <div className="flex gap-3 pt-4">
