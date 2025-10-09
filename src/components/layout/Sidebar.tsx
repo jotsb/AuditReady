@@ -8,16 +8,23 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, currentView, onNavigate }: SidebarProps) {
-  const { signOut, isSystemAdmin } = useAuth();
+  const { signOut, isSystemAdmin, userRole } = useAuth();
 
-  const menuItems = [
+  const baseMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'receipts', label: 'Receipts', icon: Receipt },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
-    { id: 'team', label: 'Team', icon: Users },
-    { id: 'audit', label: 'Audit Logs', icon: Activity },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
+
+  const ownerManagerItems = [
+    { id: 'team', label: 'Team', icon: Users },
+    { id: 'audit', label: 'Audit Logs', icon: Activity },
+  ];
+
+  const menuItems = userRole === 'owner' || userRole === 'manager'
+    ? [...baseMenuItems.slice(0, 3), ...ownerManagerItems, baseMenuItems[3]]
+    : baseMenuItems;
 
   const adminMenuItems = [
     { id: 'admin', label: 'System Admin', icon: Shield },

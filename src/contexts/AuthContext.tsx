@@ -19,6 +19,7 @@ interface AuthContextType {
   isSystemAdmin: boolean;
   businesses: Business[];
   selectedBusiness: Business | null;
+  userRole: 'owner' | 'manager' | 'member' | null;
   selectBusiness: (business: Business | null) => void;
   refreshBusinesses: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
@@ -36,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isSystemAdmin, setIsSystemAdmin] = useState(false);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
+  const [userRole, setUserRole] = useState<'owner' | 'manager' | 'member' | null>(null);
 
   const checkAdminStatus = async (userId: string) => {
     const { data } = await supabase
@@ -48,33 +50,78 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsSystemAdmin(!!data);
   };
 
+  const loadUserRole = async (userId: string, businessId: string) => {
+    try {
+      const { data: business } = await supabase
+        .from('businesses')
+        .select('owner_id')
+        .eq('id', businessId)
+        .maybeSingle();
+
+      if (business && business.owner_id === userId) {
+        setUserRole('owner');
+        return;
+      }
+
+      const { data: memberData } = await supabase
+        .from('business_members')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('business_id', businessId)
+        .maybeSingle();
+
+      if (memberData) {
+        setUserRole(memberData.role);
+      } else {
+        setUserRole(null);
+      }
+    } catch (error) {
+      console.error('Error loading user role:', error);
+      setUserRole(null);
+    }
+  };
+
   const loadBusinesses = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      const { data: ownedBusinesses, error: ownedError } = await supabase
         .from('businesses')
         .select('*')
         .eq('owner_id', userId)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (ownedError) throw ownedError;
 
-      setBusinesses(data || []);
+      const { data: memberData, error: memberError } = await supabase
+        .from('business_members')
+        .select('business_id, businesses(*)')
+        .eq('user_id', userId);
 
-      // Restore selected business from localStorage
+      if (memberError) throw memberError;
+
+      const memberBusinesses = memberData?.map((m: any) => m.businesses).filter(Boolean) || [];
+      const allBusinesses = [...(ownedBusinesses || []), ...memberBusinesses];
+
+      const uniqueBusinesses = Array.from(
+        new Map(allBusinesses.map(b => [b.id, b])).values()
+      );
+
+      setBusinesses(uniqueBusinesses);
+
       const savedBusinessId = localStorage.getItem(SELECTED_BUSINESS_KEY);
-      if (savedBusinessId && data) {
-        const savedBusiness = data.find(b => b.id === savedBusinessId);
+      if (savedBusinessId && uniqueBusinesses.length > 0) {
+        const savedBusiness = uniqueBusinesses.find(b => b.id === savedBusinessId);
         if (savedBusiness) {
           setSelectedBusiness(savedBusiness);
-        } else if (data.length > 0) {
-          // If saved business not found, select first one
-          setSelectedBusiness(data[0]);
-          localStorage.setItem(SELECTED_BUSINESS_KEY, data[0].id);
+          await loadUserRole(userId, savedBusinessId);
+        } else if (uniqueBusinesses.length > 0) {
+          setSelectedBusiness(uniqueBusinesses[0]);
+          localStorage.setItem(SELECTED_BUSINESS_KEY, uniqueBusinesses[0].id);
+          await loadUserRole(userId, uniqueBusinesses[0].id);
         }
-      } else if (data && data.length > 0) {
-        // No saved selection, select first business
-        setSelectedBusiness(data[0]);
-        localStorage.setItem(SELECTED_BUSINESS_KEY, data[0].id);
+      } else if (uniqueBusinesses.length > 0) {
+        setSelectedBusiness(uniqueBusinesses[0]);
+        localStorage.setItem(SELECTED_BUSINESS_KEY, uniqueBusinesses[0].id);
+        await loadUserRole(userId, uniqueBusinesses[0].id);
       }
     } catch (error) {
       console.error('Error loading businesses:', error);
@@ -87,12 +134,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const selectBusiness = (business: Business | null) => {
+  const selectBusiness = async (business: Business | null) => {
     setSelectedBusiness(business);
     if (business) {
       localStorage.setItem(SELECTED_BUSINESS_KEY, business.id);
+      if (user) {
+        await loadUserRole(user.id, business.id);
+      }
     } else {
       localStorage.removeItem(SELECTED_BUSINESS_KEY);
+      setUserRole(null);
     }
   };
 
@@ -241,6 +292,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isSystemAdmin,
         businesses,
         selectedBusiness,
+        userRole,
         selectBusiness,
         refreshBusinesses,
         signIn,
