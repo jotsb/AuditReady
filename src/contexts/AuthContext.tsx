@@ -164,11 +164,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (async () => {
         // Check if we're in an MFA pending state - if so, don't update user yet
         const mfaPendingEmail = sessionStorage.getItem('mfa_pending_email');
+        console.log('=== onAuthStateChange fired, event:', _event, 'mfaPendingEmail:', mfaPendingEmail, 'session:', !!session?.user, '===');
         if (mfaPendingEmail && session?.user) {
           // User just signed in but needs MFA verification - don't treat as fully authenticated
+          console.log('=== Blocking user state update due to MFA pending ===');
           return;
         }
 
+        console.log('=== Updating user state ===');
         setUser(session?.user ?? null);
         if (session?.user) {
           await checkAdminStatus(session.user.id);
@@ -225,8 +228,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!mfaError && hasVerifiedMFA) {
           // User has MFA enabled and verified factors - require MFA challenge
           // Set MFA pending flag to prevent full auth until MFA is completed
+          console.log('=== Setting mfaPending to TRUE ===');
           setMfaPending(true);
           sessionStorage.setItem('mfa_pending_email', email);
+          console.log('=== Stored mfa_pending_email in sessionStorage ===');
           logger.auth('mfa_challenge_required', true, { email, method: 'password', mfa_enabled: true });
           return { error: null, requiresMFA: true, email };
         }

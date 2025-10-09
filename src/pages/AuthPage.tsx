@@ -12,12 +12,13 @@ export function AuthPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log('=== AuthPage useEffect, current mode:', mode, '===');
     logger.info('Auth page loaded', {
       page: 'AuthPage',
       mode,
       path: window.location.pathname
     }, 'PAGE_VIEW');
-  }, []);
+  }, [mode]);
 
   const handleModeChange = (newMode: 'login' | 'register' | 'forgot' | 'mfa') => {
     logger.info('Auth mode changed', {
@@ -29,7 +30,9 @@ export function AuthPage() {
   };
 
   const handleMFARequired = () => {
+    console.log('=== handleMFARequired called, setting mode to mfa ===');
     setMode('mfa');
+    console.log('=== Mode is now:', 'mfa', '===');
   };
 
   const handleMFASuccess = () => {
