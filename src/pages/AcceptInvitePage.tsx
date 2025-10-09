@@ -1,0 +1,460 @@
+import { useState, useEffect } from 'react';
+import { Mail, Building2, Shield, AlertCircle, CheckCircle, Loader } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
+import { validatePassword } from '../lib/passwordUtils';
+
+interface InvitationDetails {
+  id: string;
+  email: string;
+  role: string;
+  businessName: string;
+  inviterName: string;
+  expiresAt: string;
+}
+
+const navigate = (path: string) => {
+  window.history.pushState({}, '', path);
+  window.location.href = path;
+};
+
+export default function AcceptInvitePage() {
+  const { user } = useAuth();
+  const [token, setToken] = useState<string | null>(null);
+  const [invitation, setInvitation] = useState<InvitationDetails | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [processing, setProcessing] = useState(false);
+
+  const [showSignupForm, setShowSignupForm] = useState(false);
+  const [fullName, setFullName] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordStrength, setPasswordStrength] = useState<any>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const inviteToken = params.get('token');
+
+    if (!inviteToken) {
+      setError('Invalid invitation link');
+      setLoading(false);
+      return;
+    }
+
+    setToken(inviteToken);
+    loadInvitation(inviteToken);
+  }, []);
+
+  const loadInvitation = async (inviteToken: string) => {
+    try {
+      setLoading(true);
+      setError('');
+
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/accept-invitation`;
+      const response = await fetch(`${apiUrl}?token=${inviteToken}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load invitation');
+      }
+
+      setInvitation(result.invitation);
+    } catch (err: any) {
+      console.error('Error loading invitation:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAcceptInvitation = async () => {
+    if (!token || !user) return;
+
+    try {
+      setProcessing(true);
+      setError('');
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError('Please log in to accept this invitation');
+        return;
+      }
+
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/accept-invitation`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'accept_invitation',
+          token: token
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to accept invitation');
+      }
+
+      setSuccess('Invitation accepted! Redirecting to dashboard...');
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 2000);
+    } catch (err: any) {
+      console.error('Error accepting invitation:', err);
+      setError(err.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleSignupAndAccept = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !invitation) return;
+
+    if (!passwordStrength || passwordStrength.score < 2) {
+      setError('Please choose a stronger password');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      setError('');
+
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/accept-invitation`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'signup_and_accept',
+          token: token,
+          email: invitation.email,
+          password: password,
+          fullName: fullName
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create account');
+      }
+
+      if (result.session) {
+        await supabase.auth.setSession(result.session);
+      }
+
+      setSuccess('Account created and invitation accepted! Redirecting...');
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 2000);
+    } catch (err: any) {
+      console.error('Error signing up:', err);
+      setError(err.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (password) {
+      const strength = validatePassword(password);
+      setPasswordStrength(strength);
+    } else {
+      setPasswordStrength(null);
+    }
+  }, [password]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+        <div className="text-center">
+          <Loader className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">Loading invitation...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !invitation) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+              <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Invalid Invitation</h1>
+            </div>
+          </div>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">{error}</p>
+          <button
+            onClick={() => navigate('/auth')}
+            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
+              <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Success!</h1>
+            </div>
+          </div>
+          <p className="text-gray-600 dark:text-gray-400">{success}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!invitation) return null;
+
+  const isLoggedIn = !!user;
+  const emailMatches = user?.email?.toLowerCase() === invitation.email.toLowerCase();
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-8">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
+            <Mail className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Team Invitation</h1>
+          </div>
+        </div>
+
+        <div className="space-y-4 mb-6">
+          <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+            <div className="flex items-center gap-2 mb-3">
+              <Building2 className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Business</span>
+            </div>
+            <p className="text-lg font-semibold text-gray-900 dark:text-white">{invitation.businessName}</p>
+          </div>
+
+          <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+            <div className="flex items-center gap-2 mb-3">
+              <Shield className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Role</span>
+            </div>
+            <p className="text-lg font-semibold text-gray-900 dark:text-white capitalize">{invitation.role}</p>
+          </div>
+
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              <span className="font-medium">{invitation.inviterName}</span> invited you to join as a {invitation.role}
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              Invitation for: <span className="font-medium">{invitation.email}</span>
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Expires: {new Date(invitation.expiresAt).toLocaleDateString()}
+            </p>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+          </div>
+        )}
+
+        {isLoggedIn ? (
+          emailMatches ? (
+            <button
+              onClick={handleAcceptInvitation}
+              disabled={processing}
+              className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {processing ? (
+                <>
+                  <Loader className="w-5 h-5 animate-spin" />
+                  Accepting...
+                </>
+              ) : (
+                'Accept Invitation'
+              )}
+            </button>
+          ) : (
+            <div className="space-y-4">
+              <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                  This invitation is for <span className="font-medium">{invitation.email}</span>, but you're logged in as <span className="font-medium">{user.email}</span>.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  supabase.auth.signOut();
+                  window.location.reload();
+                }}
+                className="w-full px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+              >
+                Log Out and Try Again
+              </button>
+            </div>
+          )
+        ) : (
+          <>
+            {!showSignupForm ? (
+              <div className="space-y-3">
+                <button
+                  onClick={() => navigate(`/auth?email=${encodeURIComponent(invitation.email)}`)}
+                  className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Log In to Accept
+                </button>
+                <button
+                  onClick={() => setShowSignupForm(true)}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
+                >
+                  Create Account
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleSignupAndAccept} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={invitation.email}
+                    disabled
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-900 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white"
+                    placeholder="John Doe"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white"
+                    placeholder="••••••••"
+                    required
+                  />
+                  {passwordStrength && (
+                    <div className="mt-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full transition-all ${
+                              passwordStrength.score === 0 ? 'w-1/4 bg-red-500' :
+                              passwordStrength.score === 1 ? 'w-1/2 bg-orange-500' :
+                              passwordStrength.score === 2 ? 'w-3/4 bg-yellow-500' :
+                              'w-full bg-green-500'
+                            }`}
+                          />
+                        </div>
+                        <span className={`text-xs font-medium ${
+                          passwordStrength.score === 0 ? 'text-red-600' :
+                          passwordStrength.score === 1 ? 'text-orange-600' :
+                          passwordStrength.score === 2 ? 'text-yellow-600' :
+                          'text-green-600'
+                        }`}>
+                          {passwordStrength.label}
+                        </span>
+                      </div>
+                      {passwordStrength.suggestions.length > 0 && (
+                        <ul className="text-xs text-gray-600 dark:text-gray-400 space-y-1 mt-2">
+                          {passwordStrength.suggestions.map((suggestion: string, index: number) => (
+                            <li key={index}>• {suggestion}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Confirm Password
+                  </label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white"
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowSignupForm(false)}
+                    className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={processing}
+                    className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {processing ? (
+                      <>
+                        <Loader className="w-5 h-5 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      'Create Account'
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

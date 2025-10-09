@@ -10,6 +10,7 @@ import TeamPage from './pages/TeamPage';
 import { AdminPage } from './pages/AdminPage';
 import { EnhancedAuditLogsPage } from './pages/EnhancedAuditLogsPage';
 import { SystemLogsPage } from './pages/SystemLogsPage';
+import AcceptInvitePage from './pages/AcceptInvitePage';
 import { MainLayout } from './components/layout/MainLayout';
 import { ResetPasswordForm } from './components/auth/ResetPasswordForm';
 
@@ -20,6 +21,7 @@ function AppContent() {
     const params = new URLSearchParams(window.location.search);
 
     if (path === '/reset-password') return 'reset-password';
+    if (path === '/accept-invite') return 'accept-invite';
     if (path === '/receipts') return 'receipts';
     if (path === '/receipt-details') return 'receipt-details';
     if (path === '/reports') return 'reports';
@@ -56,6 +58,8 @@ function AppContent() {
 
       if (path === '/reset-password') {
         setCurrentView('reset-password');
+      } else if (path === '/accept-invite') {
+        setCurrentView('accept-invite');
       } else if (path === '/receipts') {
         setCurrentView('receipts');
       } else if (path === '/receipt-details') {
@@ -97,6 +101,10 @@ function AppContent() {
 
   if (currentView === 'reset-password') {
     return <ResetPasswordForm />;
+  }
+
+  if (currentView === 'accept-invite') {
+    return <AcceptInvitePage />;
   }
 
   if (!user) {

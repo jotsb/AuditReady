@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Mail, UserPlus, Shield, Trash2, X } from 'lucide-react';
+import { Users, Mail, UserPlus, Shield, Trash2, X, Link2, Copy } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { usePageTracking } from '../hooks/usePageTracking';
@@ -23,6 +23,7 @@ interface Invitation {
   status: 'pending' | 'accepted' | 'rejected' | 'expired';
   expires_at: string;
   created_at: string;
+  token?: string;
 }
 
 export default function TeamPage() {
@@ -43,6 +44,7 @@ export default function TeamPage() {
   const [currentInvitesPage, setCurrentInvitesPage] = useState(1);
   const [totalMembers, setTotalMembers] = useState(0);
   const [totalInvites, setTotalInvites] = useState(0);
+  const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -99,7 +101,7 @@ export default function TeamPage() {
 
         supabase
           .from('invitations')
-          .select('*')
+          .select('*, token')
           .eq('business_id', memberData.business_id)
           .eq('status', 'pending')
           .order('created_at', { ascending: false })
@@ -241,6 +243,13 @@ export default function TeamPage() {
     }
   };
 
+  const handleCopyInviteLink = (token: string) => {
+    const inviteLink = `${window.location.origin}/accept-invite?token=${token}`;
+    navigator.clipboard.writeText(inviteLink);
+    setCopiedToken(token);
+    setTimeout(() => setCopiedToken(null), 2000);
+  };
+
   const canManageTeam = userRole === 'owner';
 
   if (loading) {
@@ -375,14 +384,29 @@ export default function TeamPage() {
                     </p>
                   </div>
                 </div>
-                {canManageTeam && (
-                  <button
-                    onClick={() => handleCancelInvitation(invitation.id)}
-                    className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {invitation.token && (
+                    <button
+                      onClick={() => handleCopyInviteLink(invitation.token!)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="Copy invitation link"
+                    >
+                      {copiedToken === invitation.token ? (
+                        <span className="text-xs font-medium px-2">Copied!</span>
+                      ) : (
+                        <Copy className="w-5 h-5" />
+                      )}
+                    </button>
+                  )}
+                  {canManageTeam && (
+                    <button
+                      onClick={() => handleCancelInvitation(invitation.id)}
+                      className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
