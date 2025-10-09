@@ -54,14 +54,15 @@ export function MFASetup({ onComplete, onCancel }: MFASetupProps) {
   };
 
   const handleVerify = async () => {
-    if (!verificationCode || verificationCode.length !== 6) {
+    const cleaned = cleanTOTPCode(verificationCode);
+    if (!cleaned || cleaned.length !== 6) {
       setError('Please enter a 6-digit code');
       return;
     }
 
     try {
       setError('');
-      const success = await verifyEnrollment(factorId, cleanTOTPCode(verificationCode));
+      const success = await verifyEnrollment(factorId, cleaned);
 
       if (success && user) {
         const codes = await generateAndStoreRecoveryCodes(user.id);
