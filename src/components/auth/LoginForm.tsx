@@ -50,22 +50,25 @@ export function LoginForm({ onToggleMode, onForgotPassword, onMFARequired }: Log
     setResendSuccess(false);
     setLoading(true);
 
-    const { error, requiresMFA } = await signIn(email, password);
+    const result = await signIn(email, password);
+    console.log('=== Login Result ===', result);
 
-    if (error) {
-      if (error.message.includes('Email not confirmed') || error.message.includes('email_not_confirmed')) {
+    if (result.error) {
+      if (result.error.message.includes('Email not confirmed') || result.error.message.includes('email_not_confirmed')) {
         setShowUnverifiedMessage(true);
         logger.auth('login_failed', false, { email, reason: 'email_not_verified' });
       } else {
-        setError(error.message);
-        logger.auth('login_failed', false, { email, error: error.message });
+        setError(result.error.message);
+        logger.auth('login_failed', false, { email, error: result.error.message });
       }
       setLoading(false);
-    } else if (requiresMFA) {
+    } else if (result.requiresMFA) {
+      console.log('=== MFA Required - Calling onMFARequired ===');
       logger.auth('mfa_required', true, { email });
       onMFARequired();
       setLoading(false);
     } else {
+      console.log('=== Login Success ===');
       logger.auth('login_success', true, { email });
       setLoading(false);
     }
