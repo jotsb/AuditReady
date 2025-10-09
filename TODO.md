@@ -1,6 +1,6 @@
 # AuditReady - TODO & Implementation Status
 
-**Last Updated:** 2025-10-08
+**Last Updated:** 2025-10-09
 **Priority Legend:** 🚨 Critical | 🔴 High | 🟡 Medium | 🟢 Nice to Have | ✅ Completed
 
 ---
@@ -58,6 +58,16 @@
 - [x] ✅ Delete business
 - [x] ✅ Business ownership (owner_id)
 - [x] ✅ Business switcher in UI
+- [x] ✅ **Modern Business & Collection Management UI** (2025-10-09)
+  - Expandable card-based layout replacing table views
+  - Collections nested under businesses showing clear hierarchy
+  - Lazy loading of collections on expand
+  - Owner identification on all business cards
+  - Metrics display (members, collections, receipts)
+  - Create businesses and collections with inline modals
+  - Delete functionality with confirmation
+  - Unified interface in both Settings and Admin pages
+  - Locations: `src/components/settings/BusinessCollectionManagement.tsx`, `src/pages/AdminPage.tsx` (BusinessesTab component)
 - [ ] 🟡 Business ownership transfer
 - [ ] 🟡 Multi-business dashboard view
 - [ ] 🟢 Business archive/deactivate
@@ -69,6 +79,15 @@
 - [x] ✅ Delete collections
 - [x] ✅ Collection year tracking
 - [x] ✅ Collection description
+- [x] ✅ **Integrated Collection Management** (2025-10-09)
+  - Collections shown nested under their parent businesses
+  - Expandable business cards reveal associated collections
+  - Create collection button appears when business is expanded
+  - Collection cards display name, description, year, receipt count
+  - Visual hierarchy shows business → collections relationship
+  - Delete collections with hover-visible trash icon
+  - Smart loading prevents unnecessary API calls
+  - Location: Integrated into Business & Collection Management UI
 - [ ] 🟡 Collection templates
 - [ ] 🟡 Duplicate collection
 - [ ] 🟢 Collection archival
@@ -195,6 +214,18 @@
 - [x] ✅ System Logs page with filtering
 - [x] ✅ Client-side error capture and logging
 - [x] ✅ Edge function execution logging
+- [x] ✅ **Modern Admin Businesses & Collections View** (2025-10-09)
+  - Replaced table view with expandable card interface
+  - Combined "Businesses" and "Collections" into single "Businesses & Collections" tab
+  - Click business card to expand and see nested collections
+  - Owner email prominently displayed on each business
+  - Visual metrics: members, collections, receipts, created date
+  - Collections load on-demand when business is expanded
+  - Grid layout for collection cards within expanded business
+  - Collection details: name, year, receipt count, created date
+  - Search functionality for businesses by name or owner
+  - Pagination maintained for business list
+  - Location: `src/pages/AdminPage.tsx` (BusinessesTab component)
 - [x] ✅ **User Management Interface Enhancements** (Completed 2025-10-08)
   - Icons increased from 16px to 20px for better visibility
   - Force logout button added (orange icon)
@@ -835,10 +866,11 @@
 4. ✅ ~~WebP image uploads failing due to MIME type restrictions~~ - Fixed (2025-10-07)
 5. ✅ ~~No pagination causes performance issues with many receipts~~ - Fixed (2025-10-07)
 6. ✅ ~~Page refresh redirects to dashboard instead of staying on current page~~ - Fixed (2025-10-08)
-7. Bundle size is large (~969KB) - needs optimization
-8. MFA database fields exist but no UI implementation
-9. Team management UI exists but backend integration incomplete
-10. Approval workflow database exists but no UI implementation
+7. ✅ ~~Business and Collection management used separate tabs with table views~~ - Fixed (2025-10-09)
+8. Bundle size is large (~969KB) - needs optimization
+9. MFA database fields exist but no UI implementation
+10. Team management UI exists but backend integration incomplete
+11. Approval workflow database exists but no UI implementation
 
 ### Performance Benchmarks
 - Target: First Contentful Paint < 1.5s
@@ -877,7 +909,39 @@
 - ⏳ MFA (database ready, UI not implemented)
 - ⏳ Advanced features and integrations (not started)
 
-**Recent Major Updates (2025-10-08):**
+**Recent Major Updates (2025-10-09):**
+1. **Modern Business & Collection Management UI**: Complete redesign of business and collection management
+   - Expandable card-based interface replacing boring table views
+   - Collections nested under businesses showing clear parent-child hierarchy
+   - Click to expand business and reveal its collections
+   - Owner identification prominently displayed on all business cards
+   - Metrics at a glance: members, collections, receipts, created date
+   - Lazy loading - collections only load when business is expanded
+   - Inline modals for creating businesses and collections
+   - Delete functionality with confirmation dialogs
+   - Unified design across both Settings and Admin pages
+   - Smart search by business name or owner email
+
+2. **Settings Page Consolidation**:
+   - Combined separate "Businesses" and "Collections" tabs into single "Businesses & Collections" tab
+   - Same modern expandable card interface as Admin page
+   - Personal view - only shows your businesses and collections
+   - Owner controls - delete buttons only on businesses you own
+   - Create business and collection actions easily accessible
+
+3. **Admin Page Enhancements**:
+   - "Businesses & Collections" tab with same modern interface
+   - System-wide view of all businesses and collections
+   - Owner identification on every business
+   - Expandable to see collections within each business
+   - Pagination and search maintained
+
+4. **Components Created**:
+   - `src/components/settings/BusinessCollectionManagement.tsx` - Unified business/collection management for Settings
+   - `src/pages/AdminPage.tsx` (BusinessesTab) - Admin version with system-wide visibility
+   - Removed separate CollectionManagement component (now integrated)
+
+**Previous Major Updates (2025-10-08):**
 1. **Complete User Management System**: Full CRUD operations for users with suspension, deletion, restoration
 2. **Admin User Management Edge Function**: Secure Edge Function for password changes, email updates, hard deletes, and force logout
 3. **Force Logout Capability**: Admin can force logout any user from all devices via Edge Function
