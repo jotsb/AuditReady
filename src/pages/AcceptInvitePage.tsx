@@ -3,6 +3,7 @@ import { Mail, Building2, Shield, AlertCircle, CheckCircle, Loader } from 'lucid
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { validatePassword } from '../lib/passwordUtils';
+import { logger } from '../lib/logger';
 
 interface InvitationDetails {
   id: string;
@@ -65,6 +66,8 @@ export default function AcceptInvitePage() {
   };
 
   const loadInvitation = async (inviteToken: string) => {
+    logger.info('Loading invitation details', { token: inviteToken.substring(0, 8) + '...' }, 'API');
+
     try {
       setLoading(true);
       setError('');
@@ -78,14 +81,17 @@ export default function AcceptInvitePage() {
       });
 
       const result = await response.json();
+      logger.api('/accept-invitation', 'GET', response.status, { result });
 
       if (!response.ok) {
+        logger.error('Failed to load invitation', undefined, { status: response.status, error: result.error });
         throw new Error(result.error || 'Failed to load invitation');
       }
 
+      logger.info('Invitation loaded successfully', { email: result.invitation.email }, 'API');
       setInvitation(result.invitation);
     } catch (err: any) {
-      console.error('Error loading invitation:', err);
+      logger.error('Error loading invitation', err, { token: inviteToken.substring(0, 8) + '...' });
       setError(err.message);
     } finally {
       setLoading(false);
@@ -140,12 +146,16 @@ export default function AcceptInvitePage() {
     e.preventDefault();
     if (!token || !invitation) return;
 
+    logger.info('Starting signup and accept invitation', { email: invitation.email }, 'USER_ACTION');
+
     if (!passwordStrength || passwordStrength.score < 2) {
+      logger.warn('Weak password rejected', { score: passwordStrength?.score }, 'SECURITY');
       setError('Please choose a stronger password');
       return;
     }
 
     if (password !== confirmPassword) {
+      logger.warn('Password mismatch', {}, 'USER_ACTION');
       setError('Passwords do not match');
       return;
     }
@@ -153,6 +163,8 @@ export default function AcceptInvitePage() {
     try {
       setProcessing(true);
       setError('');
+
+      logger.info('Calling signup_and_accept edge function', { email: invitation.email }, 'EDGE_FUNCTION');
 
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/accept-invitation`;
       const response = await fetch(apiUrl, {
@@ -170,21 +182,50 @@ export default function AcceptInvitePage() {
       });
 
       const result = await response.json();
+      logger.api('/accept-invitation', 'POST', response.status, { action: 'signup_and_accept', result });
 
       if (!response.ok) {
+        logger.error('Signup and accept failed', undefined, { status: response.status, error: result.error });
+        logger.edgeFunction('accept-invitation', false, { error: result.error });
         throw new Error(result.error || 'Failed to create account');
       }
 
+      logger.info('Account created successfully', { email: invitation.email }, 'AUTH');
+      logger.edgeFunction('accept-invitation', true, { action: 'signup_and_accept' });
+
       if (result.session) {
-        await supabase.auth.setSession(result.session);
+        logger.info('Setting session for new user', {}, 'AUTH');
+        try {
+          const { error: sessionError } = await supabase.auth.setSession(result.session);
+          if (sessionError) {
+            logger.error('Failed to set session', sessionError, {});
+            throw new Error('Failed to set session: ' + sessionError.message);
+          }
+          logger.info('Session set successfully', {}, 'AUTH');
+        } catch (sessionErr: any) {
+          logger.error('Error setting session', sessionErr, {});
+          throw sessionErr;
+        }
+      } else if (result.requiresLogin) {
+        logger.info('Account created, redirecting to login', {}, 'AUTH');
+        setSuccess('Account created! Please log in to continue.');
+        setTimeout(() => {
+          window.location.href = `/auth?email=${encodeURIComponent(invitation.email)}`;
+        }, 2000);
+        return;
+      } else {
+        logger.warn('No session returned from signup', {}, 'AUTH');
       }
 
       setSuccess('Account created and invitation accepted! Redirecting...');
+      logger.info('Redirecting to dashboard', {}, 'NAVIGATION');
+
       setTimeout(() => {
-        navigate('/dashboard');
-      }, 2000);
+        logger.debug('Executing redirect to dashboard', {}, 'NAVIGATION');
+        window.location.href = '/dashboard';
+      }, 1500);
     } catch (err: any) {
-      console.error('Error signing up:', err);
+      logger.error('Error signing up and accepting invitation', err, { email: invitation.email });
       setError(err.message);
     } finally {
       setProcessing(false);
