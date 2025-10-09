@@ -3,10 +3,13 @@ import { Receipt } from 'lucide-react';
 import { LoginForm } from '../components/auth/LoginForm';
 import { RegisterForm } from '../components/auth/RegisterForm';
 import { ForgotPasswordForm } from '../components/auth/ForgotPasswordForm';
+import { MFAVerification } from '../components/auth/MFAVerification';
 import { logger } from '../lib/logger';
+import { useNavigate } from '../components/auth/useNavigateCompat';
 
 export function AuthPage() {
-  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot' | 'mfa'>('login');
+  const navigate = useNavigate();
 
   useEffect(() => {
     logger.info('Auth page loaded', {
@@ -16,13 +19,25 @@ export function AuthPage() {
     }, 'PAGE_VIEW');
   }, []);
 
-  const handleModeChange = (newMode: 'login' | 'register' | 'forgot') => {
+  const handleModeChange = (newMode: 'login' | 'register' | 'forgot' | 'mfa') => {
     logger.info('Auth mode changed', {
       page: 'AuthPage',
       fromMode: mode,
       toMode: newMode
     }, 'USER_ACTION');
     setMode(newMode);
+  };
+
+  const handleMFARequired = () => {
+    setMode('mfa');
+  };
+
+  const handleMFASuccess = () => {
+    navigate('/dashboard');
+  };
+
+  const handleMFACancel = () => {
+    setMode('login');
   };
 
   return (
@@ -77,6 +92,7 @@ export function AuthPage() {
             <LoginForm
               onToggleMode={() => handleModeChange('register')}
               onForgotPassword={() => handleModeChange('forgot')}
+              onMFARequired={handleMFARequired}
             />
           )}
           {mode === 'register' && (
@@ -84,6 +100,14 @@ export function AuthPage() {
           )}
           {mode === 'forgot' && (
             <ForgotPasswordForm onBack={() => handleModeChange('login')} />
+          )}
+          {mode === 'mfa' && (
+            <div className="w-full max-w-md mx-auto">
+              <MFAVerification
+                onSuccess={handleMFASuccess}
+                onCancel={handleMFACancel}
+              />
+            </div>
           )}
         </div>
       </div>

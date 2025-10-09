@@ -22,7 +22,7 @@ interface AuthContextType {
   userRole: 'owner' | 'manager' | 'member' | null;
   selectBusiness: (business: Business | null) => void;
   refreshBusinesses: () => Promise<void>;
-  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: AuthError | null; requiresMFA?: boolean }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
 }
@@ -181,7 +181,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
     });
 
-    if (!error && data.user) {
+    if (error) {
+      logger.auth('sign_in', false, { email, method: 'password', error: error?.message });
+      return { error };
+    }
+
+    // Check if MFA is required (user has factors but session is not MFA verified)
+    if (data.user) {
+      // List MFA factors for the user
+      const { data: { factors } } = await supabase.auth.mfa.listFactors();
+
+      // If user has MFA factors enabled but no session yet, MFA is required
+      if (factors && factors.length > 0) {
+        // Sign out the partial session
+        await supabase.auth.signOut();
+        logger.auth('mfa_challenge_required', true, { email, method: 'password' });
+        return { error: null, requiresMFA: true };
+      }
+
+      // No MFA required, proceed with normal checks
       // Check if user is suspended or deleted
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
@@ -246,11 +264,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       sessionManager.setUserId(data.user.id);
       logger.auth('sign_in', true, { email, method: 'password' });
-    } else {
-      logger.auth('sign_in', false, { email, method: 'password', error: error?.message });
     }
 
-    return { error };
+    return { error: null };
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {

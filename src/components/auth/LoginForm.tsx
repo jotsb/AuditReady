@@ -7,9 +7,10 @@ import { supabase } from '../../lib/supabase';
 interface LoginFormProps {
   onToggleMode: () => void;
   onForgotPassword: () => void;
+  onMFARequired: () => void;
 }
 
-export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
+export function LoginForm({ onToggleMode, onForgotPassword, onMFARequired }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -49,7 +50,7 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
     setResendSuccess(false);
     setLoading(true);
 
-    const { error } = await signIn(email, password);
+    const { error, requiresMFA } = await signIn(email, password);
 
     if (error) {
       if (error.message.includes('Email not confirmed') || error.message.includes('email_not_confirmed')) {
@@ -59,11 +60,15 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
         setError(error.message);
         logger.auth('login_failed', false, { email, error: error.message });
       }
+      setLoading(false);
+    } else if (requiresMFA) {
+      logger.auth('mfa_required', true, { email });
+      onMFARequired();
+      setLoading(false);
     } else {
       logger.auth('login_success', true, { email });
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
