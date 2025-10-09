@@ -208,14 +208,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // If user has MFA enabled, check if they have verified factors and require MFA verification
       if (profile?.mfa_enabled) {
-        // Check if user has verified MFA factors
-        const { data: mfaFactors, error: mfaError } = await supabase
-          .from('auth.mfa_factors')
-          .select('id, status')
-          .eq('user_id', data.user.id)
-          .eq('status', 'verified');
+        // Check if user has verified MFA factors using database function
+        const { data: hasVerifiedMFA, error: mfaError } = await supabase
+          .rpc('check_user_mfa_status', { check_user_id: data.user.id });
 
-        if (!mfaError && mfaFactors && mfaFactors.length > 0) {
+        if (!mfaError && hasVerifiedMFA) {
           // User has MFA enabled and verified factors - require MFA challenge
           // Sign out the session and require MFA verification
           await supabase.auth.signOut();
