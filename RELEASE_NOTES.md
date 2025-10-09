@@ -4,6 +4,46 @@
 
 ---
 
+## 🚀 Version 0.4.1 - "PDF Export & UI Polish" (2025-10-09)
+
+### 🎯 Major Features
+
+#### **PDF Export Implementation**
+Complete PDF export functionality for bulk receipt operations.
+
+**PDF Generation**
+- Professional PDF documents with jsPDF library
+- Formatted table layout with auto-sizing columns
+- Export metadata (date, total receipts, totals)
+- Summary totals (Amount, GST, PST)
+- Blue header styling matching brand colors
+- Grid theme for clear data presentation
+- Dynamic import for optimal bundle size
+- Filename with timestamp for organization
+- Full system logging and error handling
+
+### 🐛 Bug Fixes
+
+**Bulk Action Toolbar Issues**
+- Fixed toolbar overlapping bottom receipts (added `pb-32` padding)
+- Fixed export dropdown disappearing on mouse move
+- Changed from CSS hover to click-based dropdown with state
+- Dropdown now stays open when moving mouse to options
+- Auto-closes after selection for clean UX
+- Works reliably on both desktop and mobile/touch devices
+
+### 📦 Dependencies Added
+- `jspdf` (v3.0.3) - PDF document generation
+- `jspdf-autotable` (v5.0.2) - Table formatting for PDFs
+
+### 🎨 UI/UX Improvements
+- Content no longer hidden behind floating toolbar
+- Export menu works consistently across all devices
+- Touch-friendly click interaction for mobile users
+- Automatic code splitting for PDF libraries (separate chunks)
+
+---
+
 ## 🚀 Version 0.4.0 - "Power User Edition" (2025-10-09)
 
 ### 🎯 Major Features
@@ -17,6 +57,7 @@ The receipt management system has reached full production readiness with enterpr
 - Bulk categorization with modal selection interface
 - Bulk move receipts between collections
 - Bulk export to CSV (fully functional)
+- Bulk export to PDF (fully functional) ✨ NEW
 - Floating action toolbar that appears when receipts are selected
 - Complete system logging for audit trails
 

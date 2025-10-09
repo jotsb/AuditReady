@@ -674,20 +674,95 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
     const receiptIds = Array.from(selectedReceipts);
     if (receiptIds.length === 0) return;
 
-    alert('PDF export coming soon! For now, please use CSV export.');
+    try {
+      // Dynamically import jsPDF and autoTable
+      const { default: jsPDF } = await import('jspdf');
+      const autoTable = (await import('jspdf-autotable')).default;
 
-    // System logging
-    await supabase.from('system_logs').insert({
-      level: 'INFO',
-      category: 'USER_ACTION',
-      message: `Attempted bulk PDF export of ${receiptIds.length} receipts`,
-      metadata: {
-        user_id: user?.id,
-        collection_id: selectedCollection,
-        receipt_count: receiptIds.length,
-        action: 'bulk_export_pdf_attempted'
-      }
-    });
+      // Get selected receipts data
+      const selectedReceiptsData = receipts.filter(r => receiptIds.includes(r.id));
+
+      // Create PDF document
+      const doc = new jsPDF();
+
+      // Add title
+      doc.setFontSize(18);
+      doc.text('Receipt Export', 14, 20);
+
+      // Add metadata
+      doc.setFontSize(10);
+      doc.text(`Export Date: ${new Date().toLocaleDateString()}`, 14, 30);
+      doc.text(`Total Receipts: ${selectedReceiptsData.length}`, 14, 36);
+
+      // Calculate totals
+      const totalAmount = selectedReceiptsData.reduce((sum, r) => sum + r.total_amount, 0);
+      const totalGST = selectedReceiptsData.reduce((sum, r) => sum + (r.gst_amount || 0), 0);
+      const totalPST = selectedReceiptsData.reduce((sum, r) => sum + (r.pst_amount || 0), 0);
+
+      doc.text(`Total Amount: $${totalAmount.toFixed(2)}`, 14, 42);
+      doc.text(`Total GST: $${totalGST.toFixed(2)} | Total PST: $${totalPST.toFixed(2)}`, 14, 48);
+
+      // Prepare table data
+      const tableData = selectedReceiptsData.map(receipt => [
+        formatDate(receipt.transaction_date),
+        receipt.vendor_name || 'Unknown',
+        receipt.category || 'Uncategorized',
+        receipt.payment_method || '-',
+        `$${receipt.total_amount.toFixed(2)}`
+      ]);
+
+      // Add table
+      autoTable(doc, {
+        startY: 55,
+        head: [['Date', 'Vendor', 'Category', 'Payment', 'Amount']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [37, 99, 235] }, // blue-600
+        styles: { fontSize: 9 },
+        columnStyles: {
+          0: { cellWidth: 30 },
+          1: { cellWidth: 50 },
+          2: { cellWidth: 35 },
+          3: { cellWidth: 30 },
+          4: { cellWidth: 25, halign: 'right' }
+        }
+      });
+
+      // Save the PDF
+      doc.save(`receipts-export-${new Date().toISOString().split('T')[0]}.pdf`);
+
+      // System logging
+      await supabase.from('system_logs').insert({
+        level: 'INFO',
+        category: 'USER_ACTION',
+        message: `Bulk exported ${receiptIds.length} receipts to PDF`,
+        metadata: {
+          user_id: user?.id,
+          collection_id: selectedCollection,
+          receipt_count: receiptIds.length,
+          total_amount: totalAmount,
+          action: 'bulk_export_pdf'
+        }
+      });
+
+      alert(`Successfully exported ${receiptIds.length} receipt(s) to PDF`);
+    } catch (error) {
+      console.error('Bulk export PDF error:', error);
+      alert('Failed to export receipts to PDF. Please try again.');
+
+      await supabase.from('system_logs').insert({
+        level: 'ERROR',
+        category: 'USER_ACTION',
+        message: `Bulk PDF export failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        metadata: {
+          user_id: user?.id,
+          collection_id: selectedCollection,
+          receipt_count: receiptIds.length,
+          error: error instanceof Error ? error.message : String(error),
+          action: 'bulk_export_pdf'
+        }
+      });
+    }
   };
 
   const formatDate = (dateString: string | null) => {
