@@ -12,10 +12,14 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/qrcode": "^1.5.5",
+    "bcryptjs": "^3.0.2",
     "jspdf": "^3.0.3",
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.344.0",
     "pdfjs-dist": "^5.4.296",
+    "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

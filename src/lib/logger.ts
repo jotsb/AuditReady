@@ -183,6 +183,42 @@ class Logger {
     console.trace(message, metadata);
     this.sendToServer({ level: 'DEBUG', category: 'CLIENT_ERROR', message, metadata });
   }
+
+  async mfa(action: string, details: Record<string, any>, level: LogLevel = 'INFO'): Promise<void> {
+    await this.sendToServer({
+      level,
+      category: 'SECURITY',
+      message: `MFA: ${action}`,
+      metadata: { ...details, mfa_action: action }
+    });
+
+    const auditActions = [
+      'enable_mfa',
+      'disable_mfa',
+      'admin_reset_mfa',
+      'recovery_code_used',
+      'regenerate_recovery_codes',
+      'mfa_verification_failed_multiple'
+    ];
+
+    if (auditActions.includes(action)) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        await supabase.from('audit_logs').insert({
+          action,
+          actor_id: user.id,
+          resource_type: 'profile',
+          resource_id: details.target_user_id || user.id,
+          details: details,
+          status: details.status || 'success'
+        });
+      } catch (error) {
+        console.error('Failed to log MFA audit event:', error);
+      }
+    }
+  }
 }
 
 export const logger = new Logger();
