@@ -194,8 +194,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // List MFA factors to see if user has MFA enabled
       const { data: { factors } } = await supabase.auth.mfa.listFactors();
 
+      // Debug logging
+      console.log('=== MFA Debug Info ===');
+      console.log('Current AAL:', currentAAL);
+      console.log('Factors:', factors);
+      console.log('User ID:', data.user.id);
+
       // If user has verified factors but current AAL is only 1, MFA verification is needed
       const hasVerifiedFactors = factors && factors.some(f => f.status === 'verified');
+
+      console.log('Has verified factors:', hasVerifiedFactors);
+      console.log('Should require MFA:', hasVerifiedFactors && currentAAL === 'aal1');
 
       if (hasVerifiedFactors && currentAAL === 'aal1') {
         // MFA is required - don't proceed with login
