@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Mail, Building2, Shield, AlertCircle, CheckCircle, Loader } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { validatePassword } from '../lib/passwordUtils';
+import { checkPasswordStrength, type PasswordStrength } from '../lib/passwordUtils';
 import { logger } from '../lib/logger';
 
 interface InvitationDetails {
@@ -32,7 +32,7 @@ export default function AcceptInvitePage() {
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordStrength, setPasswordStrength] = useState<any>(null);
+  const [passwordStrength, setPasswordStrength] = useState<PasswordStrength | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -265,8 +265,13 @@ export default function AcceptInvitePage() {
 
   useEffect(() => {
     if (password) {
-      const strength = validatePassword(password);
-      setPasswordStrength(strength);
+      try {
+        const strength = checkPasswordStrength(password);
+        setPasswordStrength(strength);
+      } catch (err) {
+        console.error('Error checking password strength:', err);
+        setPasswordStrength(null);
+      }
     } else {
       setPasswordStrength(null);
     }
@@ -483,29 +488,24 @@ export default function AcceptInvitePage() {
                     placeholder="••••••••"
                     required
                   />
-                  {passwordStrength && (
+                  {passwordStrength && passwordStrength.score !== undefined && (
                     <div className="mt-2">
                       <div className="flex items-center gap-2 mb-1">
                         <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                           <div
-                            className={`h-full transition-all ${
-                              passwordStrength.score === 0 ? 'w-1/4 bg-red-500' :
-                              passwordStrength.score === 1 ? 'w-1/2 bg-orange-500' :
-                              passwordStrength.score === 2 ? 'w-3/4 bg-yellow-500' :
-                              'w-full bg-green-500'
+                            className={`h-full transition-all ${passwordStrength.bgColor || 'bg-gray-500'} ${
+                              passwordStrength.score === 0 ? 'w-1/4' :
+                              passwordStrength.score === 1 ? 'w-1/2' :
+                              passwordStrength.score === 2 ? 'w-3/4' :
+                              'w-full'
                             }`}
                           />
                         </div>
-                        <span className={`text-xs font-medium ${
-                          passwordStrength.score === 0 ? 'text-red-600' :
-                          passwordStrength.score === 1 ? 'text-orange-600' :
-                          passwordStrength.score === 2 ? 'text-yellow-600' :
-                          'text-green-600'
-                        }`}>
+                        <span className={`text-xs font-medium ${passwordStrength.color || 'text-gray-600'}`}>
                           {passwordStrength.label}
                         </span>
                       </div>
-                      {passwordStrength.suggestions.length > 0 && (
+                      {passwordStrength.suggestions && passwordStrength.suggestions.length > 0 && (
                         <ul className="text-xs text-gray-600 dark:text-gray-400 space-y-1 mt-2">
                           {passwordStrength.suggestions.map((suggestion: string, index: number) => (
                             <li key={index}>• {suggestion}</li>
