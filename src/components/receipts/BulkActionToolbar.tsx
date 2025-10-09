@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Trash2, Tag, FolderInput, Download, X } from 'lucide-react';
 
 interface BulkActionToolbarProps {
@@ -19,6 +20,8 @@ export function BulkActionToolbar({
   onExportPDF,
   onCancel,
 }: BulkActionToolbarProps) {
+  const [showExportMenu, setShowExportMenu] = useState(false);
+
   if (selectedCount === 0) {
     return null;
   }
@@ -49,8 +52,10 @@ export function BulkActionToolbar({
             <span className="hidden sm:inline">Move</span>
           </button>
 
-          <div className="relative group">
+          <div className="relative">
             <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              onBlur={() => setTimeout(() => setShowExportMenu(false), 200)}
               className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition"
               title="Export"
             >
@@ -58,20 +63,28 @@ export function BulkActionToolbar({
               <span className="hidden sm:inline">Export</span>
             </button>
 
-            <div className="absolute bottom-full mb-2 left-0 hidden group-hover:block bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-slate-200 dark:border-gray-700 overflow-hidden min-w-[120px]">
-              <button
-                onClick={onExportCSV}
-                className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-300 transition"
-              >
-                Export CSV
-              </button>
-              <button
-                onClick={onExportPDF}
-                className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-300 transition"
-              >
-                Export PDF
-              </button>
-            </div>
+            {showExportMenu && (
+              <div className="absolute bottom-full mb-2 left-0 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-slate-200 dark:border-gray-700 overflow-hidden min-w-[120px]">
+                <button
+                  onClick={() => {
+                    onExportCSV();
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-300 transition"
+                >
+                  Export CSV
+                </button>
+                <button
+                  onClick={() => {
+                    onExportPDF();
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-300 transition"
+                >
+                  Export PDF
+                </button>
+              </div>
+            )}
           </div>
 
           <button

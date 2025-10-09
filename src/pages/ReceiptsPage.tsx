@@ -785,7 +785,7 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-32">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
         <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-6">
           <div className="flex-1">
