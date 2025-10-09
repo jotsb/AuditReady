@@ -31,6 +31,7 @@ import {
   EyeOff,
   LogOut,
   ShieldOff,
+  Shield,
 } from 'lucide-react';
 
 interface User {
@@ -41,6 +42,7 @@ interface User {
   last_login_at: string | null;
   suspended: boolean;
   deleted_at: string | null;
+  mfa_enabled: boolean;
 }
 
 export function UserManagement() {
@@ -89,7 +91,7 @@ export function UserManagement() {
       // System admins have permission to view all profiles
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
-        .select('id, email, full_name, suspended, deleted_at, last_login_at, created_at')
+        .select('id, email, full_name, suspended, deleted_at, last_login_at, created_at, mfa_enabled')
         .order('created_at', { ascending: false });
 
       if (profileError) throw profileError;
@@ -102,6 +104,7 @@ export function UserManagement() {
         last_login_at: p.last_login_at || null,
         suspended: p.suspended || false,
         deleted_at: p.deleted_at || null,
+        mfa_enabled: p.mfa_enabled || false,
       })) || [];
 
       setUsers(enrichedUsers);
@@ -371,13 +374,21 @@ export function UserManagement() {
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  {user.deleted_at ? (
-                    <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded">Deleted</span>
-                  ) : user.suspended ? (
-                    <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded">Suspended</span>
-                  ) : (
-                    <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">Active</span>
-                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {user.deleted_at ? (
+                      <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded">Deleted</span>
+                    ) : user.suspended ? (
+                      <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded">Suspended</span>
+                    ) : (
+                      <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">Active</span>
+                    )}
+                    {user.mfa_enabled && (
+                      <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded flex items-center gap-1">
+                        <Shield className="w-3 h-3" />
+                        MFA
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                   {user.last_login_at ? new Date(user.last_login_at).toLocaleDateString() : 'Never'}
@@ -545,7 +556,7 @@ export function UserManagement() {
                 {userDetails.mfa_enabled && (
                   <div className="mt-4">
                     <button
-                      onClick={() => { setSelectedUser({ ...selectedUser, id: userDetails.id, email: userDetails.email, full_name: userDetails.full_name, created_at: userDetails.created_at, last_login_at: userDetails.last_login_at, suspended: userDetails.suspended, deleted_at: userDetails.deleted_at }); setShowMFAResetModal(true); }}
+                      onClick={() => { setSelectedUser({ ...selectedUser, id: userDetails.id, email: userDetails.email, full_name: userDetails.full_name, created_at: userDetails.created_at, last_login_at: userDetails.last_login_at, suspended: userDetails.suspended, deleted_at: userDetails.deleted_at, mfa_enabled: userDetails.mfa_enabled }); setShowMFAResetModal(true); }}
                       className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
                     >
                       <ShieldOff className="w-4 h-4" />
