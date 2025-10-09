@@ -186,37 +186,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error };
     }
 
-    // Check if MFA is required by looking at the session's aal (Authentication Assurance Level)
-    // aal1 = password only, aal2 = password + MFA
-    if (data.user && data.session) {
-      const currentAAL = data.session.aal;
-
-      // List MFA factors to see if user has MFA enabled
-      const { data: { factors } } = await supabase.auth.mfa.listFactors();
-
-      // Debug logging
-      console.log('=== MFA Debug Info ===');
-      console.log('Current AAL:', currentAAL);
-      console.log('Factors:', factors);
-      console.log('User ID:', data.user.id);
-
-      // If user has verified factors but current AAL is only 1, MFA verification is needed
-      const hasVerifiedFactors = factors && factors.some(f => f.status === 'verified');
-
-      console.log('Has verified factors:', hasVerifiedFactors);
-      console.log('Should require MFA:', hasVerifiedFactors && currentAAL === 'aal1');
-
-      if (hasVerifiedFactors && currentAAL === 'aal1') {
-        // MFA is required - don't proceed with login
-        logger.auth('mfa_challenge_required', true, { email, method: 'password', aal: currentAAL });
-        return { error: null, requiresMFA: true };
-      }
-
-      // No MFA required or already verified, proceed with normal checks
-      // Check if user is suspended or deleted
+    if (data.user) {
+      // First, check user's profile to see if they have MFA enabled
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('suspended, deleted_at, suspension_reason')
+        .select('suspended, deleted_at, suspension_reason, mfa_enabled')
         .eq('id', data.user.id)
         .maybeSingle();
 
@@ -230,6 +204,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             status: 403
           } as AuthError
         };
+      }
+
+      // If user has MFA enabled, check if they have verified factors and require MFA verification
+      if (profile?.mfa_enabled) {
+        // Check if user has verified MFA factors
+        const { data: mfaFactors, error: mfaError } = await supabase
+          .from('auth.mfa_factors')
+          .select('id, status')
+          .eq('user_id', data.user.id)
+          .eq('status', 'verified');
+
+        if (!mfaError && mfaFactors && mfaFactors.length > 0) {
+          // User has MFA enabled and verified factors - require MFA challenge
+          // Sign out the session and require MFA verification
+          await supabase.auth.signOut();
+          logger.auth('mfa_challenge_required', true, { email, method: 'password', mfa_enabled: true });
+          return { error: null, requiresMFA: true };
+        }
       }
 
       // Block suspended users
@@ -276,7 +268,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       sessionManager.setUserId(data.user.id);
-      logger.auth('sign_in', true, { email, method: 'password', aal: currentAAL });
+      logger.auth('sign_in', true, { email, method: 'password' });
     }
 
     return { error: null };
