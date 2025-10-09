@@ -144,9 +144,24 @@ export default function AcceptInvitePage() {
 
   const handleSignupAndAccept = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token || !invitation) return;
+    if (!token || !invitation) {
+      console.error('Missing token or invitation');
+      setError('Invalid invitation state');
+      return;
+    }
 
+    console.log('Starting signup process for:', invitation.email);
     logger.info('Starting signup and accept invitation', { email: invitation.email }, 'USER_ACTION');
+
+    if (!fullName || fullName.trim().length === 0) {
+      setError('Please enter your full name');
+      return;
+    }
+
+    if (!password || password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
 
     if (!passwordStrength || passwordStrength.score < 2) {
       logger.warn('Weak password rejected', { score: passwordStrength?.score }, 'SECURITY');
@@ -160,13 +175,16 @@ export default function AcceptInvitePage() {
       return;
     }
 
-    try {
-      setProcessing(true);
-      setError('');
+    setProcessing(true);
+    setError('');
 
+    try {
+      console.log('Calling edge function...');
       logger.info('Calling signup_and_accept edge function', { email: invitation.email }, 'EDGE_FUNCTION');
 
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/accept-invitation`;
+      console.log('API URL:', apiUrl);
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -181,32 +199,42 @@ export default function AcceptInvitePage() {
         }),
       });
 
+      console.log('Response status:', response.status);
+
       const result = await response.json();
+      console.log('Response result:', result);
       logger.api('/accept-invitation', 'POST', response.status, { action: 'signup_and_accept', result });
 
       if (!response.ok) {
+        console.error('Edge function error:', result.error);
         logger.error('Signup and accept failed', undefined, { status: response.status, error: result.error });
         logger.edgeFunction('accept-invitation', false, { error: result.error });
         throw new Error(result.error || 'Failed to create account');
       }
 
+      console.log('Account created successfully');
       logger.info('Account created successfully', { email: invitation.email }, 'AUTH');
       logger.edgeFunction('accept-invitation', true, { action: 'signup_and_accept' });
 
       if (result.session) {
+        console.log('Setting session...');
         logger.info('Setting session for new user', {}, 'AUTH');
         try {
           const { error: sessionError } = await supabase.auth.setSession(result.session);
           if (sessionError) {
+            console.error('Session error:', sessionError);
             logger.error('Failed to set session', sessionError, {});
             throw new Error('Failed to set session: ' + sessionError.message);
           }
+          console.log('Session set successfully');
           logger.info('Session set successfully', {}, 'AUTH');
         } catch (sessionErr: any) {
+          console.error('Error in setSession:', sessionErr);
           logger.error('Error setting session', sessionErr, {});
           throw sessionErr;
         }
       } else if (result.requiresLogin) {
+        console.log('Requires login, redirecting to auth page');
         logger.info('Account created, redirecting to login', {}, 'AUTH');
         setSuccess('Account created! Please log in to continue.');
         setTimeout(() => {
@@ -214,20 +242,23 @@ export default function AcceptInvitePage() {
         }, 2000);
         return;
       } else {
+        console.warn('No session in response');
         logger.warn('No session returned from signup', {}, 'AUTH');
       }
 
       setSuccess('Account created and invitation accepted! Redirecting...');
+      console.log('Setting up redirect...');
       logger.info('Redirecting to dashboard', {}, 'NAVIGATION');
 
       setTimeout(() => {
+        console.log('Executing redirect to dashboard');
         logger.debug('Executing redirect to dashboard', {}, 'NAVIGATION');
         window.location.href = '/dashboard';
       }, 1500);
     } catch (err: any) {
-      logger.error('Error signing up and accepting invitation', err, { email: invitation.email });
-      setError(err.message);
-    } finally {
+      console.error('Error in handleSignupAndAccept:', err);
+      logger.error('Error signing up and accepting invitation', err, { email: invitation?.email });
+      setError(err.message || 'An error occurred during signup');
       setProcessing(false);
     }
   };
@@ -301,6 +332,15 @@ export default function AcceptInvitePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+      {processing && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-8 max-w-sm">
+            <Loader className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+            <p className="text-center text-gray-700 dark:text-gray-300 font-medium">Creating your account...</p>
+            <p className="text-center text-gray-500 dark:text-gray-400 text-sm mt-2">Please wait, this may take a few seconds.</p>
+          </div>
+        </div>
+      )}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-8">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
