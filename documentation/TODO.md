@@ -283,13 +283,68 @@
   - Star/unstar default filter
   - Database table: `saved_filters` with RLS
   - Location: `src/components/receipts/SavedFilterManager.tsx`, migration `add_saved_filters_table.sql`
-- [ ] 🟡 Receipt duplicates detection
-- [ ] 🟢 Receipt templates for recurring expenses
-- [ ] 🟢 Receipt splitting (shared expenses)
-- [ ] 🟢 Undo functionality for deletions
+- [ ] 🟡 **Receipt Duplicates Detection** (Priority: Medium - Implement Phase 1)
+  - Detect potential duplicates based on vendor + date + amount matching
+  - Visual indicator when uploading potential duplicate
+  - Bulk duplicate finder for existing receipts
+  - One-click merge or delete duplicates
+  - Prevent accidental double-uploads
+  - Estimated effort: 2-3 days
+  - Business value: High - Prevents data quality issues
+- [ ] 🟡 **Bulk Retry Failed Extractions** (Priority: Medium - Quick Win)
+  - One-click to retry all receipts with "failed" extraction status
+  - Progress indicator showing "Processing X of Y..."
+  - Batch processing with rate limiting
+  - Error reporting for continued failures
+  - Estimated effort: 4-6 hours
+  - Business value: Medium - Improves UX for extraction failures
+- [ ] 🔴 **Mobile Camera Integration** (Priority: High IF mobile is target, else Low)
+  - Direct camera access (not just file picker)
+  - Real-time preview before upload
+  - Image enhancement (brightness, contrast, crop)
+  - Multi-photo capture session
+  - Estimated effort: 1 week
+  - Business value: High for mobile users, Low otherwise
+  - Note: Current file picker works but native camera would be better UX
+- [ ] 🟢 **Receipt Templates for Recurring Expenses** (Priority: Low - Post-launch)
+  - Save receipt as template for recurring expenses
+  - Quick fill from template (rent, utilities, subscriptions)
+  - Template management (create, edit, delete)
+  - Reduces data entry for predictable expenses
+  - Estimated effort: 2 days
+  - Business value: Medium - Saves time for power users
+- [ ] 🟢 **Receipt Splitting** (Priority: Low - Post-launch)
+  - Split receipt amount between multiple people/departments
+  - Percentage-based or fixed amount splits
+  - Track who owes what
+  - Split history and audit trail
+  - Estimated effort: 3-4 days
+  - Business value: Low - Niche use case
+- [ ] 🟢 **Undo Deletion / Soft Delete** (Priority: Low - Post-launch)
+  - Soft delete with trash bin instead of permanent deletion
+  - 30-day recovery period
+  - Admin can restore deleted receipts
+  - Automatic cleanup after retention period
+  - Estimated effort: 1 day
+  - Business value: Low - Safety net, but rare need
+- [ ] 🟢 **Receipt Attachments** (Priority: Low - Future v2)
+  - Attach supporting documents to receipts (invoice, PO, email)
+  - Multiple files per receipt
+  - File type support: PDF, images, documents
+  - Organize related documentation together
+  - Estimated effort: 3-4 days
+  - Business value: Low - Advanced feature
+- [ ] 🟢 **Receipt Comments/Notes Thread** (Priority: Low - Future v2)
+  - Multiple users can comment on receipts
+  - Question/answer threads for clarification
+  - @mention team members
+  - Timestamps and user attribution
+  - Estimated effort: 1 week
+  - Business value: Medium - Team collaboration feature
 
-**Status:** ✅ Production-ready - Complete power-user receipt management system
+**Status:** ✅ Production-ready at 95% - Complete power-user receipt management system
 **Date Completed:** 2025-10-09
+**Assessment:** Core workflows complete, advanced power-user features implemented, no blocking gaps. Ready for production launch. Remaining items are enhancements based on user feedback.
 
 ### Team Management
 - [x] ✅ Team page UI
