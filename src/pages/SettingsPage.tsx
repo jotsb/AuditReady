@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
-import { User, Building2, Shield, Bell, FolderOpen, Tag, Palette } from 'lucide-react';
-import { BusinessManagement } from '../components/settings/BusinessManagement';
-import { CollectionManagement } from '../components/settings/CollectionManagement';
+import { User, Building2, Shield, Bell, Tag, Palette } from 'lucide-react';
+import { BusinessCollectionManagement } from '../components/settings/BusinessCollectionManagement';
 import { CategoryManagement } from '../components/settings/CategoryManagement';
 import { ProfileManagement } from '../components/settings/ProfileManagement';
 import { ThemeSettings } from '../components/settings/ThemeSettings';
 import { usePageTracking } from '../hooks/usePageTracking';
 import { actionTracker } from '../lib/actionTracker';
 
-type SettingsTab = 'profile' | '2fa' | 'business' | 'businesses' | 'collections' | 'categories' | 'theme' | 'notifications';
+type SettingsTab = 'profile' | '2fa' | 'business' | 'businesses' | 'categories' | 'theme' | 'notifications';
 
 export function SettingsPage() {
   usePageTracking('Settings', { section: 'settings' });
@@ -72,20 +71,7 @@ export function SettingsPage() {
             >
               <div className="flex items-center gap-2">
                 <Building2 size={18} />
-                Businesses
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab('collections')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap transition ${
-                activeTab === 'collections'
-                  ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-slate-600 dark:text-gray-400 hover:text-slate-800 dark:hover:text-gray-200 hover:border-slate-300 dark:border-gray-600 dark:hover:border-gray-600'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <FolderOpen size={18} />
-                Collections
+                Businesses & Collections
               </div>
             </button>
             <button
@@ -147,9 +133,7 @@ export function SettingsPage() {
             </div>
           )}
 
-          {activeTab === 'businesses' && <BusinessManagement />}
-
-          {activeTab === 'collections' && <CollectionManagement />}
+          {activeTab === 'businesses' && <BusinessCollectionManagement />}
 
           {activeTab === 'categories' && <CategoryManagement />}
 
