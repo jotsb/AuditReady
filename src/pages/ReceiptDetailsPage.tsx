@@ -3,6 +3,7 @@ import { ArrowLeft, Calendar, DollarSign, MapPin, CreditCard, Tag, FileText, Clo
 import { supabase } from '../lib/supabase';
 import { EditReceiptModal } from '../components/receipts/EditReceiptModal';
 import type { Database } from '../lib/database.types';
+import { logger } from '../lib/logger';
 
 type Receipt = Database['public']['Tables']['receipts']['Row'];
 
@@ -22,7 +23,10 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
   }, [receiptId]);
 
   const loadReceipt = async () => {
+    const startTime = performance.now();
     try {
+      logger.info('Loading receipt details', { receiptId, page: 'ReceiptDetailsPage' }, 'DATABASE');
+
       const { data, error } = await supabase
         .from('receipts')
         .select('*')
@@ -41,11 +45,26 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
 
           if (!urlError && signedUrlData) {
             setImageUrl(signedUrlData.signedUrl);
+          } else if (urlError) {
+            logger.warn('Failed to generate signed URL', { receiptId, error: urlError.message, page: 'ReceiptDetailsPage' }, 'DATABASE');
           }
         }
+
+        const loadTime = performance.now() - startTime;
+        logger.performance('Receipt details loaded', loadTime, {
+          receiptId,
+          page: 'ReceiptDetailsPage',
+          hasImage: !!data.file_path
+        });
+      } else {
+        logger.warn('Receipt not found', { receiptId, page: 'ReceiptDetailsPage' }, 'DATABASE');
       }
     } catch (error) {
-      console.error('Error loading receipt:', error);
+      logger.error('Error loading receipt', error as Error, {
+        receiptId,
+        page: 'ReceiptDetailsPage',
+        operation: 'load_receipt'
+      });
     } finally {
       setLoading(false);
     }
@@ -55,6 +74,12 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
     if (!receipt?.file_path) return;
 
     try {
+      logger.info('Downloading receipt', {
+        receiptId: receipt.id,
+        vendor: receipt.vendor_name,
+        page: 'ReceiptDetailsPage'
+      }, 'USER_ACTION');
+
       const { data, error } = await supabase.storage
         .from('receipts')
         .download(receipt.file_path);
@@ -69,8 +94,17 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+
+      logger.info('Receipt downloaded successfully', {
+        receiptId: receipt.id,
+        page: 'ReceiptDetailsPage'
+      }, 'USER_ACTION');
     } catch (error) {
-      console.error('Error downloading receipt:', error);
+      logger.error('Failed to download receipt', error as Error, {
+        receiptId: receipt?.id,
+        filePath: receipt?.file_path,
+        page: 'ReceiptDetailsPage'
+      });
       alert('Failed to download receipt');
     }
   };

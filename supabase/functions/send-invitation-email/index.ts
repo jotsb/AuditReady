@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,6 +16,12 @@ interface InvitationPayload {
 }
 
 Deno.serve(async (req: Request) => {
+  const startTime = Date.now();
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 200,
@@ -22,11 +29,40 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  let payload: InvitationPayload | null = null;
+
   try {
-    const payload: InvitationPayload = await req.json();
+    payload = await req.json();
     const { email, role, token, inviterName, businessName } = payload;
 
+    // Log function start
+    await supabase.rpc('log_system_event', {
+      p_level: 'INFO',
+      p_category: 'EDGE_FUNCTION',
+      p_message: 'Invitation email function started',
+      p_metadata: { email, role, businessName, function: 'send-invitation-email' },
+      p_user_id: null,
+      p_session_id: null,
+      p_ip_address: null,
+      p_user_agent: req.headers.get('user-agent'),
+      p_stack_trace: null,
+      p_execution_time_ms: null
+    });
+
     if (!email || !token) {
+      await supabase.rpc('log_system_event', {
+        p_level: 'WARN',
+        p_category: 'EDGE_FUNCTION',
+        p_message: 'Missing required fields for invitation',
+        p_metadata: { hasEmail: !!email, hasToken: !!token, function: 'send-invitation-email' },
+        p_user_id: null,
+        p_session_id: null,
+        p_ip_address: null,
+        p_user_agent: req.headers.get('user-agent'),
+        p_stack_trace: null,
+        p_execution_time_ms: null
+      });
+
       return new Response(
         JSON.stringify({ error: "Email and token are required" }),
         {
@@ -97,16 +133,29 @@ If you didn't expect this invitation, you can safely ignore this email.
     `;
 
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    
+
     if (!resendApiKey) {
+      await supabase.rpc('log_system_event', {
+        p_level: 'WARN',
+        p_category: 'EDGE_FUNCTION',
+        p_message: 'RESEND_API_KEY not configured',
+        p_metadata: { email, inviteLink, function: 'send-invitation-email' },
+        p_user_id: null,
+        p_session_id: null,
+        p_ip_address: null,
+        p_user_agent: req.headers.get('user-agent'),
+        p_stack_trace: null,
+        p_execution_time_ms: null
+      });
+
       console.log("RESEND_API_KEY not configured. Email would be sent to:", email);
       console.log("Invitation link:", inviteLink);
-      
+
       return new Response(
-        JSON.stringify({ 
-          success: true, 
+        JSON.stringify({
+          success: true,
           message: "Email service not configured. Use the invitation link from the Team page.",
-          inviteLink 
+          inviteLink
         }),
         {
           status: 200,
@@ -118,6 +167,21 @@ If you didn't expect this invitation, you can safely ignore this email.
       );
     }
 
+    // Log Resend API call
+    await supabase.rpc('log_system_event', {
+      p_level: 'INFO',
+      p_category: 'EXTERNAL_API',
+      p_message: 'Sending invitation email via Resend',
+      p_metadata: { email, businessName, function: 'send-invitation-email' },
+      p_user_id: null,
+      p_session_id: null,
+      p_ip_address: null,
+      p_user_agent: req.headers.get('user-agent'),
+      p_stack_trace: null,
+      p_execution_time_ms: null
+    });
+
+    const apiStartTime = Date.now();
     const emailResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -133,13 +197,53 @@ If you didn't expect this invitation, you can safely ignore this email.
       }),
     });
 
+    const apiTime = Date.now() - apiStartTime;
+
     if (!emailResponse.ok) {
       const errorData = await emailResponse.json();
+
+      await supabase.rpc('log_system_event', {
+        p_level: 'ERROR',
+        p_category: 'EXTERNAL_API',
+        p_message: 'Resend API error',
+        p_metadata: {
+          email,
+          statusCode: emailResponse.status,
+          error: errorData,
+          function: 'send-invitation-email'
+        },
+        p_user_id: null,
+        p_session_id: null,
+        p_ip_address: null,
+        p_user_agent: req.headers.get('user-agent'),
+        p_stack_trace: null,
+        p_execution_time_ms: apiTime
+      });
+
       console.error("Resend API error:", errorData);
       throw new Error(`Failed to send email: ${JSON.stringify(errorData)}`);
     }
 
     const emailData = await emailResponse.json();
+
+    // Log successful send
+    const executionTime = Date.now() - startTime;
+    await supabase.rpc('log_system_event', {
+      p_level: 'INFO',
+      p_category: 'EXTERNAL_API',
+      p_message: 'Invitation email sent successfully',
+      p_metadata: {
+        email,
+        emailId: emailData.id,
+        function: 'send-invitation-email'
+      },
+      p_user_id: null,
+      p_session_id: null,
+      p_ip_address: null,
+      p_user_agent: req.headers.get('user-agent'),
+      p_stack_trace: null,
+      p_execution_time_ms: executionTime
+    });
 
     return new Response(
       JSON.stringify({ success: true, emailId: emailData.id }),
@@ -152,9 +256,31 @@ If you didn't expect this invitation, you can safely ignore this email.
       }
     );
   } catch (error) {
+    const executionTime = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const stackTrace = error instanceof Error ? error.stack : null;
+
+    // Log error
+    await supabase.rpc('log_system_event', {
+      p_level: 'ERROR',
+      p_category: 'EDGE_FUNCTION',
+      p_message: `Invitation email failed: ${errorMessage}`,
+      p_metadata: {
+        email: payload?.email,
+        function: 'send-invitation-email',
+        error: errorMessage
+      },
+      p_user_id: null,
+      p_session_id: null,
+      p_ip_address: null,
+      p_user_agent: req.headers.get('user-agent'),
+      p_stack_trace: stackTrace,
+      p_execution_time_ms: executionTime
+    });
+
     console.error("Error sending invitation email:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       {
         status: 500,
         headers: {

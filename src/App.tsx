@@ -13,6 +13,7 @@ import { SystemLogsPage } from './pages/SystemLogsPage';
 import AcceptInvitePage from './pages/AcceptInvitePage';
 import { MainLayout } from './components/layout/MainLayout';
 import { ResetPasswordForm } from './components/auth/ResetPasswordForm';
+import ErrorBoundary from './components/shared/ErrorBoundary';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -188,22 +189,28 @@ function AppContent() {
   };
 
   return (
-    <MainLayout
-      currentView={currentView}
-      onNavigate={handleNavigate}
-      title={getTitle()}
-      onQuickCapture={handleQuickCapture}
-    >
-      {renderPage()}
-    </MainLayout>
+    <ErrorBoundary name="main-content">
+      <MainLayout
+        currentView={currentView}
+        onNavigate={handleNavigate}
+        title={getTitle()}
+        onQuickCapture={handleQuickCapture}
+      >
+        <ErrorBoundary name="page-content">
+          {renderPage()}
+        </ErrorBoundary>
+      </MainLayout>
+    </ErrorBoundary>
   );
 }
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ErrorBoundary name="app-root">
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Database, Filter, Search, Download, AlertCircle, RefreshCw } from 'lucide-react';
 import { LogEntry } from '../components/shared/LogEntry';
+import { logger } from '../lib/logger';
 
 interface SystemLog {
   id: string;
@@ -69,10 +70,12 @@ export function SystemLogsPage() {
   }, [logs, searchTerm, filterLevel, filterCategory, filterUserId, filterSessionId, startDate, endDate]);
 
   const loadSystemLogs = async (silent = false) => {
+    const startTime = performance.now();
     try {
       if (!silent) {
         setLoading(true);
         setError('');
+        logger.info('Loading system logs', { page: 'SystemLogsPage', currentPage }, 'DATABASE');
       }
 
       const startIndex = (currentPage - 1) * itemsPerPage;
@@ -89,6 +92,16 @@ export function SystemLogsPage() {
         .range(startIndex, endIndex);
 
       if (fetchError) throw fetchError;
+
+      const loadTime = performance.now() - startTime;
+      if (!silent) {
+        logger.performance('System logs loaded', loadTime, {
+          page: 'SystemLogsPage',
+          logCount: logsData?.length || 0,
+          totalCount: count,
+          currentPage
+        });
+      }
 
       // Fetch user profiles separately for logs that have user_id
       const userIds = [...new Set(logsData?.map(log => log.user_id).filter(Boolean))];
