@@ -49,7 +49,7 @@ export function AdminPage() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'businesses' | 'logs' | 'analytics'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'businesses' | 'logs' | 'analytics' | 'bulk-ops'>('overview');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalBusinesses, setTotalBusinesses] = useState(0);
   const itemsPerPage = 20;
@@ -248,6 +248,17 @@ export function AdminPage() {
                 <BarChart3 className="inline mr-2" size={18} />
                 Analytics
               </button>
+              <button
+                onClick={() => setActiveTab('bulk-ops')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition ${
+                  activeTab === 'bulk-ops'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:text-gray-300 hover:border-slate-300'
+                }`}
+              >
+                <Activity className="inline mr-2" size={18} />
+                Bulk Operations
+              </button>
             </nav>
           </div>
         </div>
@@ -442,8 +453,151 @@ export function AdminPage() {
         {activeTab === 'analytics' && (
           <AnalyticsTab />
         )}
+
+        {activeTab === 'bulk-ops' && (
+          <BulkOperationsTab />
+        )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function BulkOperationsTab() {
+  const [operations, setOperations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadBulkOperations();
+  }, []);
+
+  const loadBulkOperations = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('system_logs')
+        .select('*')
+        .in('category', ['USER_ACTION'])
+        .ilike('message', '%bulk%')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      setOperations(data || []);
+    } catch (error) {
+      console.error('Error loading bulk operations:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString();
+  };
+
+  const getActionBadgeColor = (action: string) => {
+    if (action.includes('delete')) return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+    if (action.includes('categorize')) return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
+    if (action.includes('move')) return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300';
+    if (action.includes('export')) return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+    return 'bg-slate-100 text-slate-800 dark:bg-gray-700 dark:text-gray-300';
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <div className="text-slate-600 dark:text-gray-400">Loading bulk operations...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Bulk Operations Monitor</h2>
+          <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">
+            Track bulk actions performed by users ({operations.length} operations)
+          </p>
+        </div>
+        <button
+          onClick={loadBulkOperations}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+        >
+          Refresh
+        </button>
+      </div>
+
+      {operations.length === 0 ? (
+        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700">
+          <Activity size={48} className="mx-auto text-slate-400 dark:text-gray-500 mb-4" />
+          <p className="text-slate-600 dark:text-gray-400">No bulk operations recorded yet</p>
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-50 dark:bg-gray-900 border-b border-slate-200 dark:border-gray-700">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-gray-300 uppercase">
+                    Timestamp
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-gray-300 uppercase">
+                    Action
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-gray-300 uppercase">
+                    Message
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-gray-300 uppercase">
+                    Details
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-gray-300 uppercase">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-gray-700">
+                {operations.map((op) => {
+                  const action = op.metadata?.action || 'unknown';
+                  const isError = op.level === 'ERROR';
+                  return (
+                    <tr key={op.id} className="hover:bg-slate-50 dark:hover:bg-gray-700 transition">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-gray-400">
+                        {formatDate(op.created_at)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs font-medium rounded ${getActionBadgeColor(action)}`}>
+                          {action}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-800 dark:text-white">
+                        {op.message}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-600 dark:text-gray-400">
+                        {op.metadata?.receipt_count && (
+                          <div>Receipts: {op.metadata.receipt_count}</div>
+                        )}
+                        {op.metadata?.execution_time_ms && (
+                          <div>Time: {op.metadata.execution_time_ms}ms</div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs font-medium rounded ${
+                          isError
+                            ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                            : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                        }`}>
+                          {isError ? 'Failed' : 'Success'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
