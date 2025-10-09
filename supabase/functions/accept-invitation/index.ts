@@ -28,6 +28,9 @@ interface AcceptInvitationRequest {
 type InvitationRequest = GetInvitationRequest | SignupAndAcceptRequest | AcceptInvitationRequest;
 
 Deno.serve(async (req: Request) => {
+  const requestId = crypto.randomUUID();
+  const startTime = Date.now();
+
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 200,
@@ -35,23 +38,48 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    const serviceClient = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
+  const serviceClient = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+
+  const logToSystem = async (level: string, message: string, metadata: any = {}) => {
+    try {
+      await serviceClient.from('system_logs').insert({
+        level,
+        category: 'EDGE_FUNCTION',
+        message,
+        metadata: {
+          ...metadata,
+          request_id: requestId,
+          function_name: 'accept-invitation',
+          timestamp: new Date().toISOString()
+        }
+      });
+    } catch (err) {
+      console.error('Failed to log to system_logs:', err);
+    }
+  };
+
+  try {
+    await logToSystem('INFO', 'Accept-invitation function invoked', {
+      method: req.method,
+      url: req.url
     });
 
     if (req.method === "GET") {
+      await logToSystem('INFO', 'Processing GET request to fetch invitation details');
       const url = new URL(req.url);
       const token = url.searchParams.get('token');
 
       if (!token) {
+        await logToSystem('WARN', 'Missing invitation token in GET request');
         return new Response(
           JSON.stringify({ error: 'Missing invitation token' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -80,10 +108,17 @@ Deno.serve(async (req: Request) => {
         .maybeSingle();
 
       if (invitationError) {
+        await logToSystem('ERROR', 'Database error fetching invitation', {
+          error: invitationError.message,
+          token_preview: token.substring(0, 8) + '...'
+        });
         throw new Error(`Failed to fetch invitation: ${invitationError.message}`);
       }
 
       if (!invitation) {
+        await logToSystem('WARN', 'Invalid invitation token provided', {
+          token_preview: token.substring(0, 8) + '...'
+        });
         return new Response(
           JSON.stringify({ error: 'Invalid invitation token' }),
           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -91,6 +126,10 @@ Deno.serve(async (req: Request) => {
       }
 
       if (invitation.status !== 'pending') {
+        await logToSystem('WARN', 'Invitation already processed', {
+          invitation_id: invitation.id,
+          current_status: invitation.status
+        });
         return new Response(
           JSON.stringify({ error: 'Invitation already processed', status: invitation.status }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -98,6 +137,10 @@ Deno.serve(async (req: Request) => {
       }
 
       if (new Date(invitation.expires_at) < new Date()) {
+        await logToSystem('INFO', 'Marking expired invitation', {
+          invitation_id: invitation.id,
+          expires_at: invitation.expires_at
+        });
         await serviceClient
           .from('invitations')
           .update({ status: 'expired' })
@@ -108,6 +151,12 @@ Deno.serve(async (req: Request) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      await logToSystem('INFO', 'Successfully fetched invitation details', {
+        invitation_id: invitation.id,
+        email: invitation.email,
+        role: invitation.role
+      });
 
       return new Response(
         JSON.stringify({
@@ -126,9 +175,16 @@ Deno.serve(async (req: Request) => {
 
     if (req.method === "POST") {
       const requestData: InvitationRequest = await req.json();
+      await logToSystem('INFO', 'Processing POST request', {
+        action: requestData.action
+      });
 
       if (requestData.action === 'signup_and_accept') {
         const { token, email, password, fullName } = requestData;
+        await logToSystem('INFO', 'Processing signup_and_accept action', {
+          email,
+          full_name: fullName
+        });
 
         const { data: invitation, error: invitationError } = await serviceClient
           .from('invitations')
@@ -137,6 +193,10 @@ Deno.serve(async (req: Request) => {
           .maybeSingle();
 
         if (invitationError || !invitation) {
+          await logToSystem('ERROR', 'Failed to fetch invitation for signup', {
+            error: invitationError?.message,
+            email
+          });
           return new Response(
             JSON.stringify({ error: 'Invalid invitation token' }),
             { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -144,6 +204,10 @@ Deno.serve(async (req: Request) => {
         }
 
         if (invitation.status !== 'pending') {
+          await logToSystem('WARN', 'Signup attempted with non-pending invitation', {
+            invitation_id: invitation.id,
+            status: invitation.status
+          });
           return new Response(
             JSON.stringify({ error: 'Invitation already processed' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -151,6 +215,10 @@ Deno.serve(async (req: Request) => {
         }
 
         if (new Date(invitation.expires_at) < new Date()) {
+          await logToSystem('WARN', 'Signup attempted with expired invitation', {
+            invitation_id: invitation.id,
+            expires_at: invitation.expires_at
+          });
           return new Response(
             JSON.stringify({ error: 'Invitation has expired' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -158,6 +226,10 @@ Deno.serve(async (req: Request) => {
         }
 
         if (email.toLowerCase() !== invitation.email.toLowerCase()) {
+          await logToSystem('WARN', 'Email mismatch during signup', {
+            provided_email: email,
+            invitation_email: invitation.email
+          });
           return new Response(
             JSON.stringify({ error: 'Email does not match invitation' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -174,12 +246,22 @@ Deno.serve(async (req: Request) => {
         });
 
         if (signupError) {
+          await logToSystem('ERROR', 'User creation failed', {
+            error: signupError.message,
+            email
+          });
           throw new Error(`Failed to create user: ${signupError.message}`);
         }
 
         if (!authData.user) {
+          await logToSystem('ERROR', 'User creation returned no user', { email });
           throw new Error('User creation failed');
         }
+
+        await logToSystem('INFO', 'User created successfully', {
+          user_id: authData.user.id,
+          email
+        });
 
         const { error: memberError } = await serviceClient
           .from('business_members')
@@ -191,8 +273,19 @@ Deno.serve(async (req: Request) => {
           });
 
         if (memberError) {
+          await logToSystem('ERROR', 'Failed to add user to business', {
+            error: memberError.message,
+            user_id: authData.user.id,
+            business_id: invitation.business_id
+          });
           throw new Error(`Failed to add user to business: ${memberError.message}`);
         }
+
+        await logToSystem('INFO', 'User added to business successfully', {
+          user_id: authData.user.id,
+          business_id: invitation.business_id,
+          role: invitation.role
+        });
 
         const { error: updateError } = await serviceClient
           .from('invitations')
@@ -203,7 +296,15 @@ Deno.serve(async (req: Request) => {
           .eq('id', invitation.id);
 
         if (updateError) {
+          await logToSystem('ERROR', 'Failed to update invitation status', {
+            error: updateError.message,
+            invitation_id: invitation.id
+          });
           console.error('Failed to update invitation status:', updateError);
+        } else {
+          await logToSystem('INFO', 'Invitation marked as accepted', {
+            invitation_id: invitation.id
+          });
         }
 
         await serviceClient.from('audit_logs').insert({
@@ -225,6 +326,10 @@ Deno.serve(async (req: Request) => {
         });
 
         if (sessionError || !sessionData.session) {
+          await logToSystem('WARN', 'Auto-login failed after signup', {
+            user_id: authData.user.id,
+            error: sessionError?.message
+          });
           return new Response(
             JSON.stringify({
               success: true,
@@ -234,6 +339,12 @@ Deno.serve(async (req: Request) => {
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
+
+        await logToSystem('INFO', 'Signup and accept completed successfully', {
+          user_id: authData.user.id,
+          business_id: invitation.business_id,
+          execution_time_ms: Date.now() - startTime
+        });
 
         return new Response(
           JSON.stringify({
@@ -247,9 +358,11 @@ Deno.serve(async (req: Request) => {
 
       } else if (requestData.action === 'accept_invitation') {
         const { token } = requestData;
+        await logToSystem('INFO', 'Processing accept_invitation action (existing user)');
 
         const authHeader = req.headers.get('Authorization');
         if (!authHeader) {
+          await logToSystem('WARN', 'Missing authorization header for accept_invitation');
           return new Response(
             JSON.stringify({ error: 'Missing authorization header' }),
             { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -260,11 +373,19 @@ Deno.serve(async (req: Request) => {
         const { data: { user }, error: authError } = await serviceClient.auth.getUser(userToken);
 
         if (authError || !user) {
+          await logToSystem('ERROR', 'Authentication failed', {
+            error: authError?.message
+          });
           return new Response(
             JSON.stringify({ error: 'Invalid authentication token' }),
             { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
+
+        await logToSystem('INFO', 'User authenticated', {
+          user_id: user.id,
+          email: user.email
+        });
 
         const { data: invitation, error: invitationError } = await serviceClient
           .from('invitations')
@@ -273,6 +394,10 @@ Deno.serve(async (req: Request) => {
           .maybeSingle();
 
         if (invitationError || !invitation) {
+          await logToSystem('ERROR', 'Failed to fetch invitation for existing user', {
+            error: invitationError?.message,
+            user_id: user.id
+          });
           return new Response(
             JSON.stringify({ error: 'Invalid invitation token' }),
             { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -280,6 +405,11 @@ Deno.serve(async (req: Request) => {
         }
 
         if (invitation.status !== 'pending') {
+          await logToSystem('WARN', 'Accept attempted with non-pending invitation', {
+            invitation_id: invitation.id,
+            status: invitation.status,
+            user_id: user.id
+          });
           return new Response(
             JSON.stringify({ error: 'Invitation already processed' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -287,6 +417,11 @@ Deno.serve(async (req: Request) => {
         }
 
         if (new Date(invitation.expires_at) < new Date()) {
+          await logToSystem('WARN', 'Accept attempted with expired invitation', {
+            invitation_id: invitation.id,
+            expires_at: invitation.expires_at,
+            user_id: user.id
+          });
           return new Response(
             JSON.stringify({ error: 'Invitation has expired' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -294,6 +429,11 @@ Deno.serve(async (req: Request) => {
         }
 
         if (user.email?.toLowerCase() !== invitation.email.toLowerCase()) {
+          await logToSystem('WARN', 'Email mismatch during accept', {
+            user_email: user.email,
+            invitation_email: invitation.email,
+            user_id: user.id
+          });
           return new Response(
             JSON.stringify({ error: 'Your email does not match the invitation' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -308,6 +448,10 @@ Deno.serve(async (req: Request) => {
           .maybeSingle();
 
         if (existingMember) {
+          await logToSystem('WARN', 'User already a member of business', {
+            user_id: user.id,
+            business_id: invitation.business_id
+          });
           return new Response(
             JSON.stringify({ error: 'You are already a member of this business' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -324,8 +468,19 @@ Deno.serve(async (req: Request) => {
           });
 
         if (memberError) {
+          await logToSystem('ERROR', 'Failed to add existing user to business', {
+            error: memberError.message,
+            user_id: user.id,
+            business_id: invitation.business_id
+          });
           throw new Error(`Failed to add user to business: ${memberError.message}`);
         }
+
+        await logToSystem('INFO', 'Existing user added to business', {
+          user_id: user.id,
+          business_id: invitation.business_id,
+          role: invitation.role
+        });
 
         const { error: updateError } = await serviceClient
           .from('invitations')
@@ -336,7 +491,15 @@ Deno.serve(async (req: Request) => {
           .eq('id', invitation.id);
 
         if (updateError) {
+          await logToSystem('ERROR', 'Failed to update invitation status', {
+            error: updateError.message,
+            invitation_id: invitation.id
+          });
           console.error('Failed to update invitation status:', updateError);
+        } else {
+          await logToSystem('INFO', 'Invitation marked as accepted', {
+            invitation_id: invitation.id
+          });
         }
 
         await serviceClient.from('audit_logs').insert({
@@ -351,6 +514,12 @@ Deno.serve(async (req: Request) => {
           }
         });
 
+        await logToSystem('INFO', 'Accept invitation completed successfully', {
+          user_id: user.id,
+          business_id: invitation.business_id,
+          execution_time_ms: Date.now() - startTime
+        });
+
         return new Response(
           JSON.stringify({
             success: true,
@@ -360,18 +529,29 @@ Deno.serve(async (req: Request) => {
         );
       }
 
+      await logToSystem('ERROR', 'Invalid action provided', {
+        action: (requestData as any).action
+      });
       return new Response(
         JSON.stringify({ error: 'Invalid action' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    await logToSystem('ERROR', 'Method not allowed', {
+      method: req.method
+    });
     return new Response(
       JSON.stringify({ error: 'Method not allowed' }),
       { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error: any) {
+    await logToSystem('ERROR', 'Unhandled error in accept-invitation function', {
+      error: error.message,
+      stack: error.stack,
+      execution_time_ms: Date.now() - startTime
+    });
     console.error('Error in accept-invitation:', error);
     return new Response(
       JSON.stringify({ error: error.message || 'Internal server error' }),
