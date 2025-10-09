@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Building2, Users, Receipt, TrendingUp, AlertCircle, Activity, Database, BarChart3, UserCog, Search, Filter as FilterIcon, Download, FolderOpen } from 'lucide-react';
+import { Building2, Users, Receipt, TrendingUp, AlertCircle, Activity, Database, BarChart3, UserCog, Search, Filter as FilterIcon, Download, FolderOpen, ChevronDown, ChevronRight, Calendar, Mail } from 'lucide-react';
 import { LogEntry } from '../components/shared/LogEntry';
 import { usePageTracking } from '../hooks/usePageTracking';
 import { UserManagement } from '../components/admin/UserManagement';
@@ -49,7 +49,7 @@ export function AdminPage() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'businesses' | 'collections' | 'logs' | 'analytics'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'businesses' | 'logs' | 'analytics'>('overview');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalBusinesses, setTotalBusinesses] = useState(0);
   const itemsPerPage = 20;
@@ -213,18 +213,7 @@ export function AdminPage() {
                 }`}
               >
                 <Building2 className="inline mr-2" size={18} />
-                Businesses
-              </button>
-              <button
-                onClick={() => setActiveTab('collections')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition ${
-                  activeTab === 'collections'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:text-gray-300 hover:border-slate-300'
-                }`}
-              >
-                <FolderOpen className="inline mr-2" size={18} />
-                Collections
+                Businesses & Collections
               </button>
               <button
                 onClick={() => setActiveTab('users')}
@@ -440,10 +429,6 @@ export function AdminPage() {
 
         {activeTab === 'businesses' && (
           <BusinessesTab businesses={businesses} totalBusinesses={totalBusinesses} currentPage={currentPage} setCurrentPage={setCurrentPage} itemsPerPage={itemsPerPage} />
-        )}
-
-        {activeTab === 'collections' && (
-          <CollectionsTab />
         )}
 
         {activeTab === 'users' && (
@@ -968,6 +953,9 @@ function BusinessesTab({ businesses, totalBusinesses, currentPage, setCurrentPag
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredBusinesses, setFilteredBusinesses] = useState(businesses);
+  const [expandedBusinesses, setExpandedBusinesses] = useState<Set<string>>(new Set());
+  const [businessCollections, setBusinessCollections] = useState<Record<string, Collection[]>>({});
+  const [loadingCollections, setLoadingCollections] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (searchTerm) {
@@ -980,6 +968,64 @@ function BusinessesTab({ businesses, totalBusinesses, currentPage, setCurrentPag
       setFilteredBusinesses(businesses);
     }
   }, [searchTerm, businesses]);
+
+  const toggleBusiness = async (businessId: string) => {
+    const newExpanded = new Set(expandedBusinesses);
+    if (newExpanded.has(businessId)) {
+      newExpanded.delete(businessId);
+      setExpandedBusinesses(newExpanded);
+    } else {
+      newExpanded.add(businessId);
+      setExpandedBusinesses(newExpanded);
+      
+      if (!businessCollections[businessId]) {
+        setLoadingCollections(new Set([...loadingCollections, businessId]));
+        try {
+          const { data, error } = await supabase
+            .from('collections')
+            .select(`
+              *,
+              business:businesses(name, owner_id, owner:profiles!businesses_owner_id_fkey(email))
+            `)
+            .eq('business_id', businessId)
+            .order('created_at', { ascending: false });
+
+          if (!error && data) {
+            const enrichedCollections = await Promise.all(
+              data.map(async (collection: any) => {
+                const { count } = await supabase
+                  .from('receipts')
+                  .select('id', { count: 'exact', head: true })
+                  .eq('collection_id', collection.id);
+
+                return {
+                  id: collection.id,
+                  name: collection.name,
+                  year: collection.year,
+                  business_id: collection.business_id,
+                  business_name: collection.business?.name || 'Unknown',
+                  business_owner: collection.business?.owner?.email || 'Unknown',
+                  receipt_count: count || 0,
+                  created_at: collection.created_at,
+                };
+              })
+            );
+
+            setBusinessCollections({
+              ...businessCollections,
+              [businessId]: enrichedCollections,
+            });
+          }
+        } catch (err) {
+          console.error('Error loading collections:', err);
+        } finally {
+          const newLoading = new Set(loadingCollections);
+          newLoading.delete(businessId);
+          setLoadingCollections(newLoading);
+        }
+      }
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -996,353 +1042,173 @@ function BusinessesTab({ businesses, totalBusinesses, currentPage, setCurrentPag
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-gray-700">
-          <h2 className="text-xl font-bold text-slate-800 dark:text-white">All Businesses</h2>
-          <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">
-            Showing {filteredBusinesses.length} of {totalBusinesses} businesses
-          </p>
-        </div>
+      <div className="space-y-4">
+        {filteredBusinesses.length === 0 ? (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center">
+            <Building2 className="mx-auto mb-4 text-slate-300 dark:text-gray-600" size={48} />
+            <p className="text-slate-600 dark:text-gray-400 font-medium">No businesses found</p>
+            <p className="text-slate-400 dark:text-gray-500 text-sm mt-1">Try adjusting your search</p>
+          </div>
+        ) : (
+          filteredBusinesses.map((business) => {
+            const isExpanded = expandedBusinesses.has(business.id);
+            const collections = businessCollections[business.id] || [];
+            const isLoading = loadingCollections.has(business.id);
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50 dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
-                  Business Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
-                  Owner
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
-                  Members
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
-                  Collections
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
-                  Receipts
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
-                  Created
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-gray-700">
-              {filteredBusinesses.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">
-                    No businesses found
-                  </td>
-                </tr>
-              ) : (
-                filteredBusinesses.map((business) => (
-                  <tr key={business.id} className="hover:bg-slate-50 dark:hover:bg-gray-700 transition">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <Building2 className="mr-2 text-blue-600" size={16} />
-                        <div className="text-sm font-medium text-slate-900 dark:text-white">{business.name}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-slate-600 dark:text-gray-400">{business.owner_email}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {business.member_count}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                        {business.collection_count}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        {business.receipt_count}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-slate-600 dark:text-gray-400">
-                        {new Date(business.created_at).toLocaleDateString()}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {totalBusinesses > itemsPerPage && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-gray-700">
-            <div className="text-sm text-slate-600 dark:text-gray-400">
-              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalBusinesses)} of {totalBusinesses}
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-                className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            return (
+              <div
+                key={business.id}
+                className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border border-slate-200 dark:border-gray-700 hover:shadow-lg transition"
               >
-                Previous
-              </button>
-              <button
-                onClick={() => setCurrentPage(Math.min(Math.ceil(totalBusinesses / itemsPerPage), currentPage + 1))}
-                disabled={currentPage >= Math.ceil(totalBusinesses / itemsPerPage)}
-                className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function CollectionsTab() {
-  const [collections, setCollections] = useState<Collection[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filteredCollections, setFilteredCollections] = useState<Collection[]>([]);
-  const [groupBy, setGroupBy] = useState<'business' | 'none'>('business');
-
-  useEffect(() => {
-    loadCollections();
-  }, []);
-
-  useEffect(() => {
-    if (searchTerm) {
-      const filtered = collections.filter(c =>
-        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.business_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.business_owner.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredCollections(filtered);
-    } else {
-      setFilteredCollections(collections);
-    }
-  }, [searchTerm, collections]);
-
-  const loadCollections = async () => {
-    try {
-      setLoading(true);
-      const { data, error: fetchError } = await supabase
-        .from('collections')
-        .select(`
-          *,
-          business:businesses(name, owner_id, owner:profiles!businesses_owner_id_fkey(email))
-        `)
-        .order('created_at', { ascending: false });
-
-      if (fetchError) throw fetchError;
-
-      const enrichedCollections = await Promise.all(
-        (data || []).map(async (collection: any) => {
-          const { count } = await supabase
-            .from('receipts')
-            .select('id', { count: 'exact', head: true })
-            .eq('collection_id', collection.id);
-
-          return {
-            id: collection.id,
-            name: collection.name,
-            year: collection.year,
-            business_id: collection.business_id,
-            business_name: collection.business?.name || 'Unknown',
-            business_owner: collection.business?.owner?.email || 'Unknown',
-            receipt_count: count || 0,
-            created_at: collection.created_at,
-          };
-        })
-      );
-
-      setCollections(enrichedCollections);
-      setFilteredCollections(enrichedCollections);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-        <div className="text-center text-slate-600 dark:text-gray-400">Loading collections...</div>
-      </div>
-    );
-  }
-
-  const groupedCollections = groupBy === 'business'
-    ? filteredCollections.reduce((acc, collection) => {
-        if (!acc[collection.business_name]) {
-          acc[collection.business_name] = {
-            owner: collection.business_owner,
-            collections: [],
-          };
-        }
-        acc[collection.business_name].collections.push(collection);
-        return acc;
-      }, {} as Record<string, { owner: string; collections: Collection[] }>)
-    : null;
-
-  return (
-    <div className="space-y-6">
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg flex items-center">
-          <AlertCircle className="mr-2" size={20} />
-          {error}
-        </div>
-      )}
-
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-gray-500" size={20} />
-            <input
-              type="text"
-              placeholder="Search collections, businesses, or owners..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-            />
-          </div>
-          <div>
-            <select
-              value={groupBy}
-              onChange={(e) => setGroupBy(e.target.value as 'business' | 'none')}
-              className="px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-            >
-              <option value="business">Group by Business</option>
-              <option value="none">No Grouping</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {groupBy === 'business' && groupedCollections ? (
-        <div className="space-y-4">
-          {Object.entries(groupedCollections).map(([businessName, { owner, collections: businessCollections }]) => (
-            <div key={businessName} className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-              <div className="px-6 py-4 bg-slate-50 dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center">
-                      <Building2 className="mr-2 text-blue-600" size={20} />
-                      {businessName}
-                    </h3>
-                    <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">
-                      Owner: {owner} • {businessCollections.length} collection{businessCollections.length !== 1 ? 's' : ''}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="p-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {businessCollections.map((collection) => (
-                    <div
-                      key={collection.id}
-                      className="bg-slate-50 dark:bg-gray-700 rounded-lg p-4 border border-slate-200 dark:border-gray-600 hover:shadow-md transition"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center">
-                          <FolderOpen className="mr-2 text-purple-600" size={18} />
-                          <h4 className="font-semibold text-slate-800 dark:text-white">{collection.name}</h4>
+                <div
+                  className="p-6 cursor-pointer"
+                  onClick={() => toggleBusiness(business.id)}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                          <Building2 className="text-blue-600 dark:text-blue-400" size={24} />
                         </div>
-                        <span className="text-xs font-medium text-slate-500 dark:text-gray-400">{collection.year}</span>
+                        <div>
+                          <h3 className="text-xl font-bold text-slate-800 dark:text-white">{business.name}</h3>
+                          <div className="flex items-center gap-2 mt-1 text-sm text-slate-600 dark:text-gray-400">
+                            <Mail size={14} />
+                            <span>{business.owner_email}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between mt-3">
-                        <span className="text-xs text-slate-500 dark:text-gray-400">
-                          {new Date(collection.created_at).toLocaleDateString()}
-                        </span>
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
-                          <Receipt className="mr-1" size={12} />
-                          {collection.receipt_count}
-                        </span>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
+                            <Users className="text-blue-600" size={16} />
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-500 dark:text-gray-400">Members</p>
+                            <p className="text-lg font-semibold text-slate-800 dark:text-white">{business.member_count}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded">
+                            <FolderOpen className="text-purple-600" size={16} />
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-500 dark:text-gray-400">Collections</p>
+                            <p className="text-lg font-semibold text-slate-800 dark:text-white">{business.collection_count}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded">
+                            <Receipt className="text-green-600" size={16} />
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-500 dark:text-gray-400">Receipts</p>
+                            <p className="text-lg font-semibold text-slate-800 dark:text-white">{business.receipt_count}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 bg-slate-50 dark:bg-gray-700 rounded">
+                            <Calendar className="text-slate-600 dark:text-gray-400" size={16} />
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-500 dark:text-gray-400">Created</p>
+                            <p className="text-sm font-medium text-slate-800 dark:text-white">
+                              {new Date(business.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  ))}
+
+                    <button className="ml-4 p-2 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition">
+                      {isExpanded ? (
+                        <ChevronDown className="text-slate-600 dark:text-gray-400" size={24} />
+                      ) : (
+                        <ChevronRight className="text-slate-600 dark:text-gray-400" size={24} />
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-200 dark:border-gray-700">
-            <h2 className="text-xl font-bold text-slate-800 dark:text-white">All Collections</h2>
-            <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">
-              {filteredCollections.length} collection{filteredCollections.length !== 1 ? 's' : ''}
-            </p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-slate-50 dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
-                    Collection Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
-                    Business
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
-                    Owner
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
-                    Year
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
-                    Receipts
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
-                    Created
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-gray-700">
-                {filteredCollections.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">
-                      No collections found
-                    </td>
-                  </tr>
-                ) : (
-                  filteredCollections.map((collection) => (
-                    <tr key={collection.id} className="hover:bg-slate-50 dark:hover:bg-gray-700 transition">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <FolderOpen className="mr-2 text-purple-600" size={16} />
-                          <div className="text-sm font-medium text-slate-900 dark:text-white">{collection.name}</div>
+
+                {isExpanded && (
+                  <div className="border-t border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-900 p-6">
+                    {isLoading ? (
+                      <div className="text-center py-8">
+                        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        <p className="text-slate-600 dark:text-gray-400 mt-2">Loading collections...</p>
+                      </div>
+                    ) : collections.length === 0 ? (
+                      <div className="text-center py-8">
+                        <FolderOpen className="mx-auto mb-2 text-slate-300 dark:text-gray-600" size={32} />
+                        <p className="text-slate-600 dark:text-gray-400">No collections yet</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <h4 className="font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                          <FolderOpen size={18} className="text-purple-600" />
+                          Collections ({collections.length})
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {collections.map((collection) => (
+                            <div
+                              key={collection.id}
+                              className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-slate-200 dark:border-gray-700 hover:shadow-md transition"
+                            >
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <FolderOpen className="text-purple-600 flex-shrink-0" size={18} />
+                                  <h5 className="font-semibold text-slate-800 dark:text-white">{collection.name}</h5>
+                                </div>
+                                <span className="px-2 py-1 bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-gray-300 text-xs font-medium rounded">
+                                  {collection.year}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-slate-500 dark:text-gray-400">
+                                  {new Date(collection.created_at).toLocaleDateString()}
+                                </span>
+                                <span className="inline-flex items-center px-2 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs font-medium rounded-full">
+                                  <Receipt size={12} className="mr-1" />
+                                  {collection.receipt_count}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-600 dark:text-gray-400">{collection.business_name}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-600 dark:text-gray-400">{collection.business_owner}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-600 dark:text-gray-400">{collection.year}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
-                          {collection.receipt_count}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-600 dark:text-gray-400">
-                          {new Date(collection.created_at).toLocaleDateString()}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                      </div>
+                    )}
+                  </div>
                 )}
-              </tbody>
-            </table>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {totalBusinesses > itemsPerPage && (
+        <div className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg shadow-md px-6 py-4">
+          <div className="text-sm text-slate-600 dark:text-gray-400">
+            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalBusinesses)} of {totalBusinesses}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setCurrentPage(Math.min(Math.ceil(totalBusinesses / itemsPerPage), currentPage + 1))}
+              disabled={currentPage >= Math.ceil(totalBusinesses / itemsPerPage)}
+              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              Next
+            </button>
           </div>
         </div>
       )}
