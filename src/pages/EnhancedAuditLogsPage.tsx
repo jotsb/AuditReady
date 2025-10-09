@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Activity, Filter, Search, Download, AlertCircle } from 'lucide-react';
 import { LogEntry } from '../components/shared/LogEntry';
+import { logger } from '../lib/logger';
 
 interface AuditLog {
   id: string;
@@ -64,9 +65,16 @@ export function EnhancedAuditLogsPage() {
   const loadAuditLogs = async () => {
     if (!selectedBusiness) return;
 
+    const startTime = performance.now();
     try {
       setLoading(true);
       setError('');
+
+      logger.info('Loading enhanced audit logs', {
+        page: 'EnhancedAuditLogsPage',
+        businessId: selectedBusiness.id,
+        currentPage
+      }, 'DATABASE');
 
       const startIndex = (currentPage - 1) * itemsPerPage;
       const endIndex = startIndex + itemsPerPage - 1;
@@ -99,8 +107,21 @@ export function EnhancedAuditLogsPage() {
 
       setTotalCount(businessLogs.length);
       setLogs(businessLogs.slice(startIndex, endIndex + 1));
+
+      const loadTime = performance.now() - startTime;
+      logger.performance('Enhanced audit logs loaded', loadTime, {
+        page: 'EnhancedAuditLogsPage',
+        businessId: selectedBusiness.id,
+        logCount: businessLogs.length,
+        currentPage
+      });
     } catch (err: any) {
-      console.error('Error loading audit logs:', err);
+      logger.error('Failed to load enhanced audit logs', err, {
+        page: 'EnhancedAuditLogsPage',
+        businessId: selectedBusiness?.id,
+        currentPage,
+        errorMessage: err.message
+      });
       setError(err.message);
     } finally {
       setLoading(false);

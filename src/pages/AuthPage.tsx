@@ -1,11 +1,29 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Receipt } from 'lucide-react';
 import { LoginForm } from '../components/auth/LoginForm';
 import { RegisterForm } from '../components/auth/RegisterForm';
 import { ForgotPasswordForm } from '../components/auth/ForgotPasswordForm';
+import { logger } from '../lib/logger';
 
 export function AuthPage() {
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
+
+  useEffect(() => {
+    logger.info('Auth page loaded', {
+      page: 'AuthPage',
+      mode,
+      path: window.location.pathname
+    }, 'PAGE_VIEW');
+  }, []);
+
+  const handleModeChange = (newMode: 'login' | 'register' | 'forgot') => {
+    logger.info('Auth mode changed', {
+      page: 'AuthPage',
+      fromMode: mode,
+      toMode: newMode
+    }, 'USER_ACTION');
+    setMode(newMode);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
@@ -57,15 +75,15 @@ export function AuthPage() {
         <div>
           {mode === 'login' && (
             <LoginForm
-              onToggleMode={() => setMode('register')}
-              onForgotPassword={() => setMode('forgot')}
+              onToggleMode={() => handleModeChange('register')}
+              onForgotPassword={() => handleModeChange('forgot')}
             />
           )}
           {mode === 'register' && (
-            <RegisterForm onToggleMode={() => setMode('login')} />
+            <RegisterForm onToggleMode={() => handleModeChange('login')} />
           )}
           {mode === 'forgot' && (
-            <ForgotPasswordForm onBack={() => setMode('login')} />
+            <ForgotPasswordForm onBack={() => handleModeChange('login')} />
           )}
         </div>
       </div>

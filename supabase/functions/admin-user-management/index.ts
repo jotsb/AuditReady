@@ -40,7 +40,18 @@ async function checkSystemAdmin(supabase: any, userId: string): Promise<boolean>
     .maybeSingle();
 
   if (error) {
-    console.error('Error checking admin status:', error);
+    await supabase.rpc('log_system_event', {
+      p_level: 'ERROR',
+      p_category: 'EDGE_FUNCTION',
+      p_message: 'Failed to check system admin status',
+      p_metadata: { userId, error: error.message, function: 'admin-user-management' },
+      p_user_id: userId,
+      p_session_id: null,
+      p_ip_address: null,
+      p_user_agent: null,
+      p_stack_trace: null,
+      p_execution_time_ms: null
+    });
     return false;
   }
 
@@ -48,6 +59,8 @@ async function checkSystemAdmin(supabase: any, userId: string): Promise<boolean>
 }
 
 Deno.serve(async (req: Request) => {
+  const startTime = Date.now();
+
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 200,
@@ -55,19 +68,49 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+
+  let requestData: AdminRequest | null = null;
+  let user: any = null;
+
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
+    // Log function start
+    await supabase.rpc('log_system_event', {
+      p_level: 'INFO',
+      p_category: 'EDGE_FUNCTION',
+      p_message: 'Admin user management function started',
+      p_metadata: { function: 'admin-user-management' },
+      p_user_id: null,
+      p_session_id: null,
+      p_ip_address: null,
+      p_user_agent: req.headers.get('user-agent'),
+      p_stack_trace: null,
+      p_execution_time_ms: null
     });
 
     // Get the JWT from the Authorization header
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      await supabase.rpc('log_system_event', {
+        p_level: 'WARN',
+        p_category: 'SECURITY',
+        p_message: 'Missing authorization header',
+        p_metadata: { function: 'admin-user-management' },
+        p_user_id: null,
+        p_session_id: null,
+        p_ip_address: null,
+        p_user_agent: req.headers.get('user-agent'),
+        p_stack_trace: null,
+        p_execution_time_ms: null
+      });
+
       return new Response(
         JSON.stringify({ error: 'Missing authorization header' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -76,30 +119,77 @@ Deno.serve(async (req: Request) => {
 
     // Verify the JWT and get user
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
 
-    if (authError || !user) {
+    if (authError || !authUser) {
+      await supabase.rpc('log_system_event', {
+        p_level: 'WARN',
+        p_category: 'SECURITY',
+        p_message: 'Invalid authentication token',
+        p_metadata: { function: 'admin-user-management', error: authError?.message },
+        p_user_id: null,
+        p_session_id: null,
+        p_ip_address: null,
+        p_user_agent: req.headers.get('user-agent'),
+        p_stack_trace: null,
+        p_execution_time_ms: null
+      });
+
       return new Response(
         JSON.stringify({ error: 'Invalid token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    user = authUser;
+
     // Check if user is system admin
     const isAdmin = await checkSystemAdmin(supabase, user.id);
     if (!isAdmin) {
+      await supabase.rpc('log_system_event', {
+        p_level: 'WARN',
+        p_category: 'SECURITY',
+        p_message: 'Unauthorized admin access attempt',
+        p_metadata: { userId: user.id, function: 'admin-user-management' },
+        p_user_id: user.id,
+        p_session_id: null,
+        p_ip_address: null,
+        p_user_agent: req.headers.get('user-agent'),
+        p_stack_trace: null,
+        p_execution_time_ms: null
+      });
+
       return new Response(
         JSON.stringify({ error: 'Unauthorized: System admin access required' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const requestData: AdminRequest = await req.json();
+    requestData = await req.json();
+
+    // Log the admin action being attempted
+    await supabase.rpc('log_system_event', {
+      p_level: 'INFO',
+      p_category: 'EDGE_FUNCTION',
+      p_message: `Admin action attempted: ${requestData.action}`,
+      p_metadata: {
+        action: requestData.action,
+        targetUserId: 'targetUserId' in requestData ? requestData.targetUserId : null,
+        function: 'admin-user-management'
+      },
+      p_user_id: user.id,
+      p_session_id: null,
+      p_ip_address: null,
+      p_user_agent: req.headers.get('user-agent'),
+      p_stack_trace: null,
+      p_execution_time_ms: null
+    });
 
     // Handle different actions
     switch (requestData.action) {
       case 'change_password': {
         const { targetUserId, newPassword } = requestData;
+        const actionStartTime = Date.now();
 
         // Update password using admin API
         const { error: pwError } = await supabase.auth.admin.updateUserById(
@@ -111,13 +201,33 @@ Deno.serve(async (req: Request) => {
           throw new Error(`Failed to update password: ${pwError.message}`);
         }
 
-        // Log the action
+        // Log to audit_logs
         await supabase.from('audit_logs').insert({
           user_id: user.id,
           action: 'change_user_password',
           resource_type: 'auth',
           resource_id: targetUserId,
           details: { method: 'admin_override', via: 'edge_function' }
+        });
+
+        // Log to system_logs
+        const actionTime = Date.now() - actionStartTime;
+        await supabase.rpc('log_system_event', {
+          p_level: 'INFO',
+          p_category: 'EDGE_FUNCTION',
+          p_message: 'Admin changed user password successfully',
+          p_metadata: {
+            action: 'change_password',
+            targetUserId,
+            adminUserId: user.id,
+            function: 'admin-user-management'
+          },
+          p_user_id: user.id,
+          p_session_id: null,
+          p_ip_address: null,
+          p_user_agent: req.headers.get('user-agent'),
+          p_stack_trace: null,
+          p_execution_time_ms: actionTime
         });
 
         return new Response(
@@ -128,6 +238,7 @@ Deno.serve(async (req: Request) => {
 
       case 'hard_delete': {
         const { targetUserId } = requestData;
+        const actionStartTime = Date.now();
 
         // Check if user is soft deleted first
         const { data: profile } = await supabase
@@ -137,13 +248,31 @@ Deno.serve(async (req: Request) => {
           .maybeSingle();
 
         if (!profile?.deleted_at) {
+          await supabase.rpc('log_system_event', {
+            p_level: 'WARN',
+            p_category: 'EDGE_FUNCTION',
+            p_message: 'Hard delete attempted on non-soft-deleted user',
+            p_metadata: {
+              action: 'hard_delete',
+              targetUserId,
+              adminUserId: user.id,
+              function: 'admin-user-management'
+            },
+            p_user_id: user.id,
+            p_session_id: null,
+            p_ip_address: null,
+            p_user_agent: req.headers.get('user-agent'),
+            p_stack_trace: null,
+            p_execution_time_ms: null
+          });
+
           return new Response(
             JSON.stringify({ error: 'User must be soft deleted before hard delete' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        // Log before deletion
+        // Log to audit_logs before deletion
         await supabase.from('audit_logs').insert({
           user_id: user.id,
           action: 'hard_delete_user',
@@ -159,6 +288,26 @@ Deno.serve(async (req: Request) => {
           throw new Error(`Failed to delete user: ${deleteError.message}`);
         }
 
+        // Log to system_logs
+        const actionTime = Date.now() - actionStartTime;
+        await supabase.rpc('log_system_event', {
+          p_level: 'INFO',
+          p_category: 'EDGE_FUNCTION',
+          p_message: 'Admin permanently deleted user',
+          p_metadata: {
+            action: 'hard_delete',
+            targetUserId,
+            adminUserId: user.id,
+            function: 'admin-user-management'
+          },
+          p_user_id: user.id,
+          p_session_id: null,
+          p_ip_address: null,
+          p_user_agent: req.headers.get('user-agent'),
+          p_stack_trace: null,
+          p_execution_time_ms: actionTime
+        });
+
         return new Response(
           JSON.stringify({ success: true, message: 'User permanently deleted' }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -167,6 +316,7 @@ Deno.serve(async (req: Request) => {
 
       case 'update_email': {
         const { targetUserId, newEmail } = requestData;
+        const actionStartTime = Date.now();
 
         // Update email using admin API
         const { error: emailError } = await supabase.auth.admin.updateUserById(
@@ -184,13 +334,33 @@ Deno.serve(async (req: Request) => {
           .update({ email: newEmail })
           .eq('id', targetUserId);
 
-        // Log the action
+        // Log to audit_logs
         await supabase.from('audit_logs').insert({
           user_id: user.id,
           action: 'update_user_email',
           resource_type: 'auth',
           resource_id: targetUserId,
           details: { new_email: newEmail, via: 'edge_function' }
+        });
+
+        // Log to system_logs
+        const actionTime = Date.now() - actionStartTime;
+        await supabase.rpc('log_system_event', {
+          p_level: 'INFO',
+          p_category: 'EDGE_FUNCTION',
+          p_message: 'Admin updated user email successfully',
+          p_metadata: {
+            action: 'update_email',
+            targetUserId,
+            adminUserId: user.id,
+            function: 'admin-user-management'
+          },
+          p_user_id: user.id,
+          p_session_id: null,
+          p_ip_address: null,
+          p_user_agent: req.headers.get('user-agent'),
+          p_stack_trace: null,
+          p_execution_time_ms: actionTime
         });
 
         return new Response(
@@ -201,6 +371,7 @@ Deno.serve(async (req: Request) => {
 
       case 'force_logout': {
         const { targetUserId } = requestData;
+        const actionStartTime = Date.now();
 
         // Sign out user from all devices using admin API
         const { error: logoutError } = await supabase.auth.admin.signOut(targetUserId);
@@ -209,13 +380,33 @@ Deno.serve(async (req: Request) => {
           throw new Error(`Failed to force logout: ${logoutError.message}`);
         }
 
-        // Log the action
+        // Log to audit_logs
         await supabase.from('audit_logs').insert({
           user_id: user.id,
           action: 'force_logout_user',
           resource_type: 'auth',
           resource_id: targetUserId,
           details: { via: 'edge_function' }
+        });
+
+        // Log to system_logs
+        const actionTime = Date.now() - actionStartTime;
+        await supabase.rpc('log_system_event', {
+          p_level: 'INFO',
+          p_category: 'EDGE_FUNCTION',
+          p_message: 'Admin force logged out user',
+          p_metadata: {
+            action: 'force_logout',
+            targetUserId,
+            adminUserId: user.id,
+            function: 'admin-user-management'
+          },
+          p_user_id: user.id,
+          p_session_id: null,
+          p_ip_address: null,
+          p_user_agent: req.headers.get('user-agent'),
+          p_stack_trace: null,
+          p_execution_time_ms: actionTime
         });
 
         return new Response(
@@ -225,15 +416,55 @@ Deno.serve(async (req: Request) => {
       }
 
       default:
+        await supabase.rpc('log_system_event', {
+          p_level: 'WARN',
+          p_category: 'EDGE_FUNCTION',
+          p_message: 'Invalid admin action requested',
+          p_metadata: {
+            action: (requestData as any).action,
+            function: 'admin-user-management'
+          },
+          p_user_id: user?.id,
+          p_session_id: null,
+          p_ip_address: null,
+          p_user_agent: req.headers.get('user-agent'),
+          p_stack_trace: null,
+          p_execution_time_ms: null
+        });
+
         return new Response(
           JSON.stringify({ error: 'Invalid action' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
     }
   } catch (error: any) {
+    const executionTime = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    const stackTrace = error instanceof Error ? error.stack : null;
+
+    // Log error to system_logs
+    await supabase.rpc('log_system_event', {
+      p_level: 'ERROR',
+      p_category: 'EDGE_FUNCTION',
+      p_message: `Admin user management failed: ${errorMessage}`,
+      p_metadata: {
+        action: requestData?.action,
+        targetUserId: requestData && 'targetUserId' in requestData ? requestData.targetUserId : null,
+        adminUserId: user?.id,
+        function: 'admin-user-management',
+        error: errorMessage
+      },
+      p_user_id: user?.id,
+      p_session_id: null,
+      p_ip_address: null,
+      p_user_agent: req.headers.get('user-agent'),
+      p_stack_trace: stackTrace,
+      p_execution_time_ms: executionTime
+    });
+
     console.error('Error in admin-user-management:', error);
     return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
+      JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
