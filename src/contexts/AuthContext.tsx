@@ -20,11 +20,13 @@ interface AuthContextType {
   businesses: Business[];
   selectedBusiness: Business | null;
   userRole: 'owner' | 'manager' | 'member' | null;
+  mfaPending: boolean;
   selectBusiness: (business: Business | null) => void;
   refreshBusinesses: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null; requiresMFA?: boolean }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
+  completeMFA: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [userRole, setUserRole] = useState<'owner' | 'manager' | 'member' | null>(null);
+  const [mfaPending, setMfaPending] = useState(false);
 
   const checkAdminStatus = async (userId: string) => {
     const { data } = await supabase
@@ -214,10 +217,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (!mfaError && hasVerifiedMFA) {
           // User has MFA enabled and verified factors - require MFA challenge
-          // Sign out the session and require MFA verification
-          await supabase.auth.signOut();
+          // Set MFA pending flag to prevent full auth until MFA is completed
+          setMfaPending(true);
+          sessionStorage.setItem('mfa_pending_email', email);
           logger.auth('mfa_challenge_required', true, { email, method: 'password', mfa_enabled: true });
-          return { error: null, requiresMFA: true };
+          return { error: null, requiresMFA: true, email };
         }
       }
 
@@ -299,7 +303,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionManager.clearSession();
     setBusinesses([]);
     setSelectedBusiness(null);
+    setMfaPending(false);
+    sessionStorage.removeItem('mfa_pending_email');
     localStorage.removeItem(SELECTED_BUSINESS_KEY);
+  };
+
+  const completeMFA = () => {
+    setMfaPending(false);
+    sessionStorage.removeItem('mfa_pending_email');
+    logger.auth('mfa_verification_complete', true, { userId: user?.id });
   };
 
   return (
@@ -311,11 +323,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         businesses,
         selectedBusiness,
         userRole,
+        mfaPending,
         selectBusiness,
         refreshBusinesses,
         signIn,
         signUp,
-        signOut
+        signOut,
+        completeMFA
       }}
     >
       {children}

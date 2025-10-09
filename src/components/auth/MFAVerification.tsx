@@ -12,7 +12,7 @@ interface MFAVerificationProps {
 }
 
 export function MFAVerification({ onSuccess, onCancel }: MFAVerificationProps) {
-  const { user } = useAuth();
+  const { user, completeMFA } = useAuth();
   const { listFactors, challengeFactor, verifyChallenge, checkTrustedDevice, addTrustedDevice, loading } = useMFA();
 
   const [code, setCode] = useState('');
@@ -72,6 +72,7 @@ export function MFAVerification({ onSuccess, onCancel }: MFAVerificationProps) {
           method: 'totp',
           trusted_device: trustDevice
         });
+        completeMFA();
         onSuccess();
       } else {
         const newAttemptCount = attemptCount + 1;

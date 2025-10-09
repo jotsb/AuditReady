@@ -16,7 +16,7 @@ import { ResetPasswordForm } from './components/auth/ResetPasswordForm';
 import ErrorBoundary from './components/shared/ErrorBoundary';
 
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, loading, mfaPending } = useAuth();
   const [currentView, setCurrentView] = useState(() => {
     const path = window.location.pathname;
     const params = new URLSearchParams(window.location.search);
@@ -108,7 +108,7 @@ function AppContent() {
     return <AcceptInvitePage />;
   }
 
-  if (!user) {
+  if (!user || mfaPending) {
     return <AuthPage />;
   }
 
