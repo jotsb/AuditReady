@@ -186,20 +186,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error };
     }
 
-    // Check if MFA is required (user has factors but session is not MFA verified)
-    if (data.user) {
-      // List MFA factors for the user
+    // Check if MFA is required by looking at the session's aal (Authentication Assurance Level)
+    // aal1 = password only, aal2 = password + MFA
+    if (data.user && data.session) {
+      const currentAAL = data.session.aal;
+
+      // List MFA factors to see if user has MFA enabled
       const { data: { factors } } = await supabase.auth.mfa.listFactors();
 
-      // If user has MFA factors enabled but no session yet, MFA is required
-      if (factors && factors.length > 0) {
-        // Sign out the partial session
-        await supabase.auth.signOut();
-        logger.auth('mfa_challenge_required', true, { email, method: 'password' });
+      // If user has verified factors but current AAL is only 1, MFA verification is needed
+      const hasVerifiedFactors = factors && factors.some(f => f.status === 'verified');
+
+      if (hasVerifiedFactors && currentAAL === 'aal1') {
+        // MFA is required - don't proceed with login
+        logger.auth('mfa_challenge_required', true, { email, method: 'password', aal: currentAAL });
         return { error: null, requiresMFA: true };
       }
 
-      // No MFA required, proceed with normal checks
+      // No MFA required or already verified, proceed with normal checks
       // Check if user is suspended or deleted
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
@@ -263,7 +267,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       sessionManager.setUserId(data.user.id);
-      logger.auth('sign_in', true, { email, method: 'password' });
+      logger.auth('sign_in', true, { email, method: 'password', aal: currentAAL });
     }
 
     return { error: null };
