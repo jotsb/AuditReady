@@ -244,7 +244,8 @@ export default function TeamPage() {
   };
 
   const handleCopyInviteLink = (token: string) => {
-    const inviteLink = `${window.location.origin}/accept-invite?token=${token}`;
+    const baseUrl = import.meta.env.VITE_PUBLIC_URL || window.location.origin;
+    const inviteLink = `${baseUrl}/accept-invite?token=${token}`;
     navigator.clipboard.writeText(inviteLink);
     setCopiedToken(token);
     setTimeout(() => setCopiedToken(null), 2000);
