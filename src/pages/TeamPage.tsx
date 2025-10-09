@@ -197,14 +197,16 @@ export default function TeamPage() {
       }
 
       logger.debug('Inserting invitation record', { email: inviteEmail, role: inviteRole, businessId }, 'DATABASE');
-      const { error: inviteError } = await supabase
+      const { data: invitationData, error: inviteError } = await supabase
         .from('invitations')
         .insert({
           business_id: businessId,
           email: inviteEmail,
           role: inviteRole,
           invited_by: user.id
-        });
+        })
+        .select()
+        .single();
 
       if (inviteError) {
         logger.error('Failed to create invitation', inviteError, { email: inviteEmail, role: inviteRole, businessId });
@@ -212,8 +214,59 @@ export default function TeamPage() {
         throw inviteError;
       }
 
-      logger.info('Team invitation sent successfully', { email: inviteEmail, role: inviteRole }, 'USER_ACTION');
+      logger.info('Invitation record created', { email: inviteEmail, role: inviteRole, invitationId: invitationData.id }, 'DATABASE');
       logger.database('insert', 'invitations', true, { email: inviteEmail, role: inviteRole });
+
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const { data: businessData } = await supabase
+        .from('businesses')
+        .select('name')
+        .eq('id', businessId)
+        .maybeSingle();
+
+      try {
+        logger.info('Calling send-invitation-email edge function', { email: inviteEmail }, 'EDGE_FUNCTION');
+
+        const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-invitation-email`;
+        const response = await fetch(functionUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({
+            email: invitationData.email,
+            role: invitationData.role,
+            token: invitationData.token,
+            inviterName: profileData?.full_name,
+            businessName: businessData?.name
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          logger.error('Edge function failed to send email', undefined, {
+            email: inviteEmail,
+            status: response.status,
+            error: errorData
+          });
+          logger.edgeFunction('send-invitation-email', false, { error: errorData });
+        } else {
+          const result = await response.json();
+          logger.info('Invitation email sent successfully', { email: inviteEmail, result }, 'EDGE_FUNCTION');
+          logger.edgeFunction('send-invitation-email', true, { email: inviteEmail });
+        }
+      } catch (emailError: any) {
+        logger.error('Failed to call edge function', emailError, { email: inviteEmail });
+        logger.edgeFunction('send-invitation-email', false, { error: emailError.message });
+      }
+
+      logger.info('Team invitation completed', { email: inviteEmail, role: inviteRole }, 'USER_ACTION');
       setShowInviteModal(false);
       setInviteEmail('');
       setInviteRole('member');
@@ -320,6 +373,8 @@ export default function TeamPage() {
   };
 
   const handleResendInvitation = async (invitationId: string) => {
+    if (!businessId || !user) return;
+
     logger.info('Resending invitation', { invitationId }, 'USER_ACTION');
 
     try {
@@ -327,7 +382,7 @@ export default function TeamPage() {
 
       const { data: invitation, error: fetchError } = await supabase
         .from('invitations')
-        .select('email, role')
+        .select('email, role, token')
         .eq('id', invitationId)
         .single();
 
@@ -349,6 +404,55 @@ export default function TeamPage() {
         logger.error('Failed to update invitation expiry', updateError, { invitationId });
         logger.database('update', 'invitations', false, { invitationId, error: updateError.message });
         throw updateError;
+      }
+
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const { data: businessData } = await supabase
+        .from('businesses')
+        .select('name')
+        .eq('id', businessId)
+        .maybeSingle();
+
+      try {
+        logger.info('Calling send-invitation-email edge function for resend', { email: invitation.email }, 'EDGE_FUNCTION');
+
+        const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-invitation-email`;
+        const response = await fetch(functionUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({
+            email: invitation.email,
+            role: invitation.role,
+            token: invitation.token,
+            inviterName: profileData?.full_name,
+            businessName: businessData?.name
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          logger.error('Edge function failed to resend email', undefined, {
+            email: invitation.email,
+            status: response.status,
+            error: errorData
+          });
+          logger.edgeFunction('send-invitation-email', false, { error: errorData });
+        } else {
+          const result = await response.json();
+          logger.info('Invitation email resent successfully', { email: invitation.email, result }, 'EDGE_FUNCTION');
+          logger.edgeFunction('send-invitation-email', true, { email: invitation.email });
+        }
+      } catch (emailError: any) {
+        logger.error('Failed to call edge function for resend', emailError, { email: invitation.email });
+        logger.edgeFunction('send-invitation-email', false, { error: emailError.message });
       }
 
       actionTracker.buttonClick('resend_invitation', {
