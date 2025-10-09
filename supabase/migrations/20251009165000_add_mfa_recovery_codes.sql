@@ -10,7 +10,7 @@
   - `recovery_codes` table for storing hashed backup codes
     - `id` (uuid, primary key) - Unique identifier
     - `user_id` (uuid, references auth.users) - Owner of the code
-    - `code_hash` (text) - Bcrypt hash of recovery code (NEVER store plain text)
+    - `code_hash` (text) - SHA-256 hash of recovery code (NEVER store plain text)
     - `used` (boolean) - Whether code has been used
     - `used_at` (timestamptz) - When code was used
     - `created_at` (timestamptz) - When code was generated
@@ -23,7 +23,7 @@
   ### 3. Security
   - RLS enabled on recovery_codes table
   - Users can only view/manage their own codes
-  - Codes stored as bcrypt hashes (NOT plain text)
+  - Codes stored as SHA-256 hashes (NOT plain text)
   - Automatic expiration after 1 year
 
   ### 4. Audit Triggers
@@ -33,7 +33,7 @@
 
   ## Security Notes
   - Recovery codes MUST be hashed before storage
-  - Use bcrypt with salt rounds >= 10
+  - Use SHA-256 for client-side hashing
   - Codes are single-use only
   - Expired codes cannot be used
 */
@@ -56,7 +56,7 @@ CREATE INDEX IF NOT EXISTS idx_recovery_codes_expires_at ON recovery_codes(expir
 
 -- Add comment for documentation
 COMMENT ON TABLE recovery_codes IS 'Stores hashed backup codes for MFA recovery. Codes are single-use and expire after 1 year.';
-COMMENT ON COLUMN recovery_codes.code_hash IS 'Bcrypt hash of recovery code. NEVER store plain text codes.';
+COMMENT ON COLUMN recovery_codes.code_hash IS 'SHA-256 hash of recovery code. NEVER store plain text codes.';
 
 -- Enable Row Level Security
 ALTER TABLE recovery_codes ENABLE ROW LEVEL SECURITY;

@@ -1,5 +1,3 @@
-import bcrypt from 'bcryptjs';
-
 export function generateRecoveryCodes(count: number = 10): string[] {
   const codes: string[] = [];
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -16,12 +14,18 @@ export function generateRecoveryCodes(count: number = 10): string[] {
 }
 
 export async function hashRecoveryCode(code: string): Promise<string> {
-  return bcrypt.hash(code.toUpperCase().trim(), 10);
+  const encoder = new TextEncoder();
+  const data = encoder.encode(code.toUpperCase().trim());
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashHex;
 }
 
 export async function verifyRecoveryCode(code: string, hash: string): Promise<boolean> {
   try {
-    return await bcrypt.compare(code.toUpperCase().trim(), hash);
+    const codeHash = await hashRecoveryCode(code);
+    return codeHash === hash;
   } catch (error) {
     console.error('Error verifying recovery code:', error);
     return false;
