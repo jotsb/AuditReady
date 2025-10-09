@@ -257,11 +257,13 @@
 - [x] ✅ **Bulk Operations** (Completed 2025-10-09)
   - Multi-select checkboxes with select all
   - Bulk delete with confirmation
-  - Bulk export CSV (fully functional)
-  - Bulk export PDF (placeholder)
+  - Bulk export CSV (fully functional with 14 comprehensive fields)
+  - Bulk export PDF (fully functional with landscape layout and 11 columns)
   - Bulk categorization modal
   - Bulk collection assignment (move)
-  - Floating action toolbar
+  - Floating action toolbar with click-based export dropdown
+  - Fixed toolbar overlapping bottom receipts (added padding)
+  - Fixed export dropdown disappearing issue
   - System logging for all bulk operations
   - Locations: `src/components/receipts/BulkActionToolbar.tsx`, `src/components/receipts/BulkCategoryModal.tsx`, `src/components/receipts/BulkMoveModal.tsx`
 - [x] ✅ **Advanced Search & Filtering** (Completed 2025-10-09)
@@ -316,8 +318,22 @@
 - [x] ✅ Recent receipts list
 - [x] ✅ Tax summary report
 - [x] ✅ Year-end summary report
-- [x] ✅ CSV export
-- [x] ✅ PDF export
+- [x] ✅ **CSV Export - Enhanced** (Updated 2025-10-09)
+  - 14 comprehensive fields including transaction date, vendor name/address, category, payment method, subtotal, GST, PST, total, notes, extraction status, edited flag, created date, receipt ID
+  - Proper quote escaping for commas and special characters
+  - Import-ready for Excel/Google Sheets
+  - Full audit logging
+- [x] ✅ **PDF Export - Professional Layout** (Implemented 2025-10-09)
+  - A4 landscape orientation for maximum data visibility
+  - 11 comprehensive columns with optimized widths
+  - Professional grid theme with blue headers
+  - Summary section with export date, receipt count, and totals (subtotal, GST, PST, total)
+  - Smart typography: 6-8pt fonts with word wrapping
+  - Right-aligned currency, centered indicators
+  - Automatic pagination for large datasets
+  - jsPDF library with autoTable plugin
+  - Dynamic imports for optimal bundle size
+  - Full error handling and audit logging
 - [x] ✅ **Dashboard "View receipt" navigation**
   - Integrated ReceiptDetailsPage into app navigation
   - Dashboard "View receipt" now navigates to receipt details
@@ -329,11 +345,11 @@
   - Email report delivery
   - More chart types (line, area, scatter)
   - Comparison reports (YoY, MoM)
-- [ ] 🟡 **Export Enhancements**
-  - Excel export with formatting
-  - Multiple sheets for categories
+- [ ] 🟡 **Export Enhancements** (Future)
+  - Excel export with formatting and multiple sheets
   - Customizable export templates
   - Automatic report scheduling
+  - Email report delivery
 
 ### Audit Logging
 
@@ -1126,9 +1142,12 @@
 6. ✅ ~~Page refresh redirects to dashboard instead of staying on current page~~ - Fixed (2025-10-08)
 7. ✅ ~~Business and Collection management used separate tabs with table views~~ - Fixed (2025-10-09)
 8. ✅ ~~Team management UI exists but backend integration incomplete~~ - Fixed (2025-10-09)
-9. Bundle size is large (~969KB) - needs optimization
-10. MFA database fields exist but no UI implementation
-11. Approval workflow database exists but no UI implementation
+9. ✅ ~~Bulk export PDF was placeholder only~~ - Fixed (2025-10-09)
+10. ✅ ~~Export dropdown disappearing when moving mouse~~ - Fixed (2025-10-09)
+11. ✅ ~~Toolbar overlapping bottom receipt entries~~ - Fixed (2025-10-09)
+12. Bundle size is large (~1.08MB uncompressed, 277KB gzipped) - needs optimization
+13. MFA database fields exist but no UI implementation
+14. Approval workflow database exists but no UI implementation
 
 ### Performance Benchmarks
 - Target: First Contentful Paint < 1.5s
@@ -1169,13 +1188,45 @@
 
 **Recent Major Updates (2025-10-09):**
 
+**SESSION 3: Export Enhancements & UI Polish**
+1. **Professional PDF Export Implementation**: Complete PDF generation for bulk receipts
+   - A4 landscape orientation with 11 comprehensive columns
+   - Professional layout: Date, Vendor, Address, Category, Payment, Subtotal, GST, PST, Total, Edited, Notes
+   - Summary header with export date, receipt count, and financial totals
+   - Smart typography: 6-8pt fonts with word wrapping for space optimization
+   - Grid theme with blue headers matching brand colors
+   - jsPDF library (413KB) with autoTable plugin (31KB) - dynamically imported
+   - Right-aligned currency, centered indicators for readability
+   - Automatic pagination for large datasets
+   - Full error handling and audit logging
+
+2. **Enhanced CSV Export**: Comprehensive data export with 14 fields
+   - Added: Vendor Address, Extraction Status, Edited Flag, Created Date, Receipt ID
+   - Previous 9 fields: Transaction Date, Vendor Name, Category, Payment Method, Subtotal, GST, PST, Total, Notes
+   - Proper quote escaping for commas and special characters
+   - Import-ready format for Excel/Google Sheets analysis
+   - Standardized date formats and boolean values (Yes/No)
+
+3. **Bulk Action Toolbar UI Fixes**:
+   - Fixed toolbar overlapping bottom receipts (added `pb-32` padding to page)
+   - Fixed export dropdown disappearing when moving mouse from button to options
+   - Changed from CSS hover to click-based dropdown with React state
+   - Dropdown stays open when clicking and auto-closes after selection
+   - Touch-friendly for mobile devices
+   - Better UX across all device types
+
+**Dependencies Added:**
+- `jspdf` (v3.0.3) - PDF document generation
+- `jspdf-autotable` (v5.0.2) - Table formatting for PDFs
+- Code-split into separate chunks: ~145KB gzipped (loads only on PDF export)
+
 **SESSION 2: Receipt Management 100% Complete**
 1. **Bulk Operations System**: Complete bulk actions for power users
    - Multi-select with checkboxes and select all functionality
    - Bulk delete with confirmation and storage cleanup
    - Bulk categorization with modal selection
    - Bulk move to different collections
-   - Bulk export to CSV (fully functional)
+   - Bulk export to CSV and PDF (both fully functional)
    - Floating action toolbar appears when receipts selected
    - System logging for all bulk operations
    - Components: `BulkActionToolbar.tsx`, `BulkCategoryModal.tsx`, `BulkMoveModal.tsx`
@@ -1207,7 +1258,15 @@
    - Real-time refresh capability
    - Location: `src/pages/AdminPage.tsx` (BulkOperationsTab)
 
-**Impact:**
+**SESSION 3 Impact:**
+- Reports & Analytics: Enhanced export capabilities
+- User Experience: Fixed critical UI bugs affecting usability
+- Dependencies: Added PDF generation libraries with code splitting
+- 3 bug fixes completed
+- 2 features enhanced (CSV + PDF exports)
+- Professional-grade reporting now available
+
+**SESSION 2 Impact:**
 - Receipt Management: 67% → **100%** ✅
 - System Administration: 86% → **93%** ⬆️
 - Overall Progress: 37.5% → **39.8%** (+2.3%)

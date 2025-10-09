@@ -4,43 +4,92 @@
 
 ---
 
-## 🚀 Version 0.4.1 - "PDF Export & UI Polish" (2025-10-09)
+## 🚀 Version 0.4.1 - "Professional Exports & UI Polish" (2025-10-09)
 
 ### 🎯 Major Features
 
-#### **PDF Export Implementation**
-Complete PDF export functionality for bulk receipt operations.
+#### **Professional PDF Export Implementation**
+Complete PDF export functionality with comprehensive data fields for accounting and tax purposes.
 
-**PDF Generation**
-- Professional PDF documents with jsPDF library
-- Formatted table layout with auto-sizing columns
-- Export metadata (date, total receipts, totals)
-- Summary totals (Amount, GST, PST)
-- Blue header styling matching brand colors
-- Grid theme for clear data presentation
-- Dynamic import for optimal bundle size
-- Filename with timestamp for organization
-- Full system logging and error handling
+**PDF Features**
+- **Landscape A4 Layout** - Maximizes horizontal space for data-rich tables
+- **11 Comprehensive Columns** - Date, Vendor, Address, Category, Payment Method, Subtotal, GST, PST, Total Amount, Edited Flag, Notes
+- **Summary Header Section**
+  - Export date and total receipt count
+  - Financial summary: Subtotal, GST, PST, and Total amounts
+- **Professional Typography**
+  - Header: 16pt bold with 9pt metadata
+  - Table headers: 8pt bold, blue (#2563eb), centered
+  - Table content: 7pt with 2mm padding
+  - Address/Notes: 6pt for space optimization
+- **Smart Formatting**
+  - Grid theme for clear data presentation
+  - Right-aligned currency for scanability
+  - Centered indicators (Edited: Yes/No)
+  - Word wrapping prevents data truncation
+  - Auto-pagination for large datasets
+- **Technical Implementation**
+  - jsPDF library (413KB) with autoTable plugin (31KB)
+  - Dynamic imports for optimal bundle size (loads only when needed)
+  - Separate chunks: ~145KB gzipped
+  - Full error handling and audit logging
+  - Filename includes timestamp: `receipts-export-YYYY-MM-DD.pdf`
+
+#### **Enhanced CSV Export**
+Comprehensive data export with 14 fields for complete business records.
+
+**CSV Enhancements**
+- **New Fields Added** (5):
+  - Vendor Address - Full business address for records
+  - Extraction Status - AI extraction verification status
+  - Edited - Manual edit indicator (Yes/No)
+  - Created Date - When receipt was uploaded
+  - Receipt ID - Unique identifier for reference
+- **Existing Fields** (9):
+  - Transaction Date, Vendor Name, Category, Payment Method
+  - Subtotal, GST, PST, Total Amount, Notes
+- **Data Quality**
+  - Proper quote escaping for commas and special characters
+  - Standardized date formats (YYYY-MM-DD)
+  - Boolean values as Yes/No for clarity
+  - Import-ready for Excel, Google Sheets, accounting software
+  - Complete audit trail with all metadata
 
 ### 🐛 Bug Fixes
 
 **Bulk Action Toolbar Issues**
-- Fixed toolbar overlapping bottom receipts (added `pb-32` padding)
-- Fixed export dropdown disappearing on mouse move
-- Changed from CSS hover to click-based dropdown with state
-- Dropdown now stays open when moving mouse to options
-- Auto-closes after selection for clean UX
-- Works reliably on both desktop and mobile/touch devices
+- **Fixed: Toolbar Overlapping Content**
+  - Added `pb-32` (128px) padding to receipts page
+  - Bottom receipts no longer hidden behind floating toolbar
+  - All receipt entries now accessible
+- **Fixed: Export Dropdown Disappearing**
+  - Changed from CSS `:hover` to click-based dropdown
+  - Uses React state for reliable dropdown management
+  - Dropdown stays open when moving mouse to menu items
+  - `onBlur` with 200ms delay for smooth UX
+  - Auto-closes after selecting CSV or PDF export
+  - Touch-friendly for mobile and tablet devices
+  - Works consistently across all browsers and devices
 
 ### 📦 Dependencies Added
-- `jspdf` (v3.0.3) - PDF document generation
-- `jspdf-autotable` (v5.0.2) - Table formatting for PDFs
+- `jspdf` (v3.0.3) - Professional PDF document generation
+- `jspdf-autotable` (v5.0.2) - Advanced table formatting and pagination
 
 ### 🎨 UI/UX Improvements
-- Content no longer hidden behind floating toolbar
-- Export menu works consistently across all devices
-- Touch-friendly click interaction for mobile users
-- Automatic code splitting for PDF libraries (separate chunks)
+- **Better Content Accessibility** - All receipts visible even with toolbar displayed
+- **Reliable Export Menu** - Click-based interaction more intuitive than hover
+- **Mobile-Friendly** - Touch interactions work smoothly on all devices
+- **Performance** - PDF libraries code-split into separate chunks (loaded on-demand)
+- **Professional Output** - Both CSV and PDF exports ready for accounting and tax filing
+
+### 📊 Export Comparison
+
+| Format | Fields | Layout | Use Case |
+|--------|--------|--------|----------|
+| **CSV** | 14 fields | Spreadsheet | Data analysis, imports, accounting software |
+| **PDF** | 11 columns | Landscape table | Professional reports, tax filing, printing |
+
+Both formats include complete financial data (Subtotal, GST, PST, Total), vendor details (Name, Address), transaction metadata (Date, Payment Method, Category), and audit information (Edited flag, Notes, IDs).
 
 ---
 
