@@ -30,7 +30,10 @@ export function MFAVerification({ onSuccess, onCancel }: MFAVerificationProps) {
 
   const initializeChallenge = async () => {
     try {
-      if (!user) return;
+      if (!user) {
+        setError('No user session found');
+        return;
+      }
 
       const isTrusted = await checkTrustedDevice(user.id);
       if (isTrusted) {

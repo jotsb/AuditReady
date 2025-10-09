@@ -227,11 +227,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (!mfaError && hasVerifiedMFA) {
           // User has MFA enabled and verified factors - require MFA challenge
-          // Set MFA pending flag to prevent full auth until MFA is completed
+          // Store MFA state SYNCHRONOUSLY before any async operations
           console.log('=== Setting mfaPending to TRUE ===');
-          setMfaPending(true);
           sessionStorage.setItem('mfa_pending_email', email);
+          sessionStorage.setItem('mfa_user_id', data.user.id);
           console.log('=== Stored mfa_pending_email in sessionStorage ===');
+
+          setMfaPending(true);
           logger.auth('mfa_challenge_required', true, { email, method: 'password', mfa_enabled: true });
           return { error: null, requiresMFA: true, email };
         }
