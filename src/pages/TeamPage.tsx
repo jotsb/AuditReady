@@ -273,7 +273,8 @@ export default function TeamPage() {
 
       if (updateError) throw updateError;
 
-      await actionTracker.trackAction('resend_invitation', 'invitation', invitationId, {
+      actionTracker.buttonClick('resend_invitation', {
+        invitationId,
         email: invitation.email,
         role: invitation.role
       });
