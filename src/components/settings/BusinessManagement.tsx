@@ -21,7 +21,7 @@ const CURRENCIES = [
 ];
 
 export function BusinessManagement() {
-  const { user } = useAuth();
+  const { user, isSystemAdmin } = useAuth();
   const [businesses, setBusinesses] = useState<BusinessWithOwner[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -43,18 +43,37 @@ export function BusinessManagement() {
   }, [user]);
 
   const loadBusinesses = async () => {
+    if (!user) return;
+
     try {
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabase
-        .from('businesses')
-        .select('*, owner:profiles!businesses_owner_id_fkey(*)')
-        .order('name', { ascending: true });
+      const [ownedResult, memberResult] = await Promise.all([
+        supabase
+          .from('businesses')
+          .select('*, owner:profiles!businesses_owner_id_fkey(*)')
+          .eq('owner_id', user.id)
+          .order('name', { ascending: true }),
 
-      if (fetchError) throw fetchError;
+        supabase
+          .from('business_members')
+          .select('business_id, businesses(*, owner:profiles!businesses_owner_id_fkey(*))')
+          .eq('user_id', user.id)
+      ]);
 
-      setBusinesses(data || []);
+      if (ownedResult.error) throw ownedResult.error;
+      if (memberResult.error) throw memberResult.error;
+
+      const ownedBusinesses = ownedResult.data || [];
+      const memberBusinesses = memberResult.data?.map((m: any) => m.businesses).filter(Boolean) || [];
+
+      const allBusinesses = [...ownedBusinesses, ...memberBusinesses];
+      const uniqueBusinesses = Array.from(
+        new Map(allBusinesses.map(b => [b.id, b])).values()
+      );
+
+      setBusinesses(uniqueBusinesses);
     } catch (err: any) {
       setError(err.message);
     } finally {

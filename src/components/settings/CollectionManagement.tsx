@@ -12,7 +12,7 @@ interface CollectionWithBusiness extends Collection {
 }
 
 export function CollectionManagement() {
-  const { user } = useAuth();
+  const { user, selectedBusiness } = useAuth();
   const [collections, setCollections] = useState<CollectionWithBusiness[]>([]);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,26 +34,49 @@ export function CollectionManagement() {
   }, [user]);
 
   const loadData = async () => {
+    if (!user) return;
+
     try {
       setLoading(true);
       setError(null);
 
-      const [collectionsRes, businessesRes] = await Promise.all([
-        supabase
-          .from('collections')
-          .select('*, business:businesses(*)')
-          .order('created_at', { ascending: false }),
+      const [ownedBusinessesRes, memberBusinessesRes] = await Promise.all([
         supabase
           .from('businesses')
           .select('*')
+          .eq('owner_id', user.id)
           .order('name', { ascending: true }),
+        supabase
+          .from('business_members')
+          .select('business_id, businesses(*)')
+          .eq('user_id', user.id)
       ]);
 
-      if (collectionsRes.error) throw collectionsRes.error;
-      if (businessesRes.error) throw businessesRes.error;
+      if (ownedBusinessesRes.error) throw ownedBusinessesRes.error;
+      if (memberBusinessesRes.error) throw memberBusinessesRes.error;
 
-      setCollections(collectionsRes.data || []);
-      setBusinesses(businessesRes.data || []);
+      const ownedBusinesses = ownedBusinessesRes.data || [];
+      const memberBusinesses = memberBusinessesRes.data?.map((m: any) => m.businesses).filter(Boolean) || [];
+      const allBusinesses = [...ownedBusinesses, ...memberBusinesses];
+      const uniqueBusinesses = Array.from(
+        new Map(allBusinesses.map((b: any) => [b.id, b])).values()
+      );
+
+      setBusinesses(uniqueBusinesses);
+
+      if (uniqueBusinesses.length > 0) {
+        const businessIds = uniqueBusinesses.map((b: any) => b.id);
+        const { data: collectionsData, error: collectionsError } = await supabase
+          .from('collections')
+          .select('*, business:businesses(*)')
+          .in('business_id', businessIds)
+          .order('created_at', { ascending: false });
+
+        if (collectionsError) throw collectionsError;
+        setCollections(collectionsData || []);
+      } else {
+        setCollections([]);
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
