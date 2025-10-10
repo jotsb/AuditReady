@@ -452,25 +452,25 @@ export function CollectionsPage() {
           )}
 
           {totalCollections > itemsPerPage && (
-            <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-200">
-              <div className="text-sm text-slate-600 dark:text-gray-400">
-                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCollections)} of {totalCollections} collections
-              </div>
+            <div className="flex flex-col items-center gap-3 mt-6 pt-6 border-t border-slate-200">
               <div className="flex gap-2">
                 <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   Previous
                 </button>
                 <button
                   onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalCollections / itemsPerPage), p + 1))}
                   disabled={currentPage >= Math.ceil(totalCollections / itemsPerPage)}
-                  className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   Next
                 </button>
+              </div>
+              <div className="text-sm text-slate-600 dark:text-gray-400">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCollections)} of {totalCollections} collections
               </div>
             </div>
           )}

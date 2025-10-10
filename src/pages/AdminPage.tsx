@@ -384,15 +384,12 @@ export function AdminPage() {
           </div>
 
           {totalBusinesses > itemsPerPage && (
-            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200">
-              <div className="text-sm text-slate-600 dark:text-gray-400">
-                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalBusinesses)} of {totalBusinesses} businesses
-              </div>
+            <div className="flex flex-col items-center gap-3 px-6 py-4 border-t border-slate-200">
               <div className="flex gap-2">
                 <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   Previous
                 </button>
@@ -415,7 +412,7 @@ export function AdminPage() {
                             className={`px-3 py-2 text-sm font-medium rounded-lg transition ${
                               currentPage === page
                                 ? 'bg-blue-600 text-white'
-                                : 'text-slate-700 dark:text-gray-300 bg-white border border-slate-300 dark:border-gray-600 hover:bg-slate-50'
+                                : 'text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-700'
                             }`}
                           >
                             {page}
@@ -427,10 +424,13 @@ export function AdminPage() {
                 <button
                   onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalBusinesses / itemsPerPage), p + 1))}
                   disabled={currentPage >= Math.ceil(totalBusinesses / itemsPerPage)}
-                  className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   Next
                 </button>
+              </div>
+              <div className="text-sm text-slate-600 dark:text-gray-400">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalBusinesses)} of {totalBusinesses} businesses
               </div>
             </div>
           )}
@@ -1344,10 +1344,7 @@ function BusinessesTab({ businesses, totalBusinesses, currentPage, setCurrentPag
       </div>
 
       {totalBusinesses > itemsPerPage && (
-        <div className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg shadow-md px-6 py-4">
-          <div className="text-sm text-slate-600 dark:text-gray-400">
-            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalBusinesses)} of {totalBusinesses}
-          </div>
+        <div className="flex flex-col items-center gap-3 bg-white dark:bg-gray-800 rounded-lg shadow-md px-6 py-4">
           <div className="flex gap-2">
             <button
               onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
@@ -1363,6 +1360,9 @@ function BusinessesTab({ businesses, totalBusinesses, currentPage, setCurrentPag
             >
               Next
             </button>
+          </div>
+          <div className="text-sm text-slate-600 dark:text-gray-400">
+            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalBusinesses)} of {totalBusinesses}
           </div>
         </div>
       )}

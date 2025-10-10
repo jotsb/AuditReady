@@ -572,10 +572,7 @@ export default function TeamPage() {
         </div>
 
         {totalMembers > itemsPerPage && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
-            <div className="text-sm text-gray-600">
-              Showing {((currentMembersPage - 1) * itemsPerPage) + 1} to {Math.min(currentMembersPage * itemsPerPage, totalMembers)} of {totalMembers} members
-            </div>
+          <div className="flex flex-col items-center gap-3 px-6 py-4 border-t border-gray-200">
             <div className="flex gap-2">
               <button
                 onClick={() => setCurrentMembersPage(p => Math.max(1, p - 1))}
@@ -591,6 +588,9 @@ export default function TeamPage() {
               >
                 Next
               </button>
+            </div>
+            <div className="text-sm text-gray-600">
+              Showing {((currentMembersPage - 1) * itemsPerPage) + 1} to {Math.min(currentMembersPage * itemsPerPage, totalMembers)} of {totalMembers} members
             </div>
           </div>
         )}
@@ -656,10 +656,7 @@ export default function TeamPage() {
           </div>
 
           {totalInvites > itemsPerPage && (
-            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
-              <div className="text-sm text-gray-600">
-                Showing {((currentInvitesPage - 1) * itemsPerPage) + 1} to {Math.min(currentInvitesPage * itemsPerPage, totalInvites)} of {totalInvites} invitations
-              </div>
+            <div className="flex flex-col items-center gap-3 px-6 py-4 border-t border-gray-200">
               <div className="flex gap-2">
                 <button
                   onClick={() => setCurrentInvitesPage(p => Math.max(1, p - 1))}
@@ -675,6 +672,9 @@ export default function TeamPage() {
                 >
                   Next
                 </button>
+              </div>
+              <div className="text-sm text-gray-600">
+                Showing {((currentInvitesPage - 1) * itemsPerPage) + 1} to {Math.min(currentInvitesPage * itemsPerPage, totalInvites)} of {totalInvites} invitations
               </div>
             </div>
           )}
