@@ -407,8 +407,8 @@ export function SystemLogsPage() {
         </div>
 
         {/* Logs Display */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-          <div className="px-6 py-4 bg-slate-50 dark:bg-gray-800 border-b border-slate-200">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden flex flex-col">
+          <div className="px-6 py-4 bg-slate-50 dark:bg-gray-800 border-b border-slate-200 flex-shrink-0">
             <p className="text-sm text-slate-600 dark:text-gray-400">
               {filteredLogs.length > 0
                 ? `Showing ${((currentPage - 1) * itemsPerPage) + 1} to ${Math.min(currentPage * itemsPerPage, filteredLogs.length)} of ${filteredLogs.length} filtered logs`
@@ -417,7 +417,7 @@ export function SystemLogsPage() {
             </p>
           </div>
 
-          <div className="max-h-[600px] overflow-y-auto">
+          <div className="overflow-y-auto flex-1" style={{ maxHeight: '600px' }}>
             {filteredLogs.length === 0 ? (
               <div className="px-6 py-12 text-center">
                 <Database className="mx-auto mb-3 text-slate-300" size={48} />
@@ -450,18 +450,15 @@ export function SystemLogsPage() {
           </div>
 
           {filteredLogs.length > itemsPerPage && (
-            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 relative z-20">
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 flex-shrink-0 pointer-events-auto">
               <div className="text-sm text-slate-600 dark:text-gray-400">
                 Page {currentPage} of {Math.ceil(filteredLogs.length / itemsPerPage)}
               </div>
-              <div className="flex gap-2 relative z-20">
+              <div className="flex gap-2 pointer-events-auto">
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCurrentPage(p => Math.max(1, p - 1));
-                  }}
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer relative z-30"
+                  className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   Previous
                 </button>
@@ -480,11 +477,8 @@ export function SystemLogsPage() {
                         <div key={page} className="flex items-center gap-1">
                           {showEllipsis && <span className="px-2 text-slate-400 dark:text-gray-500">...</span>}
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setCurrentPage(page);
-                            }}
-                            className={`px-3 py-2 text-sm font-medium rounded-lg transition cursor-pointer relative z-30 ${
+                            onClick={() => setCurrentPage(page)}
+                            className={`px-3 py-2 text-sm font-medium rounded-lg transition ${
                               currentPage === page
                                 ? 'bg-blue-600 text-white'
                                 : 'text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-700'
@@ -497,12 +491,9 @@ export function SystemLogsPage() {
                     })}
                 </div>
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCurrentPage(p => Math.min(Math.ceil(filteredLogs.length / itemsPerPage), p + 1));
-                  }}
+                  onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredLogs.length / itemsPerPage), p + 1))}
                   disabled={currentPage >= Math.ceil(filteredLogs.length / itemsPerPage)}
-                  className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer relative z-30"
+                  className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   Next
                 </button>
