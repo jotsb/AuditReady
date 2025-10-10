@@ -293,17 +293,27 @@ export function UserManagement() {
       return;
     }
 
+    console.log('[MFA Reset] Starting MFA reset for user:', {
+      targetUserId: selectedUser.id,
+      targetEmail: selectedUser.email,
+      adminUserId: currentUser?.id,
+      adminEmail: currentUser?.email
+    });
+
     try {
       setActionLoading(true);
       setActionError('');
       // Password parameter is no longer used to avoid session conflicts
+      console.log('[MFA Reset] Calling resetUserMFA...');
       await resetUserMFA(selectedUser.id, mfaResetReason, '', currentUser!.id);
+      console.log('[MFA Reset] Success!');
       setActionSuccess('User MFA reset successfully');
       setShowMFAResetModal(false);
       setMfaResetReason('');
       await loadUsers();
       setTimeout(() => setActionSuccess(''), 3000);
     } catch (err: any) {
+      console.error('[MFA Reset] Error:', err);
       setActionError(err.message);
     } finally {
       setActionLoading(false);
@@ -478,7 +488,7 @@ export function UserManagement() {
                         </button>
                         {user.mfa_enabled && (
                           <button
-                            onClick={() => { setSelectedUser(user); setShowMFAResetModal(true); }}
+                            onClick={() => { setSelectedUser(user); setShowMFAResetModal(true); setActionError(''); }}
                             className="text-orange-600 hover:text-orange-700"
                             title="Reset MFA (Emergency)"
                           >

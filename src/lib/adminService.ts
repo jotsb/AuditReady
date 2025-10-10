@@ -642,7 +642,11 @@ export async function resetUserMFA(
   adminPassword: string,
   adminUserId: string
 ): Promise<void> {
+  console.log('[adminService] resetUserMFA called with:', { targetUserId, adminUserId, hasReason: !!reason });
+
+  console.log('[adminService] Checking system admin...');
   await ensureSystemAdmin(adminUserId);
+  console.log('[adminService] System admin check passed');
 
   if (!reason || reason.trim().length === 0) {
     throw new Error('Reason is required for MFA reset');
@@ -650,15 +654,18 @@ export async function resetUserMFA(
 
   // Validate UUID format
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  console.log('[adminService] Validating UUID:', targetUserId, 'Matches:', uuidRegex.test(targetUserId));
   if (!targetUserId || !uuidRegex.test(targetUserId)) {
     throw new Error(`Invalid user ID format: ${targetUserId}`);
   }
 
   // Get the current session
+  console.log('[adminService] Getting session...');
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {
     throw new Error('No active session');
   }
+  console.log('[adminService] Session obtained for user:', session.user.id);
 
   // Note: Password verification is skipped to avoid session conflicts
   // Admin must be authenticated and have system admin role (verified by edge function)
