@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { UserPlus, Mail } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { checkPasswordStrength, validatePassword } from '../../lib/passwordUtils';
+import { ErrorAlert } from '../shared/ErrorAlert';
+import { SubmitButton } from '../shared/SubmitButton';
 
 interface RegisterFormProps {
   onToggleMode: () => void;
@@ -175,26 +177,12 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
           />
         </div>
 
-        {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-            {error}
-          </div>
-        )}
+        <ErrorAlert message={error} onDismiss={() => setError('')} />
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? (
-            <span>Creating account...</span>
-          ) : (
-            <>
-              <UserPlus size={20} />
-              <span>Create Account</span>
-            </>
-          )}
-        </button>
+        <SubmitButton loading={loading} loadingText="Creating account...">
+          <UserPlus size={20} />
+          <span>Create Account</span>
+        </SubmitButton>
       </form>
 
       <div className="mt-6 text-center">

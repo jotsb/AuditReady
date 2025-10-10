@@ -3,6 +3,8 @@ import { LogIn, Mail } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { logger } from '../../lib/logger';
 import { supabase } from '../../lib/supabase';
+import { ErrorAlert } from '../shared/ErrorAlert';
+import { SubmitButton } from '../shared/SubmitButton';
 
 interface LoginFormProps {
   onToggleMode: () => void;
@@ -112,11 +114,7 @@ export function LoginForm({ onToggleMode, onForgotPassword, onMFARequired }: Log
           />
         </div>
 
-        {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-            {error}
-          </div>
-        )}
+        <ErrorAlert message={error} onDismiss={() => setError('')} />
 
         {showUnverifiedMessage && (
           <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-3">
@@ -149,20 +147,10 @@ export function LoginForm({ onToggleMode, onForgotPassword, onMFARequired }: Log
           </div>
         )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? (
-            <span>Signing in...</span>
-          ) : (
-            <>
-              <LogIn size={20} />
-              <span>Sign In</span>
-            </>
-          )}
-        </button>
+        <SubmitButton loading={loading} loadingText="Signing in...">
+          <LogIn size={20} />
+          <span>Sign In</span>
+        </SubmitButton>
       </form>
 
       <div className="mt-6 text-center space-y-3">
