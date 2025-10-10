@@ -47,7 +47,7 @@ export function SystemLogsPage() {
 
   useEffect(() => {
     loadSystemLogs();
-  }, [currentPage]);
+  }, []);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -63,11 +63,12 @@ export function SystemLogsPage() {
 
   useEffect(() => {
     applyFilters();
-    // Reset to first page when filters change
-    if (currentPage !== 1) {
-      setCurrentPage(1);
-    }
   }, [logs, searchTerm, filterLevel, filterCategory, filterUserId, filterSessionId, startDate, endDate]);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterLevel, filterCategory, filterUserId, filterSessionId, startDate, endDate]);
 
   const loadSystemLogs = async (silent = false) => {
     const startTime = performance.now();
@@ -75,21 +76,15 @@ export function SystemLogsPage() {
       if (!silent) {
         setLoading(true);
         setError('');
-        logger.info('Loading system logs', { page: 'SystemLogsPage', currentPage }, 'DATABASE');
+        logger.info('Loading system logs', { page: 'SystemLogsPage' }, 'DATABASE');
       }
 
-      const startIndex = (currentPage - 1) * itemsPerPage;
-      const endIndex = startIndex + itemsPerPage - 1;
-
-      const { count } = await supabase
+      // Load all logs (up to a reasonable limit)
+      const { data: logsData, error: fetchError, count } = await supabase
         .from('system_logs')
-        .select('*', { count: 'exact', head: true });
-
-      const { data: logsData, error: fetchError } = await supabase
-        .from('system_logs')
-        .select('*')
+        .select('*', { count: 'exact' })
         .order('timestamp', { ascending: false })
-        .range(startIndex, endIndex);
+        .limit(1000); // Reasonable limit to prevent loading too much
 
       if (fetchError) throw fetchError;
 
@@ -98,8 +93,7 @@ export function SystemLogsPage() {
         logger.performance('System logs loaded', loadTime, {
           page: 'SystemLogsPage',
           logCount: logsData?.length || 0,
-          totalCount: count,
-          currentPage
+          totalCount: count
         });
       }
 
@@ -416,7 +410,10 @@ export function SystemLogsPage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
           <div className="px-6 py-4 bg-slate-50 dark:bg-gray-800 border-b border-slate-200">
             <p className="text-sm text-slate-600 dark:text-gray-400">
-              Showing {filteredLogs.length} of {logs.length} logs on page {currentPage} (Total: {totalCount} logs)
+              {filteredLogs.length > 0
+                ? `Showing ${((currentPage - 1) * itemsPerPage) + 1} to ${Math.min(currentPage * itemsPerPage, filteredLogs.length)} of ${filteredLogs.length} filtered logs`
+                : `No logs found (Total in database: ${totalCount})`
+              }
             </p>
           </div>
 
@@ -442,18 +439,20 @@ export function SystemLogsPage() {
                   <div className="text-right min-w-[60px]">Duration</div>
                 </div>
 
-                {/* Log Rows */}
-                {filteredLogs.map((log) => (
-                  <SplunkLogEntry key={log.id} log={{ ...log, type: 'system' as const }} />
-                ))}
+                {/* Log Rows - Paginated */}
+                {filteredLogs
+                  .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                  .map((log) => (
+                    <SplunkLogEntry key={log.id} log={{ ...log, type: 'system' as const }} />
+                  ))}
               </div>
             )}
           </div>
 
-          {totalCount > itemsPerPage && (
+          {filteredLogs.length > itemsPerPage && (
             <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800">
               <div className="text-sm text-slate-600 dark:text-gray-400">
-                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} logs
+                Page {currentPage} of {Math.ceil(filteredLogs.length / itemsPerPage)}
               </div>
               <div className="flex gap-2">
                 <button
@@ -464,9 +463,9 @@ export function SystemLogsPage() {
                   Previous
                 </button>
                 <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.ceil(totalCount / itemsPerPage) }, (_, i) => i + 1)
+                  {Array.from({ length: Math.ceil(filteredLogs.length / itemsPerPage) }, (_, i) => i + 1)
                     .filter(page => {
-                      const totalPages = Math.ceil(totalCount / itemsPerPage);
+                      const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
                       if (totalPages <= 7) return true;
                       if (page === 1 || page === totalPages) return true;
                       if (page >= currentPage - 1 && page <= currentPage + 1) return true;
@@ -492,8 +491,8 @@ export function SystemLogsPage() {
                     })}
                 </div>
                 <button
-                  onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalCount / itemsPerPage), p + 1))}
-                  disabled={currentPage >= Math.ceil(totalCount / itemsPerPage)}
+                  onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredLogs.length / itemsPerPage), p + 1))}
+                  disabled={currentPage >= Math.ceil(filteredLogs.length / itemsPerPage)}
                   className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   Next
