@@ -47,6 +47,7 @@ interface ResetMFARequest {
   action: 'reset_mfa';
   targetUserId: string;
   reason: string;
+  adminPassword: string;
 }
 
 type AdminRequest = ChangePasswordRequest | HardDeleteRequest | UpdateEmailRequest | ForceLogoutRequest | ResetMFARequest;
@@ -473,7 +474,7 @@ Deno.serve(async (req: Request) => {
       }
 
       case 'reset_mfa': {
-        const { targetUserId, reason } = requestData;
+        const { targetUserId, reason, adminPassword } = requestData;
         const actionStartTime = Date.now();
 
         const uuidValidation = validateUUID(targetUserId);
@@ -489,6 +490,63 @@ Deno.serve(async (req: Request) => {
           return new Response(
             JSON.stringify({ error: reasonValidation.error }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const passwordValidation = validatePassword(adminPassword);
+        if (!passwordValidation.valid) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid admin password format' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Get admin email and verify password
+        const { data: adminProfile, error: profileError } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (profileError || !adminProfile?.email) {
+          throw new Error('Admin profile not found');
+        }
+
+        // Verify admin password using a temporary client
+        const tempClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        });
+
+        const { error: authError } = await tempClient.auth.signInWithPassword({
+          email: adminProfile.email,
+          password: adminPassword
+        });
+
+        if (authError) {
+          await supabase.rpc('log_system_event', {
+            p_level: 'WARN',
+            p_category: 'SECURITY',
+            p_message: 'Invalid admin password for MFA reset',
+            p_metadata: {
+              action: 'reset_mfa',
+              targetUserId,
+              adminUserId: user.id,
+              function: 'admin-user-management'
+            },
+            p_user_id: user.id,
+            p_session_id: null,
+            p_ip_address: null,
+            p_user_agent: req.headers.get('user-agent'),
+            p_stack_trace: null,
+            p_execution_time_ms: null
+          });
+
+          return new Response(
+            JSON.stringify({ error: 'Invalid admin password' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 

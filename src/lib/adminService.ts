@@ -654,25 +654,7 @@ export async function resetUserMFA(
     throw new Error('Invalid user ID format');
   }
 
-  const { data: adminProfile } = await supabase
-    .from('profiles')
-    .select('email')
-    .eq('id', adminUserId)
-    .single();
-
-  if (!adminProfile?.email) {
-    throw new Error('Admin email not found');
-  }
-
-  const { error: authError } = await supabase.auth.signInWithPassword({
-    email: adminProfile.email,
-    password: adminPassword
-  });
-
-  if (authError) {
-    throw new Error('Invalid admin password');
-  }
-
+  // Get the current session
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {
     throw new Error('No active session');
@@ -689,6 +671,7 @@ export async function resetUserMFA(
       action: 'reset_mfa',
       targetUserId,
       reason,
+      adminPassword,
     }),
   });
 
@@ -697,28 +680,12 @@ export async function resetUserMFA(
     throw new Error(error.error || 'Failed to reset MFA');
   }
 
-  const { data: targetProfile } = await supabase
-    .from('profiles')
-    .select('email')
-    .eq('id', targetUserId)
-    .single();
+  // Edge function handles audit logging
+  const result = await response.json();
 
   logger.mfa('admin_reset_mfa', {
     target_user_id: targetUserId,
-    target_user_email: targetProfile?.email,
-    admin_email: adminProfile.email,
+    factors_removed: result.factors_removed || 0,
     reason
   }, 'WARN');
-
-  await supabase.from('audit_logs').insert({
-    user_id: adminUserId,
-    action: 'admin_reset_mfa',
-    resource_type: 'profile',
-    resource_id: targetUserId,
-    details: {
-      reason,
-      admin_email: adminProfile.email,
-      target_user_email: targetProfile?.email
-    },
-  });
 }
