@@ -450,10 +450,7 @@ export function SystemLogsPage() {
           </div>
 
           {filteredLogs.length > itemsPerPage && (
-            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 flex-shrink-0 pointer-events-auto">
-              <div className="text-sm text-slate-600 dark:text-gray-400">
-                Page {currentPage} of {Math.ceil(filteredLogs.length / itemsPerPage)}
-              </div>
+            <div className="flex flex-col items-center gap-3 px-6 py-4 border-t border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 flex-shrink-0 pointer-events-auto">
               <div className="flex gap-2 pointer-events-auto">
                 <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
@@ -497,6 +494,9 @@ export function SystemLogsPage() {
                 >
                   Next
                 </button>
+              </div>
+              <div className="text-sm text-slate-600 dark:text-gray-400">
+                Page {currentPage} of {Math.ceil(filteredLogs.length / itemsPerPage)}
               </div>
             </div>
           )}
