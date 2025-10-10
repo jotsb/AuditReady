@@ -492,21 +492,29 @@ Deno.serve(async (req: Request) => {
           );
         }
 
-        // User is already authenticated and verified as system admin
-        // Password verification happens on the client side
-
+        console.log('Listing MFA factors for user:', targetUserId);
         const { data: { factors }, error: factorsError } = await supabase.auth.admin.mfa.listFactors(targetUserId);
 
         if (factorsError) {
+          console.error('Error listing factors:', factorsError);
           throw new Error(`Failed to list MFA factors: ${factorsError.message}`);
         }
 
+        console.log(`Found ${factors?.length || 0} MFA factors`);
+
         if (factors && factors.length > 0) {
           for (const factor of factors) {
-            const { error: unenrollError } = await supabase.auth.admin.mfa.deleteFactor(factor.id);
+            console.log('Deleting factor:', factor.id, 'for user:', targetUserId);
+            // Delete the factor using user ID and factor ID
+            const { error: unenrollError } = await supabase.auth.admin.mfa.deleteFactor(
+              targetUserId,
+              factor.id
+            );
             if (unenrollError) {
+              console.error('Error deleting factor:', unenrollError);
               throw new Error(`Failed to unenroll MFA factor: ${unenrollError.message}`);
             }
+            console.log('Successfully deleted factor:', factor.id);
           }
         }
 
