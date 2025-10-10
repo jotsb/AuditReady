@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Activity, Filter, Search, Download, AlertCircle, X } from 'lucide-react';
+import { Activity, Filter, Download, AlertCircle, Sliders, Zap } from 'lucide-react';
 import { SplunkLogEntry } from '../shared/SplunkLogEntry';
 import { logger } from '../../lib/logger';
+import { AdvancedLogFilterPanel, LogFilters } from './AdvancedLogFilterPanel';
 
 interface AuditLog {
   id: string;
@@ -32,23 +33,86 @@ interface AuditLogsViewProps {
   showBorder?: boolean;
 }
 
+const AUDIT_PRESETS = [
+  {
+    name: 'Failed Actions',
+    icon: '⚠️',
+    description: 'All failed operations',
+    filters: { statuses: ['failure'], actions: [], resources: [], roles: [], searchTerm: '', startDate: '', endDate: '', ipAddress: '', userEmail: '' }
+  },
+  {
+    name: 'Security Events',
+    icon: '🔒',
+    description: 'Access denied and authentication failures',
+    filters: { statuses: ['denied', 'failure'], actions: [], resources: [], roles: [], searchTerm: 'auth', startDate: '', endDate: '', ipAddress: '', userEmail: '' }
+  },
+  {
+    name: 'Admin Activity',
+    icon: '👑',
+    description: 'Actions by system administrators',
+    filters: { roles: ['system_admin'], statuses: [], actions: [], resources: [], searchTerm: '', startDate: '', endDate: '', ipAddress: '', userEmail: '' }
+  },
+  {
+    name: 'User Management',
+    icon: '👥',
+    description: 'User creation, updates, and deletions',
+    filters: { resources: ['user', 'business_member'], statuses: [], actions: [], roles: [], searchTerm: '', startDate: '', endDate: '', ipAddress: '', userEmail: '' }
+  },
+  {
+    name: 'Last 24 Hours',
+    icon: '⏰',
+    description: 'Recent activity from yesterday',
+    filters: {
+      startDate: new Date(Date.now() - 86400000).toISOString().split('T')[0],
+      endDate: new Date().toISOString().split('T')[0],
+      statuses: [], actions: [], resources: [], roles: [], searchTerm: '', ipAddress: '', userEmail: ''
+    }
+  },
+  {
+    name: 'Business Operations',
+    icon: '🏢',
+    description: 'Business and collection changes',
+    filters: { resources: ['business', 'collection'], statuses: [], actions: [], roles: [], searchTerm: '', startDate: '', endDate: '', ipAddress: '', userEmail: '' }
+  },
+  {
+    name: 'Data Modifications',
+    icon: '✏️',
+    description: 'Updates and deletions',
+    filters: { actions: ['update', 'delete'], statuses: [], resources: [], roles: [], searchTerm: '', startDate: '', endDate: '', ipAddress: '', userEmail: '' }
+  },
+  {
+    name: 'Last Week',
+    icon: '📅',
+    description: 'Activity from past 7 days',
+    filters: {
+      startDate: new Date(Date.now() - 604800000).toISOString().split('T')[0],
+      endDate: new Date().toISOString().split('T')[0],
+      statuses: [], actions: [], resources: [], roles: [], searchTerm: '', ipAddress: '', userEmail: ''
+    }
+  }
+];
+
 export function AuditLogsView({ scope, businessId, showTitle = true, showBorder = true }: AuditLogsViewProps) {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  // Filter states
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterAction, setFilterAction] = useState<string>('all');
-  const [filterResource, setFilterResource] = useState<string>('all');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterRole, setFilterRole] = useState<string>('all');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const itemsPerPage = 50;
+
+  const [filters, setFilters] = useState<LogFilters>({
+    searchTerm: '',
+    actions: [],
+    resources: [],
+    statuses: [],
+    roles: [],
+    startDate: '',
+    endDate: '',
+    ipAddress: '',
+    userEmail: ''
+  });
 
   useEffect(() => {
     if (scope === 'system' || (scope === 'business' && businessId)) {
@@ -58,14 +122,8 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
   }, [scope, businessId]);
 
   useEffect(() => {
-    if (scope === 'system' || (scope === 'business' && businessId)) {
-      loadAuditLogs();
-    }
-  }, [currentPage]);
-
-  useEffect(() => {
     applyFilters();
-  }, [logs, searchTerm, filterAction, filterResource, filterStatus, filterRole, startDate, endDate]);
+  }, [logs, filters]);
 
   const loadAuditLogs = async () => {
     if (scope === 'business' && !businessId) return;
@@ -91,7 +149,6 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
 
       let scopedLogs = allData || [];
 
-      // Filter by business scope if needed
       if (scope === 'business' && businessId) {
         scopedLogs = allData?.filter(log => {
           if (log.resource_type === 'business') {
@@ -136,9 +193,8 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
   const applyFilters = () => {
     let filtered = [...logs];
 
-    // Search filter
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
+    if (filters.searchTerm) {
+      const term = filters.searchTerm.toLowerCase();
       filtered = filtered.filter(log =>
         log.action.toLowerCase().includes(term) ||
         log.resource_type.toLowerCase().includes(term) ||
@@ -149,35 +205,39 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
       );
     }
 
-    // Action filter
-    if (filterAction !== 'all') {
-      filtered = filtered.filter(log => log.action === filterAction);
+    if (filters.actions.length > 0) {
+      filtered = filtered.filter(log => filters.actions.includes(log.action));
     }
 
-    // Resource filter
-    if (filterResource !== 'all') {
-      filtered = filtered.filter(log => log.resource_type === filterResource);
+    if (filters.resources.length > 0) {
+      filtered = filtered.filter(log => filters.resources.includes(log.resource_type));
     }
 
-    // Status filter
-    if (filterStatus !== 'all') {
-      filtered = filtered.filter(log => log.status === filterStatus);
+    if (filters.statuses.length > 0) {
+      filtered = filtered.filter(log => filters.statuses.includes(log.status));
     }
 
-    // Role filter
-    if (filterRole !== 'all') {
-      filtered = filtered.filter(log => log.actor_role === filterRole);
+    if (filters.roles.length > 0) {
+      filtered = filtered.filter(log => filters.roles.includes(log.actor_role));
     }
 
-    // Date range filter
-    if (startDate) {
-      filtered = filtered.filter(log => new Date(log.created_at) >= new Date(startDate));
+    if (filters.startDate) {
+      filtered = filtered.filter(log => new Date(log.created_at) >= new Date(filters.startDate));
     }
-    if (endDate) {
-      filtered = filtered.filter(log => new Date(log.created_at) <= new Date(endDate + 'T23:59:59'));
+    if (filters.endDate) {
+      filtered = filtered.filter(log => new Date(log.created_at) <= new Date(filters.endDate + 'T23:59:59'));
+    }
+
+    if (filters.ipAddress) {
+      filtered = filtered.filter(log => log.ip_address?.includes(filters.ipAddress));
+    }
+
+    if (filters.userEmail) {
+      filtered = filtered.filter(log => log.profiles?.email?.toLowerCase().includes(filters.userEmail.toLowerCase()));
     }
 
     setFilteredLogs(filtered);
+    setCurrentPage(1);
   };
 
   const exportToCSV = () => {
@@ -215,21 +275,34 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
   };
 
   const clearFilters = () => {
-    setSearchTerm('');
-    setFilterAction('all');
-    setFilterResource('all');
-    setFilterStatus('all');
-    setFilterRole('all');
-    setStartDate('');
-    setEndDate('');
+    setFilters({
+      searchTerm: '',
+      actions: [],
+      resources: [],
+      statuses: [],
+      roles: [],
+      startDate: '',
+      endDate: '',
+      ipAddress: '',
+      userEmail: ''
+    });
   };
 
-  const actionTypes = ['all', ...new Set(logs.map(log => log.action))];
-  const resourceTypes = ['all', ...new Set(logs.map(log => log.resource_type))];
-  const statuses = ['all', 'success', 'failure', 'denied'];
-  const roles = ['all', ...new Set(logs.map(log => log.actor_role).filter(Boolean))];
+  const actionOptions = [...new Set(logs.map(log => log.action))].sort();
+  const resourceOptions = [...new Set(logs.map(log => log.resource_type))].sort();
+  const roleOptions = [...new Set(logs.map(log => log.actor_role).filter(Boolean))].sort();
 
-  // Paginate filtered logs
+  const hasActiveFilters =
+    filters.searchTerm ||
+    filters.actions.length > 0 ||
+    filters.resources.length > 0 ||
+    filters.statuses.length > 0 ||
+    filters.roles.length > 0 ||
+    filters.startDate ||
+    filters.endDate ||
+    filters.ipAddress ||
+    filters.userEmail;
+
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
@@ -274,133 +347,85 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
         </div>
       )}
 
-      {/* Filters */}
-      <div className={`bg-white dark:bg-gray-800 ${showBorder ? 'rounded-lg shadow-md' : ''} p-6`}>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Filter size={20} className="text-slate-600 dark:text-gray-400" />
-            <h3 className="font-semibold text-slate-800 dark:text-white">Filters</h3>
-          </div>
-          <div className="flex gap-2">
+      {/* Filter Controls */}
+      <div className={`bg-white dark:bg-gray-800 ${showBorder ? 'rounded-lg shadow-md' : ''} p-4`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <button
-              onClick={clearFilters}
-              className="px-3 py-1.5 text-sm text-slate-600 dark:text-gray-400 hover:text-slate-800 dark:hover:text-white transition flex items-center gap-1"
+              onClick={() => setShowAdvancedFilters(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
             >
-              <X size={16} />
-              Clear
+              <Sliders size={18} />
+              Advanced Filters
+              {hasActiveFilters && (
+                <span className="bg-white text-blue-600 px-2 py-0.5 rounded-full text-xs font-bold">
+                  ON
+                </span>
+              )}
             </button>
-            <button
-              onClick={exportToCSV}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
-            >
-              <Download size={16} />
-              Export CSV
-            </button>
+
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="px-4 py-2 text-slate-600 dark:text-gray-400 hover:text-slate-800 dark:hover:text-white transition text-sm font-medium"
+              >
+                Clear Filters
+              </button>
+            )}
           </div>
+
+          <button
+            onClick={exportToCSV}
+            disabled={filteredLogs.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download size={18} />
+            Export CSV
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Search */}
-          <div className="lg:col-span-3">
-            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
-              <Search size={16} className="inline mr-1" />
-              Search
-            </label>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by user, action, resource, IP, or details..."
-              className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-            />
+        {/* Active Filters Display */}
+        {hasActiveFilters && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {filters.actions.length > 0 && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm">
+                <Zap size={14} />
+                {filters.actions.length} action{filters.actions.length !== 1 ? 's' : ''}
+              </span>
+            )}
+            {filters.resources.length > 0 && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-sm">
+                <Filter size={14} />
+                {filters.resources.length} resource{filters.resources.length !== 1 ? 's' : ''}
+              </span>
+            )}
+            {filters.statuses.length > 0 && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-sm">
+                {filters.statuses.length} status{filters.statuses.length !== 1 ? 'es' : ''}
+              </span>
+            )}
+            {filters.roles.length > 0 && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded-full text-sm">
+                {filters.roles.length} role{filters.roles.length !== 1 ? 's' : ''}
+              </span>
+            )}
+            {(filters.startDate || filters.endDate) && (
+              <span className="inline-flex items-center px-3 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 rounded-full text-sm">
+                Date range
+              </span>
+            )}
+            {filters.ipAddress && (
+              <span className="inline-flex items-center px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full text-sm">
+                IP: {filters.ipAddress}
+              </span>
+            )}
+            {filters.userEmail && (
+              <span className="inline-flex items-center px-3 py-1 bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300 rounded-full text-sm">
+                User: {filters.userEmail}
+              </span>
+            )}
           </div>
-
-          {/* Action Filter */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Action</label>
-            <select
-              value={filterAction}
-              onChange={(e) => setFilterAction(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-            >
-              {actionTypes.map(action => (
-                <option key={action} value={action}>
-                  {action === 'all' ? 'All Actions' : action.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Resource Filter */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Resource Type</label>
-            <select
-              value={filterResource}
-              onChange={(e) => setFilterResource(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-            >
-              {resourceTypes.map(resource => (
-                <option key={resource} value={resource}>
-                  {resource === 'all' ? 'All Resources' : resource.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Status Filter */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Status</label>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-            >
-              {statuses.map(status => (
-                <option key={status} value={status}>
-                  {status === 'all' ? 'All Statuses' : status.charAt(0).toUpperCase() + status.slice(1)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Role Filter */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Role</label>
-            <select
-              value={filterRole}
-              onChange={(e) => setFilterRole(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-            >
-              {roles.map(role => (
-                <option key={role} value={role}>
-                  {role === 'all' ? 'All Roles' : role}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Start Date */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Start Date</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-            />
-          </div>
-
-          {/* End Date */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">End Date</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-            />
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Logs Display */}
@@ -408,6 +433,7 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
         <div className="px-6 py-4 bg-slate-50 dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700">
           <p className="text-sm text-slate-600 dark:text-gray-400">
             Showing {filteredLogs.length} of {totalCount} total logs
+            {hasActiveFilters && ' (filtered)'}
           </p>
         </div>
 
@@ -417,12 +443,11 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
               <Activity className="mx-auto mb-3 text-slate-300" size={48} />
               <p className="text-slate-500 dark:text-gray-400 font-medium">No audit logs found</p>
               <p className="text-slate-400 text-sm mt-1">
-                Try adjusting your filters or search criteria
+                {hasActiveFilters ? 'Try adjusting your filters' : 'No logs available yet'}
               </p>
             </div>
           ) : (
             <div className="bg-white dark:bg-gray-800">
-              {/* Header Row - Desktop Only */}
               <div className="hidden lg:grid lg:grid-cols-[auto_minmax(140px,1fr)_auto_minmax(120px,1fr)_minmax(100px,1fr)_minmax(120px,1.5fr)_auto] gap-2 px-4 py-2 bg-slate-100 dark:bg-gray-700 border-b border-slate-300 dark:border-gray-600 text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase sticky top-0 z-10">
                 <div className="flex items-center justify-center w-6"></div>
                 <div className="col-span-2">Time</div>
@@ -433,7 +458,6 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
                 <div className="">IP</div>
               </div>
 
-              {/* Log Rows */}
               {paginatedLogs.map((log) => (
                 <SplunkLogEntry key={log.id} log={{ ...log, type: 'audit' as const }} />
               ))}
@@ -442,8 +466,8 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
         </div>
 
         {filteredLogs.length > itemsPerPage && (
-          <div className="flex flex-col items-center gap-3 px-6 py-4 border-t border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 flex-shrink-0 pointer-events-auto">
-            <div className="flex gap-2 pointer-events-auto">
+          <div className="flex flex-col items-center gap-3 px-6 py-4 border-t border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 flex-shrink-0">
+            <div className="flex gap-2">
               <button
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
@@ -493,6 +517,21 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
           </div>
         )}
       </div>
+
+      {/* Advanced Filter Panel */}
+      {showAdvancedFilters && (
+        <AdvancedLogFilterPanel
+          filterType="audit"
+          filters={filters}
+          onChange={setFilters}
+          onClear={clearFilters}
+          onClose={() => setShowAdvancedFilters(false)}
+          actionOptions={actionOptions}
+          resourceOptions={resourceOptions}
+          roleOptions={roleOptions}
+          presets={AUDIT_PRESETS}
+        />
+      )}
     </div>
   );
 }

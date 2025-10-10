@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Database, Filter, Search, Download, AlertCircle, RefreshCw } from 'lucide-react';
+import { Database, Download, AlertCircle, RefreshCw, Sliders, Zap, Filter } from 'lucide-react';
 import { SplunkLogEntry } from '../components/shared/SplunkLogEntry';
 import { logger } from '../lib/logger';
+import { AdvancedLogFilterPanel, LogFilters } from '../components/audit/AdvancedLogFilterPanel';
+import { usePageTracking } from '../hooks/usePageTracking';
 
 interface SystemLog {
   id: string;
@@ -25,50 +27,108 @@ interface SystemLog {
   };
 }
 
+const SYSTEM_PRESETS = [
+  {
+    name: 'Critical Errors',
+    icon: '🚨',
+    description: 'Critical and error level logs',
+    filters: { statuses: ['ERROR', 'CRITICAL'], actions: [], resources: [], roles: [], searchTerm: '', startDate: '', endDate: '', ipAddress: '', userEmail: '' }
+  },
+  {
+    name: 'Security Events',
+    icon: '🔐',
+    description: 'Security-related system logs',
+    filters: { resources: ['SECURITY', 'AUTH'], statuses: [], actions: [], roles: [], searchTerm: '', startDate: '', endDate: '', ipAddress: '', userEmail: '' }
+  },
+  {
+    name: 'Performance Issues',
+    icon: '⚡',
+    description: 'Slow operations and performance warnings',
+    filters: { resources: ['PERFORMANCE'], statuses: ['WARN', 'ERROR'], actions: [], roles: [], searchTerm: 'slow', startDate: '', endDate: '', ipAddress: '', userEmail: '' }
+  },
+  {
+    name: 'Database Operations',
+    icon: '🗄️',
+    description: 'Database queries and operations',
+    filters: { resources: ['DATABASE'], statuses: [], actions: [], roles: [], searchTerm: '', startDate: '', endDate: '', ipAddress: '', userEmail: '' }
+  },
+  {
+    name: 'Client Errors',
+    icon: '💥',
+    description: 'Frontend errors and exceptions',
+    filters: { resources: ['CLIENT_ERROR'], statuses: [], actions: [], roles: [], searchTerm: '', startDate: '', endDate: '', ipAddress: '', userEmail: '' }
+  },
+  {
+    name: 'API Activity',
+    icon: '🌐',
+    description: 'API calls and edge functions',
+    filters: { resources: ['API', 'EDGE_FUNCTION'], statuses: [], actions: [], roles: [], searchTerm: '', startDate: '', endDate: '', ipAddress: '', userEmail: '' }
+  },
+  {
+    name: 'Last Hour',
+    icon: '⏱️',
+    description: 'Recent logs from past hour',
+    filters: {
+      startDate: new Date(Date.now() - 3600000).toISOString().split('T')[0],
+      endDate: new Date().toISOString().split('T')[0],
+      statuses: [], actions: [], resources: [], roles: [], searchTerm: '', ipAddress: '', userEmail: ''
+    }
+  },
+  {
+    name: 'Warnings & Errors',
+    icon: '⚠️',
+    description: 'All warnings and errors',
+    filters: { statuses: ['WARN', 'ERROR', 'CRITICAL'], actions: [], resources: [], roles: [], searchTerm: '', startDate: '', endDate: '', ipAddress: '', userEmail: '' }
+  }
+];
+
 export function SystemLogsPage() {
   const { isSystemAdmin } = useAuth();
+  usePageTracking('System Logs', { section: 'system_logs' });
+
   const [logs, setLogs] = useState<SystemLog[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<SystemLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(false);
-
-  // Filter states
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterLevel, setFilterLevel] = useState<string>('all');
-  const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [filterUserId, setFilterUserId] = useState<string>('all');
-  const [filterSessionId, setFilterSessionId] = useState<string>('all');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const itemsPerPage = 50;
 
+  const [filters, setFilters] = useState<LogFilters>({
+    searchTerm: '',
+    actions: [],
+    resources: [],
+    statuses: [],
+    roles: [],
+    startDate: '',
+    endDate: '',
+    ipAddress: '',
+    userEmail: ''
+  });
+
   useEffect(() => {
-    loadSystemLogs();
-  }, []);
+    if (isSystemAdmin) {
+      loadSystemLogs();
+    }
+  }, [isSystemAdmin]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (autoRefresh) {
+    if (autoRefresh && isSystemAdmin) {
       interval = setInterval(() => {
         loadSystemLogs(true);
-      }, 5000); // Refresh every 5 seconds
+      }, 5000);
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [autoRefresh]);
+  }, [autoRefresh, isSystemAdmin]);
 
   useEffect(() => {
     applyFilters();
-  }, [logs, searchTerm, filterLevel, filterCategory, filterUserId, filterSessionId, startDate, endDate]);
-
-  // Reset to first page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, filterLevel, filterCategory, filterUserId, filterSessionId, startDate, endDate]);
+  }, [logs, filters]);
 
   const loadSystemLogs = async (silent = false) => {
     const startTime = performance.now();
@@ -79,28 +139,16 @@ export function SystemLogsPage() {
         logger.info('Loading system logs', { page: 'SystemLogsPage' }, 'DATABASE');
       }
 
-      // Load all logs (up to a reasonable limit)
-      const { data: logsData, error: fetchError, count } = await supabase
+      const { data: logsData, error: fetchError } = await supabase
         .from('system_logs')
-        .select('*', { count: 'exact' })
+        .select('*')
         .order('timestamp', { ascending: false })
-        .limit(1000); // Reasonable limit to prevent loading too much
+        .limit(1000);
 
       if (fetchError) throw fetchError;
 
-      const loadTime = performance.now() - startTime;
-      if (!silent) {
-        logger.performance('System logs loaded', loadTime, {
-          page: 'SystemLogsPage',
-          logCount: logsData?.length || 0,
-          totalCount: count
-        });
-      }
-
-      // Fetch user profiles separately for logs that have user_id
       const userIds = [...new Set(logsData?.map(log => log.user_id).filter(Boolean))];
-
-      let profilesMap: Record<string, { full_name: string; email: string }> = {};
+      let profilesMap: Record<string, any> = {};
 
       if (userIds.length > 0) {
         const { data: profilesData } = await supabase
@@ -108,25 +156,36 @@ export function SystemLogsPage() {
           .select('id, full_name, email')
           .in('id', userIds);
 
-        if (profilesData) {
-          profilesMap = profilesData.reduce((acc, profile) => {
-            acc[profile.id] = { full_name: profile.full_name, email: profile.email };
-            return acc;
-          }, {} as Record<string, { full_name: string; email: string }>);
-        }
+        profilesMap = (profilesData || []).reduce((acc, profile) => {
+          acc[profile.id] = profile;
+          return acc;
+        }, {} as Record<string, any>);
       }
 
-      // Merge profiles into logs
       const logsWithProfiles = logsData?.map(log => ({
         ...log,
-        profiles: log.user_id ? profilesMap[log.user_id] : undefined
+        profiles: log.user_id ? profilesMap[log.user_id] : null
       })) || [];
 
+      setTotalCount(logsWithProfiles.length);
       setLogs(logsWithProfiles);
-      setTotalCount(count || 0);
+
+      const duration = performance.now() - startTime;
+      if (!silent) {
+        logger.info('System logs loaded successfully', {
+          page: 'SystemLogsPage',
+          totalLogs: logsWithProfiles.length,
+          duration: `${duration.toFixed(2)}ms`
+        }, 'PERFORMANCE');
+      }
     } catch (err: any) {
-      console.error('Error loading system logs:', err);
-      setError(err.message);
+      if (!silent) {
+        setError(err.message);
+        logger.error('Failed to load system logs', {
+          page: 'SystemLogsPage',
+          error: err.message
+        }, 'DATABASE');
+      }
     } finally {
       if (!silent) {
         setLoading(false);
@@ -137,60 +196,56 @@ export function SystemLogsPage() {
   const applyFilters = () => {
     let filtered = [...logs];
 
-    // Search filter
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
+    if (filters.searchTerm) {
+      const term = filters.searchTerm.toLowerCase();
       filtered = filtered.filter(log =>
         log.message.toLowerCase().includes(term) ||
-        log.category.toLowerCase().includes(term) ||
         log.level.toLowerCase().includes(term) ||
+        log.category.toLowerCase().includes(term) ||
         log.profiles?.full_name?.toLowerCase().includes(term) ||
         log.profiles?.email?.toLowerCase().includes(term) ||
+        log.ip_address?.toLowerCase().includes(term) ||
         JSON.stringify(log.metadata).toLowerCase().includes(term)
       );
     }
 
-    // Level filter
-    if (filterLevel !== 'all') {
-      filtered = filtered.filter(log => log.level === filterLevel);
+    if (filters.statuses.length > 0) {
+      filtered = filtered.filter(log => filters.statuses.includes(log.level));
     }
 
-    // Category filter
-    if (filterCategory !== 'all') {
-      filtered = filtered.filter(log => log.category === filterCategory);
+    if (filters.resources.length > 0) {
+      filtered = filtered.filter(log => filters.resources.includes(log.category));
     }
 
-    // User filter
-    if (filterUserId !== 'all') {
-      filtered = filtered.filter(log => log.user_id === filterUserId);
+    if (filters.startDate) {
+      filtered = filtered.filter(log => new Date(log.timestamp) >= new Date(filters.startDate));
+    }
+    if (filters.endDate) {
+      filtered = filtered.filter(log => new Date(log.timestamp) <= new Date(filters.endDate + 'T23:59:59'));
     }
 
-    // Session filter
-    if (filterSessionId !== 'all') {
-      filtered = filtered.filter(log => log.session_id === filterSessionId);
+    if (filters.ipAddress) {
+      filtered = filtered.filter(log => log.ip_address?.includes(filters.ipAddress));
     }
 
-    // Date range filter
-    if (startDate) {
-      filtered = filtered.filter(log => new Date(log.timestamp) >= new Date(startDate));
-    }
-    if (endDate) {
-      filtered = filtered.filter(log => new Date(log.timestamp) <= new Date(endDate + 'T23:59:59'));
+    if (filters.userEmail) {
+      filtered = filtered.filter(log => log.profiles?.email?.toLowerCase().includes(filters.userEmail.toLowerCase()));
     }
 
     setFilteredLogs(filtered);
+    setCurrentPage(1);
   };
 
   const exportToCSV = () => {
-    const headers = ['Timestamp', 'Level', 'Category', 'Message', 'User', 'IP Address', 'Execution Time (ms)', 'Metadata'];
+    const headers = ['Timestamp', 'Level', 'Category', 'Message', 'User', 'IP Address', 'Execution Time', 'Metadata'];
     const rows = filteredLogs.map(log => [
       new Date(log.timestamp).toLocaleString(),
       log.level,
       log.category,
       log.message,
-      log.profiles?.full_name || 'System',
+      log.profiles?.email || 'N/A',
       log.ip_address || 'N/A',
-      log.execution_time_ms?.toString() || 'N/A',
+      log.execution_time_ms ? `${log.execution_time_ms}ms` : 'N/A',
       JSON.stringify(log.metadata)
     ]);
 
@@ -206,28 +261,46 @@ export function SystemLogsPage() {
     a.download = `system-logs-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
+
+    logger.info('Exported system logs to CSV', {
+      page: 'SystemLogsPage',
+      exportedCount: filteredLogs.length
+    }, 'USER_ACTION');
   };
 
   const clearFilters = () => {
-    setSearchTerm('');
-    setFilterLevel('all');
-    setFilterCategory('all');
-    setFilterUserId('all');
-    setFilterSessionId('all');
-    setStartDate('');
-    setEndDate('');
-    setCurrentPage(1);
+    setFilters({
+      searchTerm: '',
+      actions: [],
+      resources: [],
+      statuses: [],
+      roles: [],
+      startDate: '',
+      endDate: '',
+      ipAddress: '',
+      userEmail: ''
+    });
   };
 
-  const levels = ['all', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL'];
-  const categories = ['all', 'AUTH', 'DATABASE', 'API', 'EDGE_FUNCTION', 'CLIENT_ERROR', 'SECURITY', 'PERFORMANCE', 'USER_ACTION', 'PAGE_VIEW', 'NAVIGATION'];
+  const levelOptions = ['DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL'];
+  const categoryOptions = ['AUTH', 'DATABASE', 'API', 'EDGE_FUNCTION', 'CLIENT_ERROR', 'SECURITY', 'PERFORMANCE', 'USER_ACTION', 'PAGE_VIEW', 'NAVIGATION'];
 
-  const uniqueUsers = ['all', ...new Set(logs.map(log => log.user_id).filter(Boolean) as string[])];
-  const uniqueSessions = ['all', ...new Set(logs.map(log => log.session_id).filter(Boolean) as string[])];
+  const hasActiveFilters =
+    filters.searchTerm ||
+    filters.statuses.length > 0 ||
+    filters.resources.length > 0 ||
+    filters.startDate ||
+    filters.endDate ||
+    filters.ipAddress ||
+    filters.userEmail;
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
 
   if (!isSystemAdmin) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-gray-800 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-gray-800 flex items-center justify-center p-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 max-w-md w-full text-center">
           <AlertCircle className="mx-auto mb-4 text-red-600" size={48} />
           <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Access Denied</h2>
@@ -246,212 +319,152 @@ export function SystemLogsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-gray-800 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center">
-              <Database className="mr-3 text-blue-600" size={32} />
+    <div className="min-h-screen bg-slate-50 dark:bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Database className="text-blue-600 dark:text-blue-400" size={32} />
+            <div>
               <h1 className="text-3xl font-bold text-slate-800 dark:text-white">System Logs</h1>
-            </div>
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => setAutoRefresh(!autoRefresh)}
-                className={`flex items-center px-4 py-2 rounded-lg transition ${
-                  autoRefresh
-                    ? 'bg-green-600 text-white hover:bg-green-700'
-                    : 'bg-slate-200 dark:bg-gray-700 text-slate-700 dark:text-gray-300 hover:bg-slate-300'
-                }`}
-              >
-                <RefreshCw size={18} className={`mr-2 ${autoRefresh ? 'animate-spin' : ''}`} />
-                {autoRefresh ? 'Live' : 'Auto-Refresh'}
-              </button>
-              <button
-                onClick={exportToCSV}
-                disabled={filteredLogs.length === 0}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Download size={18} className="mr-2" />
-                Export CSV
-              </button>
+              <p className="text-slate-600 dark:text-gray-400">
+                Application-wide logging and monitoring
+              </p>
             </div>
           </div>
-          <p className="text-slate-600 dark:text-gray-400">
-            Infrastructure and application logs
-          </p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition font-medium ${
+                autoRefresh
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : 'bg-slate-200 dark:bg-gray-700 text-slate-700 dark:text-gray-300 hover:bg-slate-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              <RefreshCw size={18} className={autoRefresh ? 'animate-spin' : ''} />
+              Auto Refresh
+            </button>
+          </div>
         </div>
 
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg flex items-center">
             <AlertCircle className="mr-2" size={20} />
             {error}
           </div>
         )}
 
-        {/* Filters */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center">
-              <Filter className="text-slate-500 dark:text-gray-400 mr-2" size={20} />
-              <h3 className="font-semibold text-slate-800 dark:text-white">Filters</h3>
+        {/* Filter Controls */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowAdvancedFilters(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+              >
+                <Sliders size={18} />
+                Advanced Filters
+                {hasActiveFilters && (
+                  <span className="bg-white text-blue-600 px-2 py-0.5 rounded-full text-xs font-bold">
+                    ON
+                  </span>
+                )}
+              </button>
+
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="px-4 py-2 text-slate-600 dark:text-gray-400 hover:text-slate-800 dark:hover:text-white transition text-sm font-medium"
+                >
+                  Clear Filters
+                </button>
+              )}
             </div>
+
             <button
-              onClick={clearFilters}
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              onClick={exportToCSV}
+              disabled={filteredLogs.length === 0}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Clear All
+              <Download size={18} />
+              Export CSV
             </button>
           </div>
 
-          {/* Search */}
-          <div className="mb-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-gray-500" size={20} />
-              <input
-                type="text"
-                placeholder="Search logs..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
+          {/* Active Filters Display */}
+          {hasActiveFilters && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {filters.statuses.length > 0 && (
+                <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full text-sm">
+                  <Zap size={14} />
+                  {filters.statuses.length} level{filters.statuses.length !== 1 ? 's' : ''}
+                </span>
+              )}
+              {filters.resources.length > 0 && (
+                <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm">
+                  <Filter size={14} />
+                  {filters.resources.length} categor{filters.resources.length !== 1 ? 'ies' : 'y'}
+                </span>
+              )}
+              {(filters.startDate || filters.endDate) && (
+                <span className="inline-flex items-center px-3 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 rounded-full text-sm">
+                  Date range
+                </span>
+              )}
+              {filters.ipAddress && (
+                <span className="inline-flex items-center px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-sm">
+                  IP: {filters.ipAddress}
+                </span>
+              )}
+              {filters.userEmail && (
+                <span className="inline-flex items-center px-3 py-1 bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300 rounded-full text-sm">
+                  User: {filters.userEmail}
+                </span>
+              )}
             </div>
-          </div>
-
-          {/* Filter Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">Level</label>
-              <select
-                value={filterLevel}
-                onChange={(e) => setFilterLevel(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                {levels.map(level => (
-                  <option key={level} value={level}>
-                    {level === 'all' ? 'All Levels' : level}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">Category</label>
-              <select
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                {categories.map(category => (
-                  <option key={category} value={category}>
-                    {category === 'all' ? 'All Categories' : category}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">User</label>
-              <select
-                value={filterUserId}
-                onChange={(e) => setFilterUserId(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="all">All Users</option>
-                {uniqueUsers.slice(1).map(userId => {
-                  const profile = logs.find(log => log.user_id === userId)?.profiles;
-                  return (
-                    <option key={userId} value={userId}>
-                      {profile?.full_name || profile?.email || userId.substring(0, 8)}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">Session</label>
-              <select
-                value={filterSessionId}
-                onChange={(e) => setFilterSessionId(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="all">All Sessions</option>
-                {uniqueSessions.slice(1).map(sessionId => (
-                  <option key={sessionId} value={sessionId}>
-                    {sessionId.substring(0, 20)}...
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">Start Date</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">End Date</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Logs Display */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden flex flex-col">
-          <div className="px-6 py-4 bg-slate-50 dark:bg-gray-800 border-b border-slate-200 flex-shrink-0">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+          <div className="px-6 py-4 bg-slate-50 dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700">
             <p className="text-sm text-slate-600 dark:text-gray-400">
-              {filteredLogs.length > 0
-                ? `Showing ${((currentPage - 1) * itemsPerPage) + 1} to ${Math.min(currentPage * itemsPerPage, filteredLogs.length)} of ${filteredLogs.length} filtered logs`
-                : `No logs found (Total in database: ${totalCount})`
-              }
+              Showing {filteredLogs.length} of {totalCount} total logs
+              {hasActiveFilters && ' (filtered)'}
             </p>
           </div>
 
-          <div className="overflow-y-auto flex-1" style={{ maxHeight: '600px' }}>
+          <div className="max-h-[600px] overflow-y-auto">
             {filteredLogs.length === 0 ? (
               <div className="px-6 py-12 text-center">
                 <Database className="mx-auto mb-3 text-slate-300" size={48} />
                 <p className="text-slate-500 dark:text-gray-400 font-medium">No system logs found</p>
                 <p className="text-slate-400 text-sm mt-1">
-                  Try adjusting your filters or search criteria
+                  {hasActiveFilters ? 'Try adjusting your filters' : 'No logs available yet'}
                 </p>
               </div>
             ) : (
               <div className="bg-white dark:bg-gray-800">
-                {/* Header Row - Desktop Only */}
-                <div className="hidden lg:grid lg:grid-cols-[auto_minmax(140px,1fr)_auto_auto_minmax(200px,2fr)_minmax(100px,1fr)_auto] gap-2 px-4 py-2 bg-slate-100 dark:bg-gray-700 border-b border-slate-300 dark:border-gray-600 text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase sticky top-0 z-10">
+                <div className="hidden lg:grid lg:grid-cols-[auto_minmax(140px,1fr)_auto_minmax(120px,1fr)_minmax(200px,2fr)_minmax(120px,1fr)_auto] gap-2 px-4 py-2 bg-slate-100 dark:bg-gray-700 border-b border-slate-300 dark:border-gray-600 text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase sticky top-0 z-10">
                   <div className="flex items-center justify-center w-6"></div>
-                  <div>Time</div>
-                  <div className="min-w-[60px]">Level</div>
-                  <div className="min-w-[100px]">Category</div>
-                  <div>Message</div>
-                  <div>User</div>
-                  <div className="text-right min-w-[60px]">Duration</div>
+                  <div className="col-span-2">Time</div>
+                  <div className="">Level</div>
+                  <div className="">Category</div>
+                  <div className="">Message</div>
+                  <div className="">User</div>
+                  <div className="">IP</div>
                 </div>
 
-                {/* Log Rows - Paginated */}
-                {filteredLogs
-                  .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-                  .map((log) => (
-                    <SplunkLogEntry key={log.id} log={{ ...log, type: 'system' as const }} />
-                  ))}
+                {paginatedLogs.map((log) => (
+                  <SplunkLogEntry key={log.id} log={{ ...log, type: 'system' as const }} />
+                ))}
               </div>
             )}
           </div>
 
           {filteredLogs.length > itemsPerPage && (
-            <div className="flex flex-col items-center gap-3 px-6 py-4 border-t border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 flex-shrink-0 pointer-events-auto">
-              <div className="flex gap-2 pointer-events-auto">
+            <div className="flex flex-col items-center gap-3 px-6 py-4 border-t border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800">
+              <div className="flex gap-2">
                 <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
@@ -496,11 +509,26 @@ export function SystemLogsPage() {
                 </button>
               </div>
               <div className="text-sm text-slate-600 dark:text-gray-400">
-                Page {currentPage} of {Math.ceil(filteredLogs.length / itemsPerPage)}
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredLogs.length)} of {filteredLogs.length} logs
               </div>
             </div>
           )}
         </div>
+
+        {/* Advanced Filter Panel */}
+        {showAdvancedFilters && (
+          <AdvancedLogFilterPanel
+            filterType="system"
+            filters={filters}
+            onChange={setFilters}
+            onClear={clearFilters}
+            onClose={() => setShowAdvancedFilters(false)}
+            actionOptions={levelOptions}
+            resourceOptions={categoryOptions}
+            roleOptions={[]}
+            presets={SYSTEM_PRESETS}
+          />
+        )}
       </div>
     </div>
   );
