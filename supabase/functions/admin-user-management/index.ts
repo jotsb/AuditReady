@@ -1,5 +1,13 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  validateUUID,
+  validateEmail,
+  validatePassword,
+  validateString,
+  validateRequestBody,
+  INPUT_LIMITS
+} from "../_shared/validation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -171,7 +179,29 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    requestData = await req.json();
+    // Validate and parse request body
+    const bodyValidation = await validateRequestBody(req);
+    if (!bodyValidation.valid) {
+      await supabase.rpc('log_system_event', {
+        p_level: 'WARN',
+        p_category: 'SECURITY',
+        p_message: 'Invalid request body',
+        p_metadata: { error: bodyValidation.error, function: 'admin-user-management' },
+        p_user_id: user.id,
+        p_session_id: null,
+        p_ip_address: null,
+        p_user_agent: req.headers.get('user-agent'),
+        p_stack_trace: null,
+        p_execution_time_ms: null
+      });
+
+      return new Response(
+        JSON.stringify({ error: bodyValidation.error }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    requestData = bodyValidation.data;
 
     // Log the admin action being attempted
     await supabase.rpc('log_system_event', {
@@ -196,6 +226,23 @@ Deno.serve(async (req: Request) => {
       case 'change_password': {
         const { targetUserId, newPassword } = requestData;
         const actionStartTime = Date.now();
+
+        // Validate inputs
+        const uuidValidation = validateUUID(targetUserId);
+        if (!uuidValidation.valid) {
+          return new Response(
+            JSON.stringify({ error: uuidValidation.error }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const passwordValidation = validatePassword(newPassword);
+        if (!passwordValidation.valid) {
+          return new Response(
+            JSON.stringify({ error: passwordValidation.error }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
 
         // Update password using admin API
         const { error: pwError } = await supabase.auth.admin.updateUserById(
