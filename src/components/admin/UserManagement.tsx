@@ -752,22 +752,28 @@ export function UserManagement() {
           <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
             <div className="flex items-center gap-2 mb-4">
               <AlertTriangle className="w-6 h-6 text-orange-600" />
-              <h3 className="text-xl font-bold">Reset User MFA</h3>
+              <h3 className="text-xl font-bold dark:text-white">Reset User MFA</h3>
             </div>
-            <p className="text-gray-600 mb-2">User: {selectedUser.email}</p>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-gray-600 dark:text-gray-300 mb-2">User: {selectedUser.email}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               This will disable MFA for this user, remove all authenticators, delete recovery codes, and clear trusted devices.
               The user will be able to set up MFA again after their next login.
             </p>
 
+            {actionError && (
+              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-800 dark:text-red-200 text-sm">
+                {actionError}
+              </div>
+            )}
+
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Your Admin Password</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Your Admin Password</label>
               <input
                 type="password"
                 value={mfaResetPassword}
                 onChange={(e) => setMfaResetPassword(e.target.value)}
                 placeholder="Enter your password to confirm"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"
               />
             </div>
 
@@ -775,7 +781,7 @@ export function UserManagement() {
               value={mfaResetReason}
               onChange={(e) => setMfaResetReason(e.target.value)}
               placeholder="Reason for MFA reset (required for audit trail)..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg mb-4"
               rows={4}
             />
             <div className="flex gap-3">
@@ -787,8 +793,9 @@ export function UserManagement() {
                 {actionLoading ? 'Resetting...' : 'Reset MFA'}
               </button>
               <button
-                onClick={() => { setShowMFAResetModal(false); setMfaResetReason(''); setMfaResetPassword(''); }}
+                onClick={() => { setShowMFAResetModal(false); setMfaResetReason(''); setMfaResetPassword(''); setActionError(''); }}
                 className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400"
+                disabled={actionLoading}
               >
                 Cancel
               </button>

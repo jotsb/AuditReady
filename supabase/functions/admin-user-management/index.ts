@@ -101,7 +101,6 @@ Deno.serve(async (req: Request) => {
   let user: any = null;
 
   try {
-    // Rate limiting check
     const ipAddress = getIPAddress(req);
     const rateLimitResult = checkRateLimit(ipAddress, RATE_LIMITS.STANDARD);
 
@@ -122,7 +121,6 @@ Deno.serve(async (req: Request) => {
       return createRateLimitResponse(rateLimitResult, 'Too many admin requests. Please try again later.');
     }
 
-    // Log function start
     await supabase.rpc('log_system_event', {
       p_level: 'INFO',
       p_category: 'EDGE_FUNCTION',
@@ -136,7 +134,6 @@ Deno.serve(async (req: Request) => {
       p_execution_time_ms: null
     });
 
-    // Get the JWT from the Authorization header
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       await supabase.rpc('log_system_event', {
@@ -158,7 +155,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Verify the JWT and get user
     const token = authHeader.replace('Bearer ', '');
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
 
@@ -184,7 +180,6 @@ Deno.serve(async (req: Request) => {
 
     user = authUser;
 
-    // Check if user is system admin
     const isAdmin = await checkSystemAdmin(supabase, user.id);
     if (!isAdmin) {
       await supabase.rpc('log_system_event', {
@@ -206,7 +201,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Validate and parse request body
     const bodyValidation = await validateRequestBody(req);
     if (!bodyValidation.valid) {
       await supabase.rpc('log_system_event', {
@@ -230,7 +224,6 @@ Deno.serve(async (req: Request) => {
 
     requestData = bodyValidation.data;
 
-    // Log the admin action being attempted
     await supabase.rpc('log_system_event', {
       p_level: 'INFO',
       p_category: 'EDGE_FUNCTION',
@@ -248,13 +241,11 @@ Deno.serve(async (req: Request) => {
       p_execution_time_ms: null
     });
 
-    // Handle different actions
     switch (requestData.action) {
       case 'change_password': {
         const { targetUserId, newPassword } = requestData;
         const actionStartTime = Date.now();
 
-        // Validate inputs
         const uuidValidation = validateUUID(targetUserId);
         if (!uuidValidation.valid) {
           return new Response(
@@ -271,7 +262,6 @@ Deno.serve(async (req: Request) => {
           );
         }
 
-        // Update password using admin API
         const { error: pwError } = await supabase.auth.admin.updateUserById(
           targetUserId,
           { password: newPassword }
@@ -281,7 +271,6 @@ Deno.serve(async (req: Request) => {
           throw new Error(`Failed to update password: ${pwError.message}`);
         }
 
-        // Log to audit_logs
         await supabase.from('audit_logs').insert({
           user_id: user.id,
           action: 'change_user_password',
@@ -290,7 +279,6 @@ Deno.serve(async (req: Request) => {
           details: { method: 'admin_override', via: 'edge_function' }
         });
 
-        // Log to system_logs
         const actionTime = Date.now() - actionStartTime;
         await supabase.rpc('log_system_event', {
           p_level: 'INFO',
@@ -320,7 +308,6 @@ Deno.serve(async (req: Request) => {
         const { targetUserId } = requestData;
         const actionStartTime = Date.now();
 
-        // Check if user is soft deleted first
         const { data: profile } = await supabase
           .from('profiles')
           .select('deleted_at')
@@ -352,7 +339,6 @@ Deno.serve(async (req: Request) => {
           );
         }
 
-        // Log to audit_logs before deletion
         await supabase.from('audit_logs').insert({
           user_id: user.id,
           action: 'hard_delete_user',
@@ -361,14 +347,12 @@ Deno.serve(async (req: Request) => {
           details: { permanent: true, via: 'edge_function' }
         });
 
-        // Delete user (cascades to profiles and other tables)
         const { error: deleteError } = await supabase.auth.admin.deleteUser(targetUserId);
 
         if (deleteError) {
           throw new Error(`Failed to delete user: ${deleteError.message}`);
         }
 
-        // Log to system_logs
         const actionTime = Date.now() - actionStartTime;
         await supabase.rpc('log_system_event', {
           p_level: 'INFO',
@@ -398,7 +382,6 @@ Deno.serve(async (req: Request) => {
         const { targetUserId, newEmail } = requestData;
         const actionStartTime = Date.now();
 
-        // Update email using admin API
         const { error: emailError } = await supabase.auth.admin.updateUserById(
           targetUserId,
           { email: newEmail }
@@ -408,13 +391,11 @@ Deno.serve(async (req: Request) => {
           throw new Error(`Failed to update email: ${emailError.message}`);
         }
 
-        // Also update profile email
         await supabase
           .from('profiles')
           .update({ email: newEmail })
           .eq('id', targetUserId);
 
-        // Log to audit_logs
         await supabase.from('audit_logs').insert({
           user_id: user.id,
           action: 'update_user_email',
@@ -423,7 +404,6 @@ Deno.serve(async (req: Request) => {
           details: { new_email: newEmail, via: 'edge_function' }
         });
 
-        // Log to system_logs
         const actionTime = Date.now() - actionStartTime;
         await supabase.rpc('log_system_event', {
           p_level: 'INFO',
@@ -453,14 +433,12 @@ Deno.serve(async (req: Request) => {
         const { targetUserId } = requestData;
         const actionStartTime = Date.now();
 
-        // Sign out user from all devices using admin API
         const { error: logoutError } = await supabase.auth.admin.signOut(targetUserId);
 
         if (logoutError) {
           throw new Error(`Failed to force logout: ${logoutError.message}`);
         }
 
-        // Log to audit_logs
         await supabase.from('audit_logs').insert({
           user_id: user.id,
           action: 'force_logout_user',
@@ -469,7 +447,6 @@ Deno.serve(async (req: Request) => {
           details: { via: 'edge_function' }
         });
 
-        // Log to system_logs
         const actionTime = Date.now() - actionStartTime;
         await supabase.rpc('log_system_event', {
           p_level: 'INFO',
@@ -499,14 +476,28 @@ Deno.serve(async (req: Request) => {
         const { targetUserId, reason } = requestData;
         const actionStartTime = Date.now();
 
-        // Get all MFA factors for the user
+        const uuidValidation = validateUUID(targetUserId);
+        if (!uuidValidation.valid) {
+          return new Response(
+            JSON.stringify({ error: uuidValidation.error }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const reasonValidation = validateString(reason, 'Reason', INPUT_LIMITS.REASON);
+        if (!reasonValidation.valid) {
+          return new Response(
+            JSON.stringify({ error: reasonValidation.error }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         const { data: { factors }, error: factorsError } = await supabase.auth.admin.mfa.listFactors(targetUserId);
 
         if (factorsError) {
           throw new Error(`Failed to list MFA factors: ${factorsError.message}`);
         }
 
-        // Unenroll all factors
         if (factors && factors.length > 0) {
           for (const factor of factors) {
             const { error: unenrollError } = await supabase.auth.admin.mfa.deleteFactor(factor.id);
@@ -516,7 +507,6 @@ Deno.serve(async (req: Request) => {
           }
         }
 
-        // Update profile to disable MFA
         await supabase
           .from('profiles')
           .update({
@@ -526,13 +516,11 @@ Deno.serve(async (req: Request) => {
           })
           .eq('id', targetUserId);
 
-        // Delete all recovery codes
         await supabase
           .from('recovery_codes')
           .delete()
           .eq('user_id', targetUserId);
 
-        // Log to audit_logs
         await supabase.from('audit_logs').insert({
           user_id: user.id,
           action: 'admin_reset_mfa',
@@ -541,7 +529,6 @@ Deno.serve(async (req: Request) => {
           details: { reason, via: 'edge_function', factors_removed: factors?.length || 0 }
         });
 
-        // Log to system_logs
         const actionTime = Date.now() - actionStartTime;
         await supabase.rpc('log_system_event', {
           p_level: 'WARN',
@@ -596,7 +583,6 @@ Deno.serve(async (req: Request) => {
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     const stackTrace = error instanceof Error ? error.stack : null;
 
-    // Log error to system_logs
     await supabase.rpc('log_system_event', {
       p_level: 'ERROR',
       p_category: 'EDGE_FUNCTION',
