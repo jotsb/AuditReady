@@ -1,5 +1,13 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  validateUUID,
+  validateString,
+  validateRequestBody,
+  validateAmount,
+  validateDate,
+  INPUT_LIMITS
+} from "../_shared/validation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -48,8 +56,34 @@ Deno.serve(async (req: Request) => {
       throw new Error("OPENAI_API_KEY not configured");
     }
 
-    requestData = await req.json();
+    // Validate and parse request body
+    const bodyValidation = await validateRequestBody(req);
+    if (!bodyValidation.valid) {
+      return new Response(
+        JSON.stringify({ success: false, error: bodyValidation.error }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    requestData = bodyValidation.data;
     const { filePath, collectionId } = requestData;
+
+    // Validate inputs
+    const filePathValidation = validateString(filePath, 'filePath', 500, true);
+    if (!filePathValidation.valid) {
+      return new Response(
+        JSON.stringify({ success: false, error: filePathValidation.error }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const collectionIdValidation = validateUUID(collectionId);
+    if (!collectionIdValidation.valid) {
+      return new Response(
+        JSON.stringify({ success: false, error: collectionIdValidation.error }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Log edge function start
     await supabase.rpc('log_system_event', {
@@ -216,6 +250,61 @@ Deno.serve(async (req: Request) => {
 
     const extractedData = JSON.parse(jsonMatch[0]);
 
+    // Validate extracted data before returning
+    const validatedData: any = {};
+
+    // Validate vendor_name
+    if (extractedData.vendor_name) {
+      const vendorValidation = validateString(extractedData.vendor_name, 'vendor_name', INPUT_LIMITS.vendor_name, false);
+      validatedData.vendor_name = vendorValidation.valid ? vendorValidation.sanitized : null;
+    }
+
+    // Validate vendor_address
+    if (extractedData.vendor_address) {
+      const addressValidation = validateString(extractedData.vendor_address, 'vendor_address', INPUT_LIMITS.vendor_address, false);
+      validatedData.vendor_address = addressValidation.valid ? addressValidation.sanitized : null;
+    }
+
+    // Validate transaction_date
+    if (extractedData.transaction_date) {
+      const dateValidation = validateDate(extractedData.transaction_date);
+      validatedData.transaction_date = dateValidation.valid ? dateValidation.sanitized : null;
+    }
+
+    // Validate amounts
+    const amountFields = ['total_amount', 'subtotal', 'gst_amount', 'pst_amount'];
+    for (const field of amountFields) {
+      if (extractedData[field] !== null && extractedData[field] !== undefined) {
+        const amountValidation = validateAmount(extractedData[field], field);
+        validatedData[field] = amountValidation.valid ? parseFloat(amountValidation.sanitized!) : 0;
+      } else {
+        validatedData[field] = 0;
+      }
+    }
+
+    // Validate category
+    if (extractedData.category) {
+      const categoryValidation = validateString(extractedData.category, 'category', INPUT_LIMITS.category, false);
+      validatedData.category = categoryValidation.valid ? categoryValidation.sanitized : 'Miscellaneous';
+    } else {
+      validatedData.category = 'Miscellaneous';
+    }
+
+    // Validate payment_method
+    if (extractedData.payment_method) {
+      const paymentValidation = validateString(extractedData.payment_method, 'payment_method', INPUT_LIMITS.payment_method, false);
+      validatedData.payment_method = paymentValidation.valid ? paymentValidation.sanitized : 'Unknown';
+    } else {
+      validatedData.payment_method = 'Unknown';
+    }
+
+    // Pass through other optional fields (no validation needed for these low-risk fields)
+    validatedData.transaction_time = extractedData.transaction_time || null;
+    validatedData.gst_percent = extractedData.gst_percent || null;
+    validatedData.pst_percent = extractedData.pst_percent || null;
+    validatedData.card_last_digits = extractedData.card_last_digits || null;
+    validatedData.customer_name = extractedData.customer_name || null;
+
     const executionTime = Date.now() - startTime;
 
     // Log successful extraction
@@ -227,7 +316,7 @@ Deno.serve(async (req: Request) => {
         filePath: requestData?.filePath,
         collectionId: requestData?.collectionId,
         function: 'extract-receipt-data',
-        extractedVendor: extractedData.vendor_name
+        extractedVendor: validatedData.vendor_name
       },
       p_user_id: null,
       p_session_id: null,
@@ -238,7 +327,7 @@ Deno.serve(async (req: Request) => {
     });
 
     return new Response(
-      JSON.stringify({ success: true, data: extractedData }),
+      JSON.stringify({ success: true, data: validatedData }),
       {
         headers: {
           ...corsHeaders,

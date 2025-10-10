@@ -1,5 +1,12 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  validateEmail,
+  validateUUID,
+  validateString,
+  validateRequestBody,
+  INPUT_LIMITS
+} from "../_shared/validation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,8 +39,56 @@ Deno.serve(async (req: Request) => {
   let payload: InvitationPayload | null = null;
 
   try {
-    payload = await req.json();
+    // Validate and parse request body
+    const bodyValidation = await validateRequestBody(req);
+    if (!bodyValidation.valid) {
+      return new Response(
+        JSON.stringify({ error: bodyValidation.error }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    payload = bodyValidation.data;
     const { email, role, token, inviterName, businessName } = payload;
+
+    // Validate email
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) {
+      return new Response(
+        JSON.stringify({ error: emailValidation.error }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate token (UUID format)
+    const tokenValidation = validateUUID(token);
+    if (!tokenValidation.valid) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid invitation token format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate optional string fields
+    if (inviterName) {
+      const nameValidation = validateString(inviterName, 'inviterName', INPUT_LIMITS.full_name, false);
+      if (!nameValidation.valid) {
+        return new Response(
+          JSON.stringify({ error: nameValidation.error }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    if (businessName) {
+      const businessValidation = validateString(businessName, 'businessName', INPUT_LIMITS.business_name, false);
+      if (!businessValidation.valid) {
+        return new Response(
+          JSON.stringify({ error: businessValidation.error }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
 
     // Log function start
     await supabase.rpc('log_system_event', {
@@ -49,7 +104,8 @@ Deno.serve(async (req: Request) => {
       p_execution_time_ms: null
     });
 
-    if (!email || !token) {
+    // Email and token validation already done above, this check is now redundant
+    if (!emailValidation.sanitized || !tokenValidation.sanitized) {
       await supabase.rpc('log_system_event', {
         p_level: 'WARN',
         p_category: 'EDGE_FUNCTION',

@@ -8,6 +8,12 @@ import {
   validateRequestBody,
   INPUT_LIMITS
 } from "../_shared/validation.ts";
+import {
+  checkRateLimit,
+  createRateLimitResponse,
+  getIPAddress,
+  RATE_LIMITS
+} from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -95,6 +101,27 @@ Deno.serve(async (req: Request) => {
   let user: any = null;
 
   try {
+    // Rate limiting check
+    const ipAddress = getIPAddress(req);
+    const rateLimitResult = checkRateLimit(ipAddress, RATE_LIMITS.STANDARD);
+
+    if (!rateLimitResult.success) {
+      await supabase.rpc('log_system_event', {
+        p_level: 'WARN',
+        p_category: 'SECURITY',
+        p_message: 'Rate limit exceeded',
+        p_metadata: { ip_address: ipAddress, function: 'admin-user-management' },
+        p_user_id: null,
+        p_session_id: null,
+        p_ip_address: ipAddress,
+        p_user_agent: req.headers.get('user-agent'),
+        p_stack_trace: null,
+        p_execution_time_ms: null
+      });
+
+      return createRateLimitResponse(rateLimitResult, 'Too many admin requests. Please try again later.');
+    }
+
     // Log function start
     await supabase.rpc('log_system_event', {
       p_level: 'INFO',

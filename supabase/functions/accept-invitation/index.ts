@@ -1,5 +1,13 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  validateEmail,
+  validatePassword,
+  validateUUID,
+  validateString,
+  validateRequestBody,
+  INPUT_LIMITS
+} from "../_shared/validation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -174,13 +182,58 @@ Deno.serve(async (req: Request) => {
     }
 
     if (req.method === "POST") {
-      const requestData: InvitationRequest = await req.json();
+      // Validate and parse request body
+      const bodyValidation = await validateRequestBody(req);
+      if (!bodyValidation.valid) {
+        return new Response(
+          JSON.stringify({ error: bodyValidation.error }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const requestData: InvitationRequest = bodyValidation.data;
       await logToSystem('INFO', 'Processing POST request', {
         action: requestData.action
       });
 
       if (requestData.action === 'signup_and_accept') {
         const { token, email, password, fullName } = requestData;
+
+        // Validate token
+        const tokenValidation = validateUUID(token);
+        if (!tokenValidation.valid) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid token format' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Validate email
+        const emailValidation = validateEmail(email);
+        if (!emailValidation.valid) {
+          return new Response(
+            JSON.stringify({ error: emailValidation.error }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Validate password
+        const passwordValidation = validatePassword(password);
+        if (!passwordValidation.valid) {
+          return new Response(
+            JSON.stringify({ error: passwordValidation.error }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Validate full name
+        const nameValidation = validateString(fullName, 'fullName', INPUT_LIMITS.full_name, true);
+        if (!nameValidation.valid) {
+          return new Response(
+            JSON.stringify({ error: nameValidation.error }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
         await logToSystem('INFO', 'Processing signup_and_accept action', {
           email,
           full_name: fullName
