@@ -364,7 +364,13 @@ export function validateDate(dateString: string | null | undefined): ValidationR
     return { valid: false, error: 'Date is out of acceptable range' };
   }
 
-  return { valid: true, sanitized: date.toISOString() };
+  // Return in YYYY-MM-DD format for HTML date inputs
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const formattedDate = `${year}-${month}-${day}`;
+
+  return { valid: true, sanitized: formattedDate };
 }
 
 // ============================================================================

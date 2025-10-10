@@ -257,18 +257,24 @@ Deno.serve(async (req: Request) => {
     if (extractedData.vendor_name) {
       const vendorValidation = validateString(extractedData.vendor_name, 'vendor_name', INPUT_LIMITS.vendor_name, false);
       validatedData.vendor_name = vendorValidation.valid ? vendorValidation.sanitized : null;
+    } else {
+      validatedData.vendor_name = null;
     }
 
     // Validate vendor_address
     if (extractedData.vendor_address) {
       const addressValidation = validateString(extractedData.vendor_address, 'vendor_address', INPUT_LIMITS.vendor_address, false);
       validatedData.vendor_address = addressValidation.valid ? addressValidation.sanitized : null;
+    } else {
+      validatedData.vendor_address = null;
     }
 
     // Validate transaction_date
     if (extractedData.transaction_date) {
       const dateValidation = validateDate(extractedData.transaction_date);
       validatedData.transaction_date = dateValidation.valid ? dateValidation.sanitized : null;
+    } else {
+      validatedData.transaction_date = null;
     }
 
     // Validate amounts
