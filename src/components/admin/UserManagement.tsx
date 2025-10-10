@@ -296,6 +296,7 @@ export function UserManagement() {
     try {
       setActionLoading(true);
       setActionError('');
+      console.log('Resetting MFA for user:', selectedUser.id, 'Type:', typeof selectedUser.id);
       await resetUserMFA(selectedUser.id, mfaResetReason, mfaResetPassword, currentUser!.id);
       setActionSuccess('User MFA reset successfully');
       setShowMFAResetModal(false);

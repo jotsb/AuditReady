@@ -648,6 +648,12 @@ export async function resetUserMFA(
     throw new Error('Reason is required for MFA reset');
   }
 
+  // Validate UUID format
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(targetUserId)) {
+    throw new Error('Invalid user ID format');
+  }
+
   const { data: adminProfile } = await supabase
     .from('profiles')
     .select('email')
