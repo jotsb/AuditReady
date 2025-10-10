@@ -1084,6 +1084,11 @@
 ## Other Improvements & Optimizations
 
 ### User Experience
+- [x] ✅ **Centered Pagination Controls** (Completed 2025-10-10)
+  - Pagination controls centered horizontally on System Logs and Audit Logs pages
+  - Page counter moved below navigation buttons for cleaner layout
+  - Improved usability and visual balance
+  - Location: `src/pages/SystemLogsPage.tsx`, `src/pages/EnhancedAuditLogsPage.tsx`
 - [ ] 🔴 Better user-facing error messages
 - [ ] 🟡 Toast notifications for success/error states
 - [ ] 🟡 Error boundary components

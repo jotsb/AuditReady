@@ -75,6 +75,14 @@ Comprehensive security hardening achieving 85% security coverage with multiple d
   - validateDate() now returns YYYY-MM-DD format instead of ISO
   - Added null handling for missing extracted data
   - HTML date inputs now receive correct format
+- **System Logs Pagination** - Fixed unclickable pagination controls
+  - Restructured container layout with flexbox to prevent overlay issues
+  - Added pointer-events-auto to ensure buttons receive clicks
+  - Proper separation between scrollable content and pagination footer
+- **Centered Pagination Controls** - Improved UI/UX for log navigation
+  - Pagination buttons now centered horizontally on System Logs and Audit Logs pages
+  - Page counter text moved below navigation buttons for cleaner layout
+  - Better visual balance and easier navigation
 
 ### 📦 Dependencies Added
 - `isomorphic-dompurify` (v2.28.0) - XSS protection library
