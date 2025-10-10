@@ -288,20 +288,19 @@ export function UserManagement() {
   };
 
   const handleResetMFA = async () => {
-    if (!selectedUser || !mfaResetReason.trim() || !mfaResetPassword) {
-      setActionError('Please enter both password and reason');
+    if (!selectedUser || !mfaResetReason.trim()) {
+      setActionError('Please enter a reason for MFA reset');
       return;
     }
 
     try {
       setActionLoading(true);
       setActionError('');
-      console.log('Resetting MFA for user:', selectedUser.id, 'Type:', typeof selectedUser.id);
-      await resetUserMFA(selectedUser.id, mfaResetReason, mfaResetPassword, currentUser!.id);
+      // Password parameter is no longer used to avoid session conflicts
+      await resetUserMFA(selectedUser.id, mfaResetReason, '', currentUser!.id);
       setActionSuccess('User MFA reset successfully');
       setShowMFAResetModal(false);
       setMfaResetReason('');
-      setMfaResetPassword('');
       await loadUsers();
       setTimeout(() => setActionSuccess(''), 3000);
     } catch (err: any) {
@@ -767,15 +766,10 @@ export function UserManagement() {
               </div>
             )}
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Your Admin Password</label>
-              <input
-                type="password"
-                value={mfaResetPassword}
-                onChange={(e) => setMfaResetPassword(e.target.value)}
-                placeholder="Enter your password to confirm"
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"
-              />
+            <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+              <p className="text-sm text-orange-800 dark:text-orange-200">
+                <strong>Warning:</strong> This is a critical security action. You are resetting MFA for another user without password confirmation. All actions are logged for audit purposes.
+              </p>
             </div>
 
             <textarea
@@ -788,13 +782,13 @@ export function UserManagement() {
             <div className="flex gap-3">
               <button
                 onClick={handleResetMFA}
-                disabled={actionLoading || !mfaResetReason.trim() || !mfaResetPassword}
+                disabled={actionLoading || !mfaResetReason.trim()}
                 className="flex-1 bg-orange-600 text-white py-2 rounded-lg hover:bg-orange-700 disabled:opacity-50"
               >
                 {actionLoading ? 'Resetting...' : 'Reset MFA'}
               </button>
               <button
-                onClick={() => { setShowMFAResetModal(false); setMfaResetReason(''); setMfaResetPassword(''); setActionError(''); }}
+                onClick={() => { setShowMFAResetModal(false); setMfaResetReason(''); setActionError(''); }}
                 className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400"
                 disabled={actionLoading}
               >
