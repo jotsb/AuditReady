@@ -476,6 +476,15 @@ export function UserManagement() {
                         >
                           <Key className="w-5 h-5" />
                         </button>
+                        {user.mfa_enabled && (
+                          <button
+                            onClick={() => { setSelectedUser(user); setShowMFAResetModal(true); }}
+                            className="text-orange-600 hover:text-orange-700"
+                            title="Reset MFA (Emergency)"
+                          >
+                            <ShieldOff className="w-5 h-5" />
+                          </button>
+                        )}
                         <button
                           onClick={() => { setSelectedUser(user); setShowDeleteModal(true); }}
                           className="text-red-600 hover:text-red-700"
