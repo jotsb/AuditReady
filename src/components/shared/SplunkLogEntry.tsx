@@ -517,23 +517,48 @@ export function SplunkLogEntry({ log }: LogEntryProps) {
 
             {/* Before/After Comparison */}
             {(auditLog.snapshot_before || auditLog.snapshot_after) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {auditLog.snapshot_before && (
-                  <div>
-                    <div className="text-xs font-medium text-slate-500 dark:text-gray-500 uppercase mb-1">Before</div>
-                    <pre className="text-xs bg-slate-100 dark:bg-gray-900 p-2 rounded overflow-x-auto text-slate-700 dark:text-gray-300 font-mono max-h-64">
-                      {JSON.stringify(auditLog.snapshot_before, null, 2)}
-                    </pre>
+              <div className="mt-2 border-t border-slate-200 dark:border-gray-700 pt-3">
+                <div className="text-sm font-semibold text-slate-700 dark:text-gray-300 mb-2">Data Changes</div>
+                <div className="border border-slate-300 dark:border-gray-600 rounded-lg overflow-hidden">
+                  {/* Header */}
+                  <div className="grid grid-cols-2 bg-slate-100 dark:bg-gray-700 border-b border-slate-300 dark:border-gray-600">
+                    <div className="px-3 py-2 text-xs font-semibold text-orange-600 dark:text-orange-400 uppercase border-r border-slate-300 dark:border-gray-600 flex items-center">
+                      <span className="mr-2">◀</span> Before
+                    </div>
+                    <div className="px-3 py-2 text-xs font-semibold text-green-600 dark:text-green-400 uppercase flex items-center">
+                      <span className="mr-2">▶</span> After
+                    </div>
                   </div>
-                )}
-                {auditLog.snapshot_after && (
-                  <div>
-                    <div className="text-xs font-medium text-slate-500 dark:text-gray-500 uppercase mb-1">After</div>
-                    <pre className="text-xs bg-slate-100 dark:bg-gray-900 p-2 rounded overflow-x-auto text-slate-700 dark:text-gray-300 font-mono max-h-64">
-                      {JSON.stringify(auditLog.snapshot_after, null, 2)}
-                    </pre>
+
+                  {/* Content - Single Scrollable View */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 max-h-96 overflow-y-auto bg-white dark:bg-gray-800">
+                    {/* Before Column */}
+                    <div className="border-r border-slate-300 dark:border-gray-600 bg-orange-50/30 dark:bg-orange-900/10">
+                      {auditLog.snapshot_before ? (
+                        <pre className="text-xs p-3 text-slate-700 dark:text-gray-300 font-mono whitespace-pre-wrap break-words">
+                          {JSON.stringify(auditLog.snapshot_before, null, 2)}
+                        </pre>
+                      ) : (
+                        <div className="p-3 text-xs text-slate-500 dark:text-gray-500 italic">
+                          No data
+                        </div>
+                      )}
+                    </div>
+
+                    {/* After Column */}
+                    <div className="bg-green-50/30 dark:bg-green-900/10">
+                      {auditLog.snapshot_after ? (
+                        <pre className="text-xs p-3 text-slate-700 dark:text-gray-300 font-mono whitespace-pre-wrap break-words">
+                          {JSON.stringify(auditLog.snapshot_after, null, 2)}
+                        </pre>
+                      ) : (
+                        <div className="p-3 text-xs text-slate-500 dark:text-gray-500 italic">
+                          No data
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
             )}
           </div>
