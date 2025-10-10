@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ChevronDown, ChevronRight, Clock, User, Mail, Code, FileText, Zap, Database } from 'lucide-react';
 
 type AuditLog = {
@@ -46,6 +46,30 @@ export function SplunkLogEntry({ log }: LogEntryProps) {
 
   const isAuditLog = log.type === 'audit';
   const isSystemLog = log.type === 'system';
+
+  // Calculate differences between before and after snapshots
+  const differences = useMemo(() => {
+    if (!isAuditLog) return new Set<string>();
+    const auditLog = log as AuditLog;
+    if (!auditLog.snapshot_before || !auditLog.snapshot_after) return new Set<string>();
+
+    const diffs = new Set<string>();
+    const before = auditLog.snapshot_before;
+    const after = auditLog.snapshot_after;
+
+    // Compare all keys from both objects
+    const allKeys = new Set([...Object.keys(before), ...Object.keys(after)]);
+
+    allKeys.forEach(key => {
+      const beforeValue = JSON.stringify(before[key]);
+      const afterValue = JSON.stringify(after[key]);
+      if (beforeValue !== afterValue) {
+        diffs.add(key);
+      }
+    });
+
+    return diffs;
+  }, [log, isAuditLog]);
 
   const getLevelColor = (level: string) => {
     switch (level) {
@@ -104,6 +128,39 @@ export function SplunkLogEntry({ log }: LogEntryProps) {
       second: '2-digit',
       hour12: false
     });
+  };
+
+  // Render JSON with highlighted differences
+  const renderHighlightedJSON = (obj: any, type: 'before' | 'after') => {
+    if (!obj) return null;
+
+    const lines: JSX.Element[] = [];
+    const jsonString = JSON.stringify(obj, null, 2);
+    const jsonLines = jsonString.split('\n');
+
+    jsonLines.forEach((line, index) => {
+      // Extract the key name from the line
+      const keyMatch = line.match(/"([^"]+)":/);
+      const key = keyMatch ? keyMatch[1] : null;
+      const isDifferent = key && differences.has(key);
+
+      lines.push(
+        <div
+          key={index}
+          className={`${
+            isDifferent
+              ? type === 'before'
+                ? 'bg-red-100 dark:bg-red-900/30 text-red-900 dark:text-red-200 font-semibold'
+                : 'bg-green-100 dark:bg-green-900/30 text-green-900 dark:text-green-200 font-semibold'
+              : ''
+          }`}
+        >
+          {line}
+        </div>
+      );
+    });
+
+    return <>{lines}</>;
   };
 
   const renderSystemLogRow = (systemLog: SystemLog) => {
@@ -518,7 +575,22 @@ export function SplunkLogEntry({ log }: LogEntryProps) {
             {/* Before/After Comparison */}
             {(auditLog.snapshot_before || auditLog.snapshot_after) && (
               <div className="mt-2 border-t border-slate-200 dark:border-gray-700 pt-3">
-                <div className="text-sm font-semibold text-slate-700 dark:text-gray-300 mb-2">Data Changes</div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm font-semibold text-slate-700 dark:text-gray-300">Data Changes</div>
+                  {differences.size > 0 && (
+                    <div className="flex items-center gap-3 text-xs">
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded"></div>
+                        <span className="text-slate-600 dark:text-gray-400">Changed</span>
+                      </div>
+                      <span className="text-slate-400 dark:text-gray-600">|</span>
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded"></div>
+                        <span className="text-slate-600 dark:text-gray-400">New Value</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <div className="border border-slate-300 dark:border-gray-600 rounded-lg overflow-hidden">
                   {/* Header */}
                   <div className="grid grid-cols-2 bg-slate-100 dark:bg-gray-700 border-b border-slate-300 dark:border-gray-600">
@@ -533,10 +605,10 @@ export function SplunkLogEntry({ log }: LogEntryProps) {
                   {/* Content - Single Scrollable View */}
                   <div className="grid grid-cols-1 md:grid-cols-2 max-h-96 overflow-y-auto bg-white dark:bg-gray-800">
                     {/* Before Column */}
-                    <div className="border-r border-slate-300 dark:border-gray-600 bg-orange-50/30 dark:bg-orange-900/10">
+                    <div className="border-r border-slate-300 dark:border-gray-600 bg-orange-50/20 dark:bg-orange-900/5">
                       {auditLog.snapshot_before ? (
-                        <pre className="text-xs p-3 text-slate-700 dark:text-gray-300 font-mono whitespace-pre-wrap break-words">
-                          {JSON.stringify(auditLog.snapshot_before, null, 2)}
+                        <pre className="text-xs p-3 text-slate-700 dark:text-gray-300 font-mono">
+                          {renderHighlightedJSON(auditLog.snapshot_before, 'before')}
                         </pre>
                       ) : (
                         <div className="p-3 text-xs text-slate-500 dark:text-gray-500 italic">
@@ -546,10 +618,10 @@ export function SplunkLogEntry({ log }: LogEntryProps) {
                     </div>
 
                     {/* After Column */}
-                    <div className="bg-green-50/30 dark:bg-green-900/10">
+                    <div className="bg-green-50/20 dark:bg-green-900/5">
                       {auditLog.snapshot_after ? (
-                        <pre className="text-xs p-3 text-slate-700 dark:text-gray-300 font-mono whitespace-pre-wrap break-words">
-                          {JSON.stringify(auditLog.snapshot_after, null, 2)}
+                        <pre className="text-xs p-3 text-slate-700 dark:text-gray-300 font-mono">
+                          {renderHighlightedJSON(auditLog.snapshot_after, 'after')}
                         </pre>
                       ) : (
                         <div className="p-3 text-xs text-slate-500 dark:text-gray-500 italic">
