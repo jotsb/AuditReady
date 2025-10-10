@@ -120,9 +120,9 @@ export function SplunkLogEntry({ log }: LogEntryProps) {
         }`}
       >
         {/* Collapsed Row - Desktop */}
-        <div className="hidden lg:grid lg:grid-cols-12 gap-3 px-4 py-2.5 items-center text-sm">
+        <div className="hidden lg:grid lg:grid-cols-[auto_minmax(140px,1fr)_auto_auto_minmax(200px,2fr)_minmax(100px,1fr)_auto] gap-2 px-4 py-2.5 items-center text-sm">
           {/* Expand Icon */}
-          <div className="flex items-center justify-center">
+          <div className="flex items-center justify-center w-6">
             {isExpanded ? (
               <ChevronDown size={16} className="text-slate-500 dark:text-gray-400 flex-shrink-0" />
             ) : (
@@ -131,36 +131,36 @@ export function SplunkLogEntry({ log }: LogEntryProps) {
           </div>
 
           {/* Timestamp */}
-          <div className="col-span-2 text-slate-600 dark:text-gray-400 font-mono text-xs whitespace-nowrap overflow-hidden text-ellipsis">
+          <div className="text-slate-600 dark:text-gray-400 font-mono text-xs whitespace-nowrap overflow-hidden text-ellipsis">
             {formatTimestamp(systemLog.timestamp)}
           </div>
 
           {/* Level */}
-          <div className="flex items-center">
+          <div className="flex items-center min-w-[60px]">
             <span className={`font-semibold text-xs whitespace-nowrap ${getLevelColor(systemLog.level)}`}>
               {systemLog.level}
             </span>
           </div>
 
           {/* Category */}
-          <div className="flex items-center">
+          <div className="flex items-center min-w-[100px]">
             <span className={`text-xs font-medium whitespace-nowrap ${getCategoryColor(systemLog.category)}`}>
               {systemLog.category}
             </span>
           </div>
 
           {/* Message */}
-          <div className="col-span-4 text-slate-700 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap pr-2">
+          <div className="text-slate-700 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">
             {systemLog.message}
           </div>
 
           {/* User */}
-          <div className="col-span-2 text-slate-600 dark:text-gray-400 text-xs overflow-hidden text-ellipsis whitespace-nowrap">
+          <div className="text-slate-600 dark:text-gray-400 text-xs overflow-hidden text-ellipsis whitespace-nowrap">
             {systemLog.profiles?.full_name || 'System'}
           </div>
 
           {/* Duration */}
-          <div className="text-slate-500 dark:text-gray-500 text-xs text-right whitespace-nowrap">
+          <div className="text-slate-500 dark:text-gray-500 text-xs text-right whitespace-nowrap min-w-[60px]">
             {systemLog.execution_time_ms ? `${systemLog.execution_time_ms}ms` : '-'}
           </div>
         </div>
@@ -355,9 +355,9 @@ export function SplunkLogEntry({ log }: LogEntryProps) {
         }`}
       >
         {/* Collapsed Row - Desktop */}
-        <div className="hidden lg:grid lg:grid-cols-12 gap-3 px-4 py-2.5 items-center text-sm">
+        <div className="hidden lg:grid lg:grid-cols-[auto_minmax(140px,1fr)_auto_minmax(120px,1fr)_minmax(100px,1fr)_minmax(120px,1.5fr)_auto] gap-2 px-4 py-2.5 items-center text-sm">
           {/* Expand Icon */}
-          <div className="flex items-center justify-center">
+          <div className="flex items-center justify-center w-6">
             {isExpanded ? (
               <ChevronDown size={16} className="text-slate-500 dark:text-gray-400 flex-shrink-0" />
             ) : (
@@ -366,34 +366,34 @@ export function SplunkLogEntry({ log }: LogEntryProps) {
           </div>
 
           {/* Timestamp */}
-          <div className="col-span-2 text-slate-600 dark:text-gray-400 font-mono text-xs whitespace-nowrap overflow-hidden text-ellipsis">
+          <div className="text-slate-600 dark:text-gray-400 font-mono text-xs whitespace-nowrap overflow-hidden text-ellipsis">
             {formatTimestamp(auditLog.created_at)}
           </div>
 
           {/* Status */}
-          <div className="flex items-center">
+          <div className="flex items-center min-w-[70px]">
             <span className={`font-semibold uppercase text-xs whitespace-nowrap ${getStatusColor(auditLog.status)}`}>
               {auditLog.status}
             </span>
           </div>
 
           {/* Action */}
-          <div className="col-span-2 font-medium text-slate-700 dark:text-gray-300 text-xs overflow-hidden text-ellipsis whitespace-nowrap">
+          <div className="font-medium text-slate-700 dark:text-gray-300 text-xs overflow-hidden text-ellipsis whitespace-nowrap">
             {auditLog.action.replace(/_/g, ' ').toUpperCase()}
           </div>
 
           {/* Resource Type */}
-          <div className="col-span-2 text-slate-600 dark:text-gray-400 text-xs overflow-hidden text-ellipsis whitespace-nowrap">
+          <div className="text-slate-600 dark:text-gray-400 text-xs overflow-hidden text-ellipsis whitespace-nowrap">
             {auditLog.resource_type}
           </div>
 
           {/* User */}
-          <div className="col-span-3 text-slate-600 dark:text-gray-400 text-xs overflow-hidden text-ellipsis whitespace-nowrap">
+          <div className="text-slate-600 dark:text-gray-400 text-xs overflow-hidden text-ellipsis whitespace-nowrap">
             {auditLog.profiles?.full_name || 'System'}
           </div>
 
           {/* IP */}
-          <div className="text-slate-500 dark:text-gray-500 text-xs font-mono whitespace-nowrap">
+          <div className="text-slate-500 dark:text-gray-500 text-xs font-mono whitespace-nowrap min-w-[60px]">
             {auditLog.ip_address?.split('.').slice(0, 2).join('.') || '-'}
           </div>
         </div>

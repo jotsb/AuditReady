@@ -408,13 +408,13 @@ export function EnhancedAuditLogsPage() {
             ) : (
               <div className="bg-white dark:bg-gray-800">
                 {/* Header Row - Desktop Only */}
-                <div className="hidden lg:grid lg:grid-cols-12 gap-3 px-4 py-2 bg-slate-100 dark:bg-gray-700 border-b border-slate-300 dark:border-gray-600 text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase sticky top-0 z-10">
-                  <div className="flex items-center justify-center"></div>
+                <div className="hidden lg:grid lg:grid-cols-[auto_minmax(140px,1fr)_auto_minmax(120px,1fr)_minmax(100px,1fr)_minmax(120px,1.5fr)_auto] gap-2 px-4 py-2 bg-slate-100 dark:bg-gray-700 border-b border-slate-300 dark:border-gray-600 text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase sticky top-0 z-10">
+                  <div className="flex items-center justify-center w-6"></div>
                   <div className="col-span-2">Time</div>
                   <div className="">Status</div>
-                  <div className="col-span-2">Action</div>
-                  <div className="col-span-2">Resource</div>
-                  <div className="col-span-3">User</div>
+                  <div className="">Action</div>
+                  <div className="">Resource</div>
+                  <div className="">User</div>
                   <div className="">IP</div>
                 </div>
 

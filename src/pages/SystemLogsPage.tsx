@@ -432,14 +432,14 @@ export function SystemLogsPage() {
             ) : (
               <div className="bg-white dark:bg-gray-800">
                 {/* Header Row - Desktop Only */}
-                <div className="hidden lg:grid lg:grid-cols-12 gap-3 px-4 py-2 bg-slate-100 dark:bg-gray-700 border-b border-slate-300 dark:border-gray-600 text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase sticky top-0 z-10">
-                  <div className="flex items-center justify-center"></div>
-                  <div className="col-span-2">Time</div>
-                  <div>Level</div>
-                  <div>Category</div>
-                  <div className="col-span-4">Message</div>
-                  <div className="col-span-2">User</div>
-                  <div className="text-right">Duration</div>
+                <div className="hidden lg:grid lg:grid-cols-[auto_minmax(140px,1fr)_auto_auto_minmax(200px,2fr)_minmax(100px,1fr)_auto] gap-2 px-4 py-2 bg-slate-100 dark:bg-gray-700 border-b border-slate-300 dark:border-gray-600 text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase sticky top-0 z-10">
+                  <div className="flex items-center justify-center w-6"></div>
+                  <div>Time</div>
+                  <div className="min-w-[60px]">Level</div>
+                  <div className="min-w-[100px]">Category</div>
+                  <div>Message</div>
+                  <div>User</div>
+                  <div className="text-right min-w-[60px]">Duration</div>
                 </div>
 
                 {/* Log Rows */}
