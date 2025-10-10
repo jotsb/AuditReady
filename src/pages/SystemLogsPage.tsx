@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Database, Filter, Search, Download, AlertCircle, RefreshCw } from 'lucide-react';
-import { LogEntry } from '../components/shared/LogEntry';
+import { SplunkLogEntry } from '../components/shared/SplunkLogEntry';
 import { logger } from '../lib/logger';
 
 interface SystemLog {
@@ -47,10 +47,6 @@ export function SystemLogsPage() {
 
   useEffect(() => {
     loadSystemLogs();
-  }, []);
-
-  useEffect(() => {
-    loadSystemLogs();
   }, [currentPage]);
 
   useEffect(() => {
@@ -67,6 +63,10 @@ export function SystemLogsPage() {
 
   useEffect(() => {
     applyFilters();
+    // Reset to first page when filters change
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
   }, [logs, searchTerm, filterLevel, filterCategory, filterUserId, filterSessionId, startDate, endDate]);
 
   const loadSystemLogs = async (silent = false) => {
@@ -430,9 +430,23 @@ export function SystemLogsPage() {
                 </p>
               </div>
             ) : (
-              filteredLogs.map((log) => (
-                <LogEntry key={log.id} log={{ ...log, type: 'system' as const }} />
-              ))
+              <div className="bg-white dark:bg-gray-800">
+                {/* Header Row */}
+                <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-slate-100 dark:bg-gray-700 border-b border-slate-300 dark:border-gray-600 text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase">
+                  <div className="col-span-1"></div>
+                  <div className="col-span-2">Time</div>
+                  <div className="col-span-1">Level</div>
+                  <div className="col-span-1">Category</div>
+                  <div className="col-span-4">Message</div>
+                  <div className="col-span-2">User</div>
+                  <div className="col-span-1 text-right">Duration</div>
+                </div>
+
+                {/* Log Rows */}
+                {filteredLogs.map((log) => (
+                  <SplunkLogEntry key={log.id} log={{ ...log, type: 'system' as const }} />
+                ))}
+              </div>
             )}
           </div>
 
@@ -468,7 +482,7 @@ export function SystemLogsPage() {
                             className={`px-3 py-2 text-sm font-medium rounded-lg transition ${
                               currentPage === page
                                 ? 'bg-blue-600 text-white'
-                                : 'text-slate-700 dark:text-gray-300 bg-white border border-slate-300 dark:border-gray-600 hover:bg-slate-50'
+                                : 'text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-700'
                             }`}
                           >
                             {page}
