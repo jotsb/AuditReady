@@ -1,6 +1,6 @@
 # AuditReady - TODO & Implementation Status
 
-**Last Updated:** 2025-10-10 (Advanced Filtering Update)
+**Last Updated:** 2025-10-11 (Business Export System)
 **Priority Legend:** 🚨 Critical | 🔴 High | 🟡 Medium | 🟢 Nice to Have | ✅ Completed
 
 ---
@@ -1379,6 +1379,62 @@
 - ⏳ Advanced features and integrations (not started)
 
 **Recent Major Updates (2025-10-11):**
+
+**SESSION 8: Business Export System - COMPLETE**
+1. **Complete Async Business Export System**: Full data export with background processing
+   - Export complete business data as ZIP archive
+   - Background processing with job status tracking
+   - Real-time status updates (auto-refresh every 5 seconds)
+   - Export button in Settings > Businesses & Collections tab
+   - Download button shows file size and expiration
+   - One-click download of ZIP file
+   - Export package includes: business_data.json, receipts/ folder, CSV files per collection
+   - Background processing: pending → processing → completed/failed
+   - Progress tracking with file size and receipt count
+   - Automatic cleanup after 7 days
+   - Permission-based: Only owners/managers can export (members cannot see button)
+   - Complete audit logging for all exports
+   - Components: `ExportJobsManager.tsx`, enhanced `BusinessCollectionManagement.tsx`
+   - Edge Function: `process-export-job` - Async ZIP creation and upload
+   - Database: `export_jobs` table with status tracking
+   - Migration: `create_export_jobs_table.sql`, `allow_zip_files_in_storage.sql`
+
+2. **Email Notifications (Partial)**: Beautiful email template implemented but delivery issues
+   - Email template with export details and download link
+   - Export summary (receipts count, images, file size)
+   - 7-day expiration warning
+   - ⚠️ **Known Issue:** Email delivery not working for Microsoft/Outlook
+     - Emails to @hotmail.com and @hotmail.ca not being delivered
+     - Root cause: Resend using development domain (onboarding@resend.dev)
+     - Microsoft/Outlook blocks emails from development domains
+     - Solution required: Configure custom domain in Resend with SPF/DKIM/DMARC
+     - Workaround: Users can access exports directly from Settings page
+   - Emails work for Gmail and other providers
+   - Complete audit trail maintained regardless of email delivery
+
+3. **Bug Fixes**:
+   - Fixed: Members could start exports (now restricted to owners/managers)
+   - Fixed: ZIP uploads failing due to MIME type restrictions
+   - Fixed: Stuck export jobs cleaned up (marked as failed)
+   - Fixed: Export permissions properly enforced in UI and database
+
+4. **Storage Enhancements**:
+   - Updated receipts bucket to allow ZIP files
+   - Added MIME types: application/zip, application/x-zip-compressed
+   - Increased file size limit to 50MB
+   - Storage policies for exports folder
+   - Service role can upload exports
+   - Users can download their business exports
+
+**Impact:**
+- Business Management: Enhanced with complete data export capability
+- Data Portability: GDPR-compliant business data export
+- User Experience: Simple one-click export and download workflow
+- Use Cases: Data backup, GDPR compliance, business migration, audit & compliance, tax preparation
+
+**Known Issues:**
+- Email notifications not working for Microsoft/Outlook accounts (hotmail.com, hotmail.ca)
+- Requires custom domain configuration in Resend (not yet implemented)
 
 **SESSION 7: MFA Admin Reset Fix - COMPLETE**
 1. **Fixed Admin MFA Reset Functionality**: Resolved auth-js API issues

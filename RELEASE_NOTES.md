@@ -4,6 +4,134 @@
 
 ---
 
+## 📦 Version 0.6.1 - "Async Business Export System" (2025-10-11)
+
+### 🎯 Major Features
+
+#### **Complete Business Export System with Background Processing**
+Full asynchronous export system for business data with email notifications.
+
+**Export Features**
+- Export complete business data as ZIP archive
+- Background processing (1-5 minutes for large datasets)
+- Real-time status updates with auto-refresh (polls every 5 seconds)
+- Download button appears automatically when ready
+- Shows file size and expiration date (7 days)
+- One-click download of ZIP file
+- Export button in Settings > Businesses & Collections tab
+
+**Export Package Contents**
+- `business_data.json` - Complete business metadata (business info, members, collections)
+- `receipts/` folder - All receipt images organized by ID
+- Collection folders with CSV files - Receipts organized by collection
+- Complete audit trail with export metadata
+
+**Background Processing**
+- Async Edge Function processing (non-blocking)
+- Job status tracking: pending → processing → completed/failed
+- Progress tracking with file size and receipt count
+- Error handling with detailed error messages
+- Automatic cleanup of old exports after 7 days
+
+**Email Notifications** ⚠️
+- Beautiful email template with export details
+- Direct link to Settings page for download
+- Export summary (receipts, images, file size)
+- Expiration warning (7 days)
+- **NOTE:** Email delivery not fully functional
+  - Microsoft/Outlook emails (hotmail.com, hotmail.ca) not being delivered
+  - Issue: Resend using development domain (`onboarding@resend.dev`)
+  - Solution required: Configure custom domain with SPF/DKIM/DMARC records
+  - Workaround: Users can access exports directly from Settings page
+
+**UI/UX**
+- Export button shows under each business card
+- Button states: "Export Data" → "Processing..." → "Download (X.X MB)"
+- Loading spinner during processing
+- Success message: "Preparing export... You'll receive an email when ready."
+- Failed exports show error message
+- Green download button when ready
+- File size displayed on download button
+
+**Permissions & Security**
+- Only owners and managers can export business data
+- Members cannot see export button (permission-based UI)
+- RLS policies enforce data access rules
+- Complete audit logging for all exports
+- Service role key for storage operations
+
+### 📦 New Components
+- `ExportJobsManager.tsx` - Export UI with download functionality
+- Enhanced `BusinessCollectionManagement.tsx` - Integrated export button
+
+### 🛠️ New Services & Functions
+- `process-export-job` Edge Function - Async export processing
+  - Fetches all business data (receipts, images, collections, members)
+  - Creates ZIP with JSON, CSVs, and images
+  - Uploads to Supabase Storage
+  - Sends email notification via Resend
+  - Complete error handling and logging
+
+### 🗄️ Database Changes
+**Migration:** `create_export_jobs_table.sql`
+- New table: `export_jobs`
+  - Tracks export job status and metadata
+  - Fields: id, business_id, requested_by, status, file_path, file_size_bytes, progress_percent, error_message, metadata, created_at, started_at, completed_at, expires_at
+  - Status enum: pending, processing, completed, failed
+  - Automatic expiration after 7 days
+
+**Migration:** `allow_zip_files_in_storage.sql`
+- Updated receipts bucket to allow ZIP files
+- Added MIME types: application/zip, application/x-zip-compressed
+- Increased file size limit to 50MB
+- Storage policies for exports folder
+  - Users can download their business exports
+  - Service role can upload exports
+
+**RLS Policies:**
+- Users can create export jobs for their businesses (owners/managers only)
+- Users can view export jobs for businesses they're members of
+- System admins can view all export jobs
+- Service role can update export jobs
+
+### 🐛 Bug Fixes
+- **Fixed:** Members could start exports (now restricted to owners/managers)
+- **Fixed:** ZIP uploads failing due to MIME type restrictions
+- **Fixed:** Stuck export jobs cleaned up (marked as failed)
+- **Fixed:** Export permissions properly enforced in UI
+
+### 🔒 Security & Logging
+- Permission checks at UI and database level
+- Export operations logged to audit_logs
+- Complete audit trail for compliance
+- RLS policies enforce access control
+- Service role used for background processing
+
+### ⚠️ Known Issues
+- **Email Notifications Not Working for Microsoft/Outlook**
+  - Emails to @hotmail.com and @hotmail.ca not being delivered
+  - Root cause: Resend using development domain (onboarding@resend.dev)
+  - Microsoft/Outlook has strict spam filters blocking development domains
+  - Required fix: Configure custom domain in Resend with proper DNS records (SPF, DKIM, DMARC)
+  - Temporary workaround: Users can access exports from Settings > Businesses tab (download button appears automatically)
+  - Audit logs still track all export operations
+
+### 📊 Impact
+- Business Management: Enhanced with complete data export
+- Data Portability: GDPR-compliant business data export
+- User Experience: Simple one-click export and download
+- Bundle Size: 341.47 KB gzipped (+0.05 KB for export functionality)
+
+### 🔍 Use Cases Enabled
+1. **Data Backup** - Export complete business data for safekeeping
+2. **GDPR Compliance** - Users can export and download their data
+3. **Business Migration** - Export data for migration to other systems
+4. **Audit & Compliance** - Complete data export with images and metadata
+5. **Tax Preparation** - Export all receipts and CSVs for accountants
+6. **Data Analysis** - Export data for external analysis tools
+
+---
+
 ## 🏢 Version 0.6.0 - "Business Management Phase 2" (2025-10-11)
 
 ### 🎯 Major Features
@@ -1300,5 +1428,5 @@ Built with:
 ---
 
 **Last Updated:** 2025-10-11
-**Current Version:** 0.6.0
-**Status:** Beta - Production Ready with Enterprise Security, Business Management & Advanced Analytics
+**Current Version:** 0.6.1
+**Status:** Beta - Production Ready with Enterprise Security, Business Management, Data Export & Advanced Analytics
