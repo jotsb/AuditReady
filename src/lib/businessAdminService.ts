@@ -354,13 +354,29 @@ export async function exportBusinessData(businessId: string): Promise<Blob> {
     receipts = receiptsData || [];
   }
 
-  // Fetch members
-  const { data: members, error: membersError } = await supabase
+  // Fetch members with their profile info
+  const { data: businessMembers, error: membersError } = await supabase
     .from('business_members')
-    .select('*, profiles(email, full_name)')
+    .select('role, user_id, created_at')
     .eq('business_id', businessId);
 
   if (membersError) throw membersError;
+
+  // Fetch profile info for each member
+  const members = await Promise.all(
+    (businessMembers || []).map(async (member) => {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email, full_name')
+        .eq('id', member.user_id)
+        .maybeSingle();
+
+      return {
+        ...member,
+        profile
+      };
+    })
+  );
 
   // Create ZIP file
   const zip = new JSZip();
@@ -384,8 +400,8 @@ export async function exportBusinessData(businessId: string): Promise<Blob> {
     })),
     members: members?.map(m => ({
       role: m.role,
-      email: m.profiles?.email,
-      full_name: m.profiles?.full_name,
+      email: m.profile?.email,
+      full_name: m.profile?.full_name,
       joined_at: m.created_at
     })),
     exported_at: new Date().toISOString(),
