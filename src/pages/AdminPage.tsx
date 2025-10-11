@@ -441,7 +441,7 @@ export function AdminPage() {
         )}
 
         {activeTab === 'businesses' && (
-          <BusinessesTab businesses={businesses} totalBusinesses={totalBusinesses} currentPage={currentPage} setCurrentPage={setCurrentPage} itemsPerPage={itemsPerPage} />
+          <BusinessesTab businesses={businesses} totalBusinesses={totalBusinesses} currentPage={currentPage} setCurrentPage={setCurrentPage} itemsPerPage={itemsPerPage} onRefresh={loadAdminData} />
         )}
 
         {activeTab === 'users' && (
@@ -801,12 +801,13 @@ function AnalyticsTab() {
   );
 }
 
-function BusinessesTab({ businesses, totalBusinesses, currentPage, setCurrentPage, itemsPerPage }: {
+function BusinessesTab({ businesses, totalBusinesses, currentPage, setCurrentPage, itemsPerPage, onRefresh }: {
   businesses: Business[];
   totalBusinesses: number;
   currentPage: number;
   setCurrentPage: (page: number) => void;
   itemsPerPage: number;
+  onRefresh: () => void;
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredBusinesses, setFilteredBusinesses] = useState(businesses);
@@ -982,7 +983,7 @@ function BusinessesTab({ businesses, totalBusinesses, currentPage, setCurrentPag
 
                       {/* Admin Actions */}
                       <div className="mt-4 pt-4 border-t border-slate-200 dark:border-gray-700">
-                        <BusinessAdminActions business={business} onRefresh={loadAdminData} />
+                        <BusinessAdminActions business={business} onRefresh={onRefresh} />
                       </div>
                     </div>
 
