@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserRole(null);
       }
     } catch (error) {
-      console.error('Error loading user role:', error);
+      logger.error('Error loading user role', error as Error, { userId, businessId });
       setUserRole(null);
     }
   };
@@ -127,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await loadUserRole(userId, uniqueBusinesses[0].id);
       }
     } catch (error) {
-      console.error('Error loading businesses:', error);
+      logger.error('Error loading businesses', error as Error, { userId });
     }
   };
 
@@ -164,14 +164,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (async () => {
         // Check if we're in an MFA pending state - if so, don't update user yet
         const mfaPendingEmail = sessionStorage.getItem('mfa_pending_email');
-        console.log('=== onAuthStateChange fired, event:', _event, 'mfaPendingEmail:', mfaPendingEmail, 'session:', !!session?.user, '===');
+        logger.debug('onAuthStateChange fired', { event: _event, mfaPendingEmail, hasSession: !!session?.user }, 'AUTH');
         if (mfaPendingEmail && session?.user) {
           // User just signed in but needs MFA verification - don't treat as fully authenticated
-          console.log('=== Blocking user state update due to MFA pending ===');
+          logger.debug('Blocking user state update due to MFA pending', {}, 'AUTH');
           return;
         }
 
-        console.log('=== Updating user state ===');
+        logger.debug('Updating user state', { hasUser: !!session?.user }, 'AUTH');
         setUser(session?.user ?? null);
         if (session?.user) {
           await checkAdminStatus(session.user.id);
@@ -228,10 +228,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!mfaError && hasVerifiedMFA) {
           // User has MFA enabled and verified factors - require MFA challenge
           // Store MFA state SYNCHRONOUSLY before any async operations
-          console.log('=== Setting mfaPending to TRUE ===');
+          logger.debug('Setting mfaPending to TRUE', { email }, 'AUTH');
           sessionStorage.setItem('mfa_pending_email', email);
           sessionStorage.setItem('mfa_user_id', data.user.id);
-          console.log('=== Stored mfa_pending_email in sessionStorage ===');
+          logger.debug('Stored mfa_pending_email in sessionStorage', {}, 'AUTH');
 
           setMfaPending(true);
           logger.auth('mfa_challenge_required', true, { email, method: 'password', mfa_enabled: true });
@@ -279,7 +279,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('id', data.user.id);
 
       if (loginUpdateError) {
-        console.error('Failed to update last_login_at:', loginUpdateError);
+        logger.error('Failed to update last_login_at', loginUpdateError, { userId: data.user.id });
       }
 
       sessionManager.setUserId(data.user.id);

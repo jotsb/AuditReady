@@ -642,11 +642,11 @@ export async function resetUserMFA(
   adminPassword: string,
   adminUserId: string
 ): Promise<void> {
-  console.log('[adminService] resetUserMFA called with:', { targetUserId, adminUserId, hasReason: !!reason });
+  logger.info('resetUserMFA called', { targetUserId, adminUserId, hasReason: !!reason }, 'USER_ACTION');
 
-  console.log('[adminService] Checking system admin...');
+  logger.debug('Checking system admin permissions', { adminUserId }, 'SECURITY');
   await ensureSystemAdmin(adminUserId);
-  console.log('[adminService] System admin check passed');
+  logger.debug('System admin check passed', { adminUserId }, 'SECURITY');
 
   if (!reason || reason.trim().length === 0) {
     throw new Error('Reason is required for MFA reset');
@@ -654,13 +654,15 @@ export async function resetUserMFA(
 
   // Validate UUID format
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  console.log('[adminService] Validating UUID:', targetUserId, 'Matches:', uuidRegex.test(targetUserId));
-  if (!targetUserId || !uuidRegex.test(targetUserId)) {
+  const isValidUuid = uuidRegex.test(targetUserId);
+  logger.debug('Validating UUID format', { targetUserId, isValid: isValidUuid }, 'DATABASE');
+  if (!targetUserId || !isValidUuid) {
+    logger.error('Invalid user ID format', undefined, { targetUserId });
     throw new Error(`Invalid user ID format: ${targetUserId}`);
   }
 
   // Call database function directly (bypasses auth-js API issues)
-  console.log('[adminService] Calling admin_reset_user_mfa database function...');
+  logger.info('Calling admin_reset_user_mfa database function', { targetUserId }, 'DATABASE');
   const { data: result, error: resetError } = await supabase.rpc('admin_reset_user_mfa', {
     target_user_id: targetUserId,
     admin_user_id: adminUserId,
@@ -668,11 +670,11 @@ export async function resetUserMFA(
   });
 
   if (resetError) {
-    console.error('[adminService] Database function error:', resetError);
+    logger.error('Database function error during MFA reset', resetError, { targetUserId });
     throw new Error(resetError.message || 'Failed to reset MFA');
   }
 
-  console.log('[adminService] MFA reset successful:', result);
+  logger.info('MFA reset successful', { targetUserId, factors_removed: result?.factors_removed }, 'SECURITY');
 
   logger.mfa('admin_reset_mfa', {
     target_user_id: targetUserId,

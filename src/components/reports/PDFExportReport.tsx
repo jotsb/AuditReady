@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Download, Filter, FileText } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { logger } from '../../lib/logger';
 
 interface Business {
   id: string;
@@ -50,7 +51,7 @@ export function PDFExportReport() {
       setBusinesses(businessData.data || []);
       setCategories(categoryData.data?.map(c => c.name) || []);
     } catch (error) {
-      console.error('Error loading filters:', error);
+      logger.error('Error loading PDF export filters', error as Error, {});
     }
   };
 
@@ -64,7 +65,7 @@ export function PDFExportReport() {
 
       setCollections(data || []);
     } catch (error) {
-      console.error('Error loading collections:', error);
+      logger.error('Error loading collections for business', error as Error, { businessId });
     }
   };
 
@@ -95,12 +96,12 @@ export function PDFExportReport() {
       const { data, error } = await query.order('transaction_date', { ascending: false });
 
       if (error) {
-        console.error('Query error:', error);
+        logger.error('Query error fetching receipts for PDF', error, { selectedCollection, dateFrom, dateTo, selectedCategory });
         throw error;
       }
 
       let receipts = data || [];
-      console.log('Raw receipts from DB:', receipts.length, receipts[0]);
+      logger.debug('Fetched receipts from DB for PDF', { count: receipts.length, hasData: receipts.length > 0 }, 'DATABASE');
 
       if (selectedBusiness !== 'all') {
         receipts = receipts.filter((r: any) => r.collections?.business_id === selectedBusiness);
@@ -111,10 +112,9 @@ export function PDFExportReport() {
         return;
       }
 
-      console.log('Filtered receipts:', receipts.length);
-      console.log('Sample receipt:', JSON.stringify(receipts[0], null, 2));
+      logger.info('Generating PDF report', { filteredCount: receipts.length, includeImages }, 'USER_ACTION');
       const htmlContent = await generateHTMLReport(receipts, includeImages);
-      console.log('HTML content generated, length:', htmlContent.length);
+      logger.debug('HTML content generated for PDF', { contentLength: htmlContent.length }, 'PERFORMANCE');
 
       // Create a blob URL for the HTML content
       const blob = new Blob([htmlContent], { type: 'text/html' });
@@ -160,7 +160,7 @@ export function PDFExportReport() {
         }
       }
     } catch (error) {
-      console.error('Error generating PDF:', error);
+      logger.error('Error generating PDF report', error as Error, { selectedBusiness, selectedCollection, selectedCategory, dateFrom, dateTo });
       alert('Failed to generate PDF. Please try again.');
     } finally {
       setLoading(false);
@@ -192,7 +192,7 @@ export function PDFExportReport() {
               imageDataUrls.push({ index: i + 1, url: dataUrl, receipt });
             }
           } catch (error) {
-            console.error('Error loading image for receipt:', receipt.id, error);
+            logger.error('Error loading receipt image for PDF', error as Error, { receiptId: receipt.id, filePath: receipt.file_path });
           }
         }
       }

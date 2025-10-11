@@ -150,7 +150,6 @@ export default function AcceptInvitePage() {
       return;
     }
 
-    console.log('Starting signup process for:', invitation.email);
     logger.info('Starting signup and accept invitation', { email: invitation.email }, 'USER_ACTION');
 
     if (!fullName || fullName.trim().length === 0) {
@@ -179,11 +178,9 @@ export default function AcceptInvitePage() {
     setError('');
 
     try {
-      console.log('Calling edge function...');
-      logger.info('Calling signup_and_accept edge function', { email: invitation.email }, 'EDGE_FUNCTION');
+      logger.info('Calling signup_and_accept edge function', { email: invitation.email, apiUrl: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/accept-invitation` }, 'EDGE_FUNCTION');
 
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/accept-invitation`;
-      console.log('API URL:', apiUrl);
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -199,10 +196,7 @@ export default function AcceptInvitePage() {
         }),
       });
 
-      console.log('Response status:', response.status);
-
       const result = await response.json();
-      console.log('Response result:', result);
       logger.api('/accept-invitation', 'POST', response.status, { action: 'signup_and_accept', result });
 
       if (!response.ok) {
@@ -212,12 +206,10 @@ export default function AcceptInvitePage() {
         throw new Error(result.error || 'Failed to create account');
       }
 
-      console.log('Account created successfully');
       logger.info('Account created successfully', { email: invitation.email }, 'AUTH');
       logger.edgeFunction('accept-invitation', true, { action: 'signup_and_accept' });
 
       if (result.session) {
-        console.log('Setting session...');
         logger.info('Setting session for new user', {}, 'AUTH');
         try {
           const { error: sessionError } = await supabase.auth.setSession(result.session);
@@ -226,7 +218,6 @@ export default function AcceptInvitePage() {
             logger.error('Failed to set session', sessionError, {});
             throw new Error('Failed to set session: ' + sessionError.message);
           }
-          console.log('Session set successfully');
           logger.info('Session set successfully', {}, 'AUTH');
         } catch (sessionErr: any) {
           console.error('Error in setSession:', sessionErr);
@@ -234,7 +225,6 @@ export default function AcceptInvitePage() {
           throw sessionErr;
         }
       } else if (result.requiresLogin) {
-        console.log('Requires login, redirecting to auth page');
         logger.info('Account created, redirecting to login', {}, 'AUTH');
         setSuccess('Account created! Please log in to continue.');
         setTimeout(() => {
@@ -247,11 +237,9 @@ export default function AcceptInvitePage() {
       }
 
       setSuccess('Account created and invitation accepted! Redirecting...');
-      console.log('Setting up redirect...');
       logger.info('Redirecting to dashboard', {}, 'NAVIGATION');
 
       setTimeout(() => {
-        console.log('Executing redirect to dashboard');
         logger.debug('Executing redirect to dashboard', {}, 'NAVIGATION');
         window.location.href = '/dashboard';
       }, 1500);
