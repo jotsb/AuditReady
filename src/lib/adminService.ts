@@ -584,17 +584,35 @@ export async function getUserBusinesses(
   // Add enriched data
   const enrichedBusinesses = await Promise.all(
     allBusinesses.map(async (business) => {
-      const [{ count: memberCount }, { count: receiptCount }, { count: collectionCount }] = await Promise.all([
+      // Get collections first
+      const { data: collections } = await supabase
+        .from('collections')
+        .select('id')
+        .eq('business_id', business.id);
+
+      const collectionIds = collections?.map(c => c.id) || [];
+
+      // Get counts
+      const [{ count: memberCount }, { count: collectionCount }] = await Promise.all([
         supabase.from('business_members').select('id', { count: 'exact', head: true }).eq('business_id', business.id),
-        supabase.from('receipts').select('id', { count: 'exact', head: true }).eq('collection_id', business.id),
         supabase.from('collections').select('id', { count: 'exact', head: true }).eq('business_id', business.id),
       ]);
+
+      // Count receipts through collections
+      let receiptCount = 0;
+      if (collectionIds.length > 0) {
+        const { count } = await supabase
+          .from('receipts')
+          .select('id', { count: 'exact', head: true })
+          .in('collection_id', collectionIds);
+        receiptCount = count || 0;
+      }
 
       return {
         ...business,
         owner_email: profile?.email || '',
         member_count: memberCount || 0,
-        receipt_count: receiptCount || 0,
+        receipt_count: receiptCount,
         collection_count: collectionCount || 0,
       };
     })
