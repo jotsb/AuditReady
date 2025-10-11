@@ -4,6 +4,57 @@
 
 ---
 
+## 🔐 Version 0.5.4 - "MFA Admin Reset Fix" (2025-10-11)
+
+### 🐛 Bug Fixes
+
+#### **Admin MFA Reset - Database Function Approach**
+Fixed critical issue with admin emergency MFA reset functionality.
+
+**The Problem:**
+- Supabase auth-js `deleteFactor()` method was throwing UUID validation errors
+- Edge function couldn't reliably reset user MFA using the Auth API
+- Users locked out of MFA couldn't be rescued by admins
+
+**The Solution:**
+- Created `admin_reset_user_mfa()` database function that directly manipulates auth tables
+- Bypasses problematic auth-js API entirely
+- More reliable and faster (single RPC call vs multiple API calls)
+- Better error handling and security validation
+
+**Implementation:**
+- Direct SQL operations on `auth.mfa_factors` table
+- Validates admin permissions before execution
+- Updates all related tables (profiles, recovery_codes)
+- Complete audit logging to both `audit_logs` and `system_logs`
+- Returns success status and factors removed count
+
+**Benefits:**
+- ✅ Works reliably without UUID validation errors
+- ✅ Faster execution (one database call vs multiple API calls)
+- ✅ Better error messages and debugging
+- ✅ All security checks still in place
+- ✅ Complete audit trail maintained
+
+**Technical Details:**
+- Migration: `20251011032954_add_admin_reset_mfa_function.sql`
+- Database Function: `admin_reset_user_mfa(target_user_id, admin_user_id, reset_reason)`
+- Client: `src/lib/adminService.ts` updated to call database function directly
+- Edge Function: `admin-user-management` simplified to use database function
+
+### 🔒 Security
+- Admin permissions verified by database function
+- All MFA reset operations logged with reason tracking
+- Service-level access maintained through SECURITY DEFINER function
+- Complete audit trail for compliance
+
+### 📊 Impact
+- Admin Operations: More reliable MFA management
+- User Support: Faster resolution of MFA lockout issues
+- System Stability: Eliminated auth-js API dependency issues
+
+---
+
 ## 🔍 Version 0.5.3 - "Advanced Log Filtering & Analysis" (2025-10-10)
 
 ### 🎯 Major Features
@@ -1093,6 +1144,6 @@ Built with:
 
 ---
 
-**Last Updated:** 2025-10-10
-**Current Version:** 0.5.3
+**Last Updated:** 2025-10-11
+**Current Version:** 0.5.4
 **Status:** Beta - Production Ready with Enterprise Security & Advanced Analytics
