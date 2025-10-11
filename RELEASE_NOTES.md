@@ -4,6 +4,161 @@
 
 ---
 
+## 🏢 Version 0.6.0 - "Business Management Phase 2" (2025-10-11)
+
+### 🎯 Major Features
+
+#### **Complete Business Administration System**
+Enterprise-grade business management with suspension, deletion, and storage monitoring.
+
+**Business Suspension**
+- Suspend businesses with reason tracking
+- Unsuspend businesses (restores full access)
+- Automatic member access blocking when suspended
+- Complete audit trail for all suspension actions
+- Visual indicators for suspended businesses
+- Database fields: suspended, suspension_reason, suspended_at, suspended_by
+
+**Business Soft Delete & Restore**
+- Soft delete businesses with reason (can be restored)
+- Restore deleted businesses
+- Data preserved during soft delete
+- Export business data before permanent deletion
+- Database fields: soft_deleted, deleted_at, deleted_by, deletion_reason
+
+**Business Administration**
+- Edit business name, tax ID, and currency
+- Admin can modify any business details
+- Full audit logging for all changes
+- Changes tracked in audit_logs table
+
+**Storage Management**
+- Track storage usage per business (storage_used_bytes)
+- Set custom storage limits per business
+- Default limit: 10 GB per business
+- Visual progress bars with color-coded warnings:
+  - Green: < 80% usage
+  - Yellow: 80-95% usage (warning)
+  - Red: > 95% usage (critical)
+- Calculate storage on-demand
+- Storage alerts for approaching limits
+- Database functions: `calculate_business_storage()`, `check_storage_limit()`
+
+**Data Export**
+- Export complete business data as JSON
+- Includes: business info, collections, receipts (without file paths), members
+- GDPR compliance for data portability
+- Use before permanent deletion
+
+### 📦 New Components
+- `BusinessAdminActions.tsx` - Comprehensive admin UI (900+ lines)
+  - Suspend/unsuspend modal with reason input
+  - Edit business modal (name, tax ID, currency)
+  - Storage management modal with usage visualization
+  - Delete/restore modal with confirmations
+  - Export button with one-click data download
+  - All modals with error/success feedback
+
+### 🛠️ New Services
+- `businessAdminService.ts` - Business admin operations (450+ lines)
+  - `suspendBusiness()` - Suspend with audit trail
+  - `unsuspendBusiness()` - Restore suspended business
+  - `softDeleteBusiness()` - Soft delete with reason
+  - `restoreBusiness()` - Restore deleted business
+  - `updateBusinessDetails()` - Edit business info
+  - `calculateBusinessStorage()` - Calculate storage usage
+  - `checkStorageLimit()` - Check limits with warnings
+  - `setStorageLimit()` - Set custom limits
+  - `getBusinessAdminInfo()` - Get complete admin view
+  - `exportBusinessData()` - Export for GDPR compliance
+
+### 🗄️ Database Changes
+**Migration:** `add_business_management_phase2.sql`
+
+**New Columns on `businesses` table:**
+- `suspended` (boolean) - Suspension status
+- `suspension_reason` (text) - Why suspended
+- `suspended_at` (timestamptz) - When suspended
+- `suspended_by` (uuid) - Admin who suspended
+- `soft_deleted` (boolean) - Soft delete flag
+- `deleted_at` (timestamptz) - When deleted
+- `deleted_by` (uuid) - Admin who deleted
+- `deletion_reason` (text) - Why deleted
+- `storage_used_bytes` (bigint) - Storage usage
+- `storage_limit_bytes` (bigint) - Storage limit (default 10GB)
+- `last_storage_check` (timestamptz) - Last calculation
+
+**New Functions:**
+- `calculate_business_storage(business_id)` - Calculates total storage
+- `check_storage_limit(business_id)` - Returns usage stats with warnings
+- `audit_business_admin_changes()` - Audit trigger for all admin actions
+
+**Indexes:**
+- `idx_businesses_suspended` - Fast suspended business queries
+- `idx_businesses_soft_deleted` - Fast deleted business queries
+- `idx_businesses_storage_usage` - Storage monitoring performance
+
+### 🔒 Security & Logging
+- **Complete Audit Trail**
+  - All suspend/unsuspend operations logged
+  - All delete/restore operations logged
+  - All business edits logged
+  - All storage limit changes logged
+- **System Logging**
+  - INFO level for normal operations
+  - WARN level for security events (suspend, delete)
+  - ERROR level for failures
+  - Performance metrics for storage calculations
+- **RLS Policies**
+  - Only system admins can suspend/delete businesses
+  - Automated audit triggers (cannot be bypassed)
+  - Complete traceability for compliance
+
+### 🧹 Code Quality Improvements
+- **Console.log Cleanup** - Converted 30+ console statements to structured logging
+  - Files cleaned: AcceptInvitePage.tsx, adminService.ts, AuthContext.tsx, PDFExportReport.tsx, LoginForm.tsx, AuthPage.tsx, imageOptimizer.ts, csrfProtection.ts, send-invitation-email (Edge Function)
+  - Improved debugging with structured metadata
+  - Better log levels (DEBUG, INFO, WARN, ERROR)
+  - All logs now searchable in System Logs
+
+### 🎨 UI/UX Improvements
+- **Business Cards Enhanced**
+  - Admin action buttons on every business card
+  - 6 action buttons: Suspend/Unsuspend, Edit, Storage, Delete/Restore, Export
+  - Color-coded buttons (orange=suspend, blue=edit, purple=storage, red=delete, gray=export)
+  - Buttons appear in Admin > Businesses & Collections tab
+- **Storage Visualization**
+  - Progress bars show usage percentage
+  - Color changes based on threshold (green/yellow/red)
+  - Warning badges for 80%+ usage
+  - Critical alerts for 95%+ usage
+  - Displays used/limit in MB with percentages
+- **Comprehensive Modals**
+  - Clear labeling and instructions
+  - Required reason fields for suspend/delete
+  - Success/error message feedback
+  - Loading states during operations
+  - Cancel buttons always available
+
+### 📊 Impact
+- **Admin Operations:** Full business lifecycle management
+- **Storage Management:** Prevent runaway storage costs
+- **Security:** Complete audit trail for compliance
+- **GDPR:** Data export for portability
+- **Code Quality:** Structured logging throughout app
+- **Bundle Size:** 309 KB gzipped (+4 KB for new features)
+
+### 🔍 Use Cases Enabled
+1. **Suspend Abusive Businesses** - Block access for terms violations
+2. **Monitor Storage Costs** - Track and limit storage per business
+3. **Delete Inactive Businesses** - Soft delete with easy restore
+4. **Export Before Deletion** - GDPR-compliant data export
+5. **Edit Business Details** - Fix incorrect tax IDs or names
+6. **Set Custom Limits** - Different storage quotas per business tier
+7. **Audit All Actions** - Complete traceability for compliance
+
+---
+
 ## 🔐 Version 0.5.4 - "MFA Admin Reset Fix" (2025-10-11)
 
 ### 🐛 Bug Fixes
@@ -1145,5 +1300,5 @@ Built with:
 ---
 
 **Last Updated:** 2025-10-11
-**Current Version:** 0.5.4
-**Status:** Beta - Production Ready with Enterprise Security & Advanced Analytics
+**Current Version:** 0.6.0
+**Status:** Beta - Production Ready with Enterprise Security, Business Management & Advanced Analytics

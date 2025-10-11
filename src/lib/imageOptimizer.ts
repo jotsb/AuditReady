@@ -1,3 +1,5 @@
+import { logger } from './logger';
+
 export interface OptimizedImages {
   full: File;
   thumbnail: File;
@@ -119,11 +121,11 @@ export async function optimizeImage(
     opts.maxDimension
   );
 
-  console.log('Image optimization:', {
+  logger.debug('Image optimization', {
     original: { width: img.width, height: img.height, size: file.size },
     optimized: { width: fullDimensions.width, height: fullDimensions.height },
     needsResize: fullDimensions.needsResize,
-  });
+  }, 'PERFORMANCE');
 
   const [fullImage, thumbnail] = await Promise.all([
     processImage(

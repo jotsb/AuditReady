@@ -53,7 +53,7 @@ export function LoginForm({ onToggleMode, onForgotPassword, onMFARequired }: Log
     setLoading(true);
 
     const result = await signIn(email, password);
-    console.log('=== Login Result ===', result);
+    logger.debug('Login attempt result', { hasError: !!result.error, requiresMFA: result.requiresMFA }, 'AUTH');
 
     if (result.error) {
       if (result.error.message.includes('Email not confirmed') || result.error.message.includes('email_not_confirmed')) {
@@ -65,12 +65,10 @@ export function LoginForm({ onToggleMode, onForgotPassword, onMFARequired }: Log
       }
       setLoading(false);
     } else if (result.requiresMFA) {
-      console.log('=== MFA Required - Calling onMFARequired ===');
       logger.auth('mfa_required', true, { email });
       onMFARequired();
       setLoading(false);
     } else {
-      console.log('=== Login Success ===');
       logger.auth('login_success', true, { email });
       setLoading(false);
     }

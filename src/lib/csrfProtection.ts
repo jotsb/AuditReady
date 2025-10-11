@@ -164,8 +164,7 @@ export function initializeCSRFProtection(): void {
     generateCSRFToken();
   }
 
-  // Log CSRF initialization (for debugging)
-  console.log('[CSRF] Protection initialized');
+  // CSRF protection initialized - using session storage
 }
 
 // ============================================================================

@@ -204,8 +204,7 @@ If you didn't expect this invitation, you can safely ignore this email.
         p_execution_time_ms: null
       });
 
-      console.log("RESEND_API_KEY not configured. Email would be sent to:", email);
-      console.log("Invitation link:", inviteLink);
+      // RESEND_API_KEY not configured - invitation link available in team page
 
       return new Response(
         JSON.stringify({
@@ -276,7 +275,6 @@ If you didn't expect this invitation, you can safely ignore this email.
         p_execution_time_ms: apiTime
       });
 
-      console.error("Resend API error:", errorData);
       throw new Error(`Failed to send email: ${JSON.stringify(errorData)}`);
     }
 
@@ -334,7 +332,6 @@ If you didn't expect this invitation, you can safely ignore this email.
       p_execution_time_ms: executionTime
     });
 
-    console.error("Error sending invitation email:", error);
     return new Response(
       JSON.stringify({ error: errorMessage }),
       {

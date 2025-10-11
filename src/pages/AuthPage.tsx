@@ -11,13 +11,12 @@ export function AuthPage() {
   const [mode, setMode] = useState<'login' | 'register' | 'forgot' | 'mfa'>(() => {
     // Check if we're in MFA pending state
     const mfaPendingEmail = sessionStorage.getItem('mfa_pending_email');
-    console.log('=== AuthPage initial mode, mfaPendingEmail:', mfaPendingEmail, '===');
+    logger.debug('AuthPage initial mode', { mfaPendingEmail: !!mfaPendingEmail, initialMode: mfaPendingEmail ? 'mfa' : 'login' }, 'PAGE_VIEW');
     return mfaPendingEmail ? 'mfa' : 'login';
   });
   const navigate = useNavigate();
 
   useEffect(() => {
-    console.log('=== AuthPage useEffect, current mode:', mode, '===');
     logger.info('Auth page loaded', {
       page: 'AuthPage',
       mode,
@@ -35,9 +34,8 @@ export function AuthPage() {
   };
 
   const handleMFARequired = () => {
-    console.log('=== handleMFARequired called, setting mode to mfa ===');
+    logger.info('MFA required, switching to MFA mode', { fromMode: mode }, 'AUTH');
     setMode('mfa');
-    console.log('=== Mode is now:', 'mfa', '===');
   };
 
   const handleMFASuccess = () => {

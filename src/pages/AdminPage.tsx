@@ -6,6 +6,7 @@ import { LogEntry } from '../components/shared/LogEntry';
 import { usePageTracking } from '../hooks/usePageTracking';
 import { UserManagement } from '../components/admin/UserManagement';
 import { AuditLogsView } from '../components/audit/AuditLogsView';
+import { BusinessAdminActions } from '../components/admin/BusinessAdminActions';
 
 interface AdminStats {
   totalUsers: number;
@@ -978,9 +979,14 @@ function BusinessesTab({ businesses, totalBusinesses, currentPage, setCurrentPag
                           </div>
                         </div>
                       </div>
+
+                      {/* Admin Actions */}
+                      <div className="mt-4 pt-4 border-t border-slate-200 dark:border-gray-700">
+                        <BusinessAdminActions business={business} onRefresh={loadAdminData} />
+                      </div>
                     </div>
 
-                    <button className="ml-4 p-2 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition">
+                    <button className="ml-4 p-2 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition flex-shrink-0">
                       {isExpanded ? (
                         <ChevronDown className="text-slate-600 dark:text-gray-400" size={24} />
                       ) : (
