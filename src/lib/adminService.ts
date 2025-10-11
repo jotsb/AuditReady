@@ -659,42 +659,24 @@ export async function resetUserMFA(
     throw new Error(`Invalid user ID format: ${targetUserId}`);
   }
 
-  // Get the current session
-  console.log('[adminService] Getting session...');
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
-    throw new Error('No active session');
-  }
-  console.log('[adminService] Session obtained for user:', session.user.id);
-
-  // Note: Password verification is skipped to avoid session conflicts
-  // Admin must be authenticated and have system admin role (verified by edge function)
-
-  const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-user-management`;
-  const response = await fetch(functionUrl, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${session.access_token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      action: 'reset_mfa',
-      targetUserId,
-      reason,
-    }),
+  // Call database function directly (bypasses auth-js API issues)
+  console.log('[adminService] Calling admin_reset_user_mfa database function...');
+  const { data: result, error: resetError } = await supabase.rpc('admin_reset_user_mfa', {
+    target_user_id: targetUserId,
+    admin_user_id: adminUserId,
+    reset_reason: reason
   });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to reset MFA');
+  if (resetError) {
+    console.error('[adminService] Database function error:', resetError);
+    throw new Error(resetError.message || 'Failed to reset MFA');
   }
 
-  // Edge function handles audit logging
-  const result = await response.json();
+  console.log('[adminService] MFA reset successful:', result);
 
   logger.mfa('admin_reset_mfa', {
     target_user_id: targetUserId,
-    factors_removed: result.factors_removed || 0,
+    factors_removed: result?.factors_removed || 0,
     reason
   }, 'WARN');
 }

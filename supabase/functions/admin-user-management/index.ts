@@ -492,64 +492,28 @@ Deno.serve(async (req: Request) => {
           );
         }
 
-        console.log('Listing MFA factors for user:', targetUserId);
-        const { data: { factors }, error: factorsError } = await supabase.auth.admin.mfa.listFactors(targetUserId);
-
-        if (factorsError) {
-          console.error('Error listing factors:', factorsError);
-          throw new Error(`Failed to list MFA factors: ${factorsError.message}`);
-        }
-
-        console.log(`Found ${factors?.length || 0} MFA factors`);
-
-        if (factors && factors.length > 0) {
-          for (const factor of factors) {
-            console.log('Deleting factor:', factor.id, 'for user:', targetUserId);
-            const { error: unenrollError } = await supabase.auth.admin.mfa.deleteFactor(
-              targetUserId,
-              factor.id
-            );
-            if (unenrollError) {
-              console.error('Error deleting factor:', unenrollError);
-              throw new Error(`Failed to unenroll MFA factor: ${unenrollError.message}`);
-            }
-            console.log('Successfully deleted factor:', factor.id);
-          }
-        }
-
-        await supabase
-          .from('profiles')
-          .update({
-            mfa_enabled: false,
-            mfa_method: null,
-            trusted_devices: null
-          })
-          .eq('id', targetUserId);
-
-        await supabase
-          .from('recovery_codes')
-          .delete()
-          .eq('user_id', targetUserId);
-
-        await supabase.from('audit_logs').insert({
-          user_id: user.id,
-          action: 'admin_reset_mfa',
-          resource_type: 'profile',
-          resource_id: targetUserId,
-          details: { reason, via: 'edge_function', factors_removed: factors?.length || 0 }
+        // Use database function to reset MFA (bypasses auth-js API issues)
+        const { data: resetResult, error: resetError } = await supabase.rpc('admin_reset_user_mfa', {
+          target_user_id: targetUserId,
+          admin_user_id: user.id,
+          reset_reason: reason
         });
+
+        if (resetError) {
+          throw new Error(`Failed to reset MFA: ${resetError.message}`);
+        }
 
         const actionTime = Date.now() - actionStartTime;
         await supabase.rpc('log_system_event', {
           p_level: 'WARN',
           p_category: 'SECURITY',
-          p_message: 'Admin reset user MFA',
+          p_message: 'Admin reset user MFA via edge function',
           p_metadata: {
             action: 'reset_mfa',
             targetUserId,
             adminUserId: user.id,
             reason,
-            factors_removed: factors?.length || 0,
+            factors_removed: resetResult?.factors_removed || 0,
             function: 'admin-user-management'
           },
           p_user_id: user.id,
@@ -561,7 +525,11 @@ Deno.serve(async (req: Request) => {
         });
 
         return new Response(
-          JSON.stringify({ success: true, message: 'MFA reset successfully', factors_removed: factors?.length || 0 }),
+          JSON.stringify({
+            success: true,
+            message: resetResult?.message || 'MFA reset successfully',
+            factors_removed: resetResult?.factors_removed || 0
+          }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
