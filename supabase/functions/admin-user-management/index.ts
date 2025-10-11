@@ -505,7 +505,6 @@ Deno.serve(async (req: Request) => {
         if (factors && factors.length > 0) {
           for (const factor of factors) {
             console.log('Deleting factor:', factor.id, 'for user:', targetUserId);
-            // Delete the factor using user ID and factor ID
             const { error: unenrollError } = await supabase.auth.admin.mfa.deleteFactor(
               targetUserId,
               factor.id
