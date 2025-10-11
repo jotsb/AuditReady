@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Download, Clock, CheckCircle, XCircle, Loader, FileArchive, Trash2 } from 'lucide-react';
+import { Download, Loader } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { logger } from '../../lib/logger';
 import { useAuth } from '../../contexts/AuthContext';
@@ -28,69 +28,35 @@ interface ExportJobsManagerProps {
 
 export function ExportJobsManager({ businessId, businessName }: ExportJobsManagerProps) {
   const { user } = useAuth();
-  const [jobs, setJobs] = useState<ExportJob[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [latestJob, setLatestJob] = useState<ExportJob | null>(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [downloading, setDownloading] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
-    loadExportJobs();
+    loadLatestExportJob();
 
-    // Poll for updates every 10 seconds
-    const interval = setInterval(loadExportJobs, 10000);
+    // Poll for updates every 5 seconds
+    const interval = setInterval(loadLatestExportJob, 5000);
     return () => clearInterval(interval);
   }, [businessId]);
 
-  const loadExportJobs = async () => {
+  const loadLatestExportJob = async () => {
     try {
       const { data, error: fetchError } = await supabase
         .from('export_jobs')
         .select('*')
         .eq('business_id', businessId)
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(1)
+        .maybeSingle();
 
       if (fetchError) throw fetchError;
-      setJobs(data || []);
+      setLatestJob(data);
       setError('');
     } catch (err: any) {
-      logger.error('Failed to load export jobs', err, { businessId });
-      setError(err.message || 'Failed to load export jobs');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDownload = async (job: ExportJob) => {
-    if (!job.file_path) return;
-
-    try {
-      setDownloading(job.id);
-      setError('');
-
-      const { data, error: downloadError } = await supabase.storage
-        .from('receipts')
-        .download(job.file_path);
-
-      if (downloadError) throw downloadError;
-
-      if (data) {
-        const url = URL.createObjectURL(data);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${businessName.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-export-${new Date(job.created_at).toISOString().split('T')[0]}.zip`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        logger.info('Export downloaded successfully', { jobId: job.id, businessId }, 'USER_ACTION');
-      }
-    } catch (err: any) {
-      logger.error('Failed to download export', err, { jobId: job.id });
-      setError(err.message || 'Failed to download export');
-    } finally {
-      setDownloading(null);
+      logger.error('Failed to load export job', err, { businessId });
+      // Don't show error for initial load
     }
   };
 
@@ -120,10 +86,10 @@ export function ExportJobsManager({ businessId, businessName }: ExportJobsManage
         throw new Error(errorData.error || 'Failed to start export');
       }
 
-      logger.info('Export job started from settings', { businessId }, 'USER_ACTION');
+      logger.info('Export job started', { businessId }, 'USER_ACTION');
 
-      // Reload jobs
-      await loadExportJobs();
+      // Reload job status
+      await loadLatestExportJob();
     } catch (err: any) {
       logger.error('Failed to start export', err, { businessId });
       setError(err.message || 'Failed to start export');
@@ -132,29 +98,36 @@ export function ExportJobsManager({ businessId, businessName }: ExportJobsManage
     }
   };
 
-  const getStatusIcon = (status: ExportJob['status']) => {
-    switch (status) {
-      case 'pending':
-        return <Clock className="text-slate-500" size={16} />;
-      case 'processing':
-        return <Loader className="text-blue-500 animate-spin" size={16} />;
-      case 'completed':
-        return <CheckCircle className="text-green-500" size={16} />;
-      case 'failed':
-        return <XCircle className="text-red-500" size={16} />;
-    }
-  };
+  const handleDownload = async () => {
+    if (!latestJob?.file_path) return;
 
-  const getStatusText = (status: ExportJob['status']) => {
-    switch (status) {
-      case 'pending':
-        return 'Queued';
-      case 'processing':
-        return 'Processing...';
-      case 'completed':
-        return 'Ready';
-      case 'failed':
-        return 'Failed';
+    try {
+      setDownloading(true);
+      setError('');
+
+      const { data, error: downloadError } = await supabase.storage
+        .from('receipts')
+        .download(latestJob.file_path);
+
+      if (downloadError) throw downloadError;
+
+      if (data) {
+        const url = URL.createObjectURL(data);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${businessName.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-export-${new Date(latestJob.created_at).toISOString().split('T')[0]}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        logger.info('Export downloaded', { jobId: latestJob.id, businessId }, 'USER_ACTION');
+      }
+    } catch (err: any) {
+      logger.error('Failed to download export', err, { jobId: latestJob?.id });
+      setError(err.message || 'Failed to download export');
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -164,10 +137,6 @@ export function ExportJobsManager({ businessId, businessName }: ExportJobsManage
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
   };
 
   const getExpiresIn = (expiresAt: string) => {
@@ -181,123 +150,78 @@ export function ExportJobsManager({ businessId, businessName }: ExportJobsManage
     return `Expires in ${diffDays} days`;
   };
 
-  if (loading && jobs.length === 0) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader className="animate-spin text-blue-500" size={32} />
-      </div>
-    );
-  }
+  // Determine what to show
+  const isProcessing = latestJob && (latestJob.status === 'pending' || latestJob.status === 'processing');
+  const isCompleted = latestJob?.status === 'completed' && latestJob.file_path;
+  const isFailed = latestJob?.status === 'failed';
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Data Exports</h3>
-          <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">
-            Export all business data including receipts, images, and CSV files. Exports expire after 7 days.
-          </p>
-        </div>
+    <div className="flex items-center gap-3">
+      {/* Export Button */}
+      <button
+        onClick={handleStartExport}
+        disabled={loading || isProcessing}
+        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        title="Export all business data (receipts, images, CSV files)"
+      >
+        {loading || isProcessing ? (
+          <>
+            <Loader className="animate-spin" size={16} />
+            {isProcessing ? 'Processing...' : 'Starting...'}
+          </>
+        ) : (
+          <>
+            <Download size={16} />
+            Export Data
+          </>
+        )}
+      </button>
+
+      {/* Download Button - Only show when export is ready */}
+      {isCompleted && (
         <button
-          onClick={handleStartExport}
-          disabled={loading}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={handleDownload}
+          disabled={downloading}
+          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          title={`Download ${formatFileSize(latestJob.file_size_bytes)} - ${getExpiresIn(latestJob.expires_at)}`}
         >
-          {loading ? (
+          {downloading ? (
             <>
               <Loader className="animate-spin" size={16} />
-              Starting...
+              Downloading...
             </>
           ) : (
             <>
-              <FileArchive size={16} />
-              New Export
+              <Download size={16} />
+              Download ({formatFileSize(latestJob.file_size_bytes)})
             </>
           )}
         </button>
-      </div>
-
-      {error && (
-        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
-          {error}
-        </div>
       )}
 
-      {jobs.length === 0 ? (
-        <div className="text-center py-12 bg-slate-50 dark:bg-gray-800 rounded-lg">
-          <FileArchive className="mx-auto text-slate-400 mb-3" size={48} />
-          <p className="text-slate-600 dark:text-gray-400">No exports yet</p>
-          <p className="text-sm text-slate-500 dark:text-gray-500 mt-1">
-            Click "New Export" to create your first data export
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {jobs.map((job) => (
-            <div
-              key={job.id}
-              className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg p-4"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    {getStatusIcon(job.status)}
-                    <span className="font-medium text-slate-800 dark:text-white">
-                      {getStatusText(job.status)}
-                    </span>
-                    {job.status === 'completed' && job.file_size_bytes > 0 && (
-                      <span className="text-sm text-slate-500 dark:text-gray-400">
-                        {formatFileSize(job.file_size_bytes)}
-                      </span>
-                    )}
-                  </div>
+      {/* Status Messages */}
+      {isProcessing && (
+        <span className="text-sm text-blue-600 dark:text-blue-400">
+          Preparing export... You'll receive an email when ready.
+        </span>
+      )}
 
-                  <div className="text-sm text-slate-600 dark:text-gray-400 space-y-1">
-                    <div>Created: {formatDate(job.created_at)}</div>
-                    {job.completed_at && (
-                      <div>Completed: {formatDate(job.completed_at)}</div>
-                    )}
-                    {job.status === 'completed' && (
-                      <div className="text-orange-600 dark:text-orange-400">
-                        {getExpiresIn(job.expires_at)}
-                      </div>
-                    )}
-                    {job.metadata.receipts_count !== undefined && (
-                      <div className="mt-2 text-xs">
-                        Contains: {job.metadata.receipts_count} receipts, {job.metadata.images_downloaded} images, {job.metadata.collections_count} collections
-                      </div>
-                    )}
-                    {job.error_message && (
-                      <div className="text-red-600 dark:text-red-400 mt-2">
-                        Error: {job.error_message}
-                      </div>
-                    )}
-                  </div>
-                </div>
+      {isFailed && (
+        <span className="text-sm text-red-600 dark:text-red-400">
+          Export failed: {latestJob.error_message}
+        </span>
+      )}
 
-                {job.status === 'completed' && job.file_path && (
-                  <button
-                    onClick={() => handleDownload(job)}
-                    disabled={downloading === job.id}
-                    className="ml-4 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {downloading === job.id ? (
-                      <>
-                        <Loader className="animate-spin" size={16} />
-                        Downloading...
-                      </>
-                    ) : (
-                      <>
-                        <Download size={16} />
-                        Download
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+      {isCompleted && (
+        <span className="text-sm text-orange-600 dark:text-orange-400">
+          {getExpiresIn(latestJob.expires_at)}
+        </span>
+      )}
+
+      {error && (
+        <span className="text-sm text-red-600 dark:text-red-400">
+          {error}
+        </span>
       )}
     </div>
   );

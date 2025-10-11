@@ -303,38 +303,24 @@ export function BusinessManagement() {
                 )}
               </div>
 
-              {business.tax_id && (
-                <div className="text-sm text-slate-600 mb-2">
-                  <span className="font-medium">Tax ID:</span> {business.tax_id}
-                </div>
-              )}
-
-              <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                <div className="text-sm text-slate-500 dark:text-gray-400">
+              <div className="text-sm text-slate-600 dark:text-gray-400 space-y-2 mb-3">
+                {business.tax_id && (
+                  <div>
+                    <span className="font-medium">Tax ID:</span> {business.tax_id}
+                  </div>
+                )}
+                <div>
                   Currency: {CURRENCIES.find(c => c.code === business.currency)?.name || business.currency}
                 </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 dark:border-gray-700">
+                <ExportJobsManager businessId={business.id} businessName={business.name} />
               </div>
             </div>
           );
         })}
       </div>
-
-      {/* Export Jobs Section */}
-      {businesses.length > 0 && (
-        <div className="space-y-6 mt-8">
-          {businesses.map((business) => (
-            <div key={`exports-${business.id}`} className="bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 rounded-lg p-6">
-              <div className="mb-4">
-                <h4 className="text-md font-semibold text-slate-800 dark:text-white flex items-center gap-2">
-                  <Building2 size={18} />
-                  {business.name} - Data Exports
-                </h4>
-              </div>
-              <ExportJobsManager businessId={business.id} businessName={business.name} />
-            </div>
-          ))}
-        </div>
-      )}
 
       {businesses.length === 0 && (
         <div className="text-center py-12 bg-slate-50 dark:bg-gray-800 rounded-lg border border-slate-200">
