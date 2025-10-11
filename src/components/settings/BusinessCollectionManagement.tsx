@@ -3,6 +3,7 @@ import { Plus, Edit2, Trash2, Building2, FolderOpen, ChevronDown, ChevronRight, 
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Database } from '../../lib/database.types';
+import { ExportJobsManager } from './ExportJobsManager';
 
 type Business = Database['public']['Tables']['businesses']['Row'];
 type Collection = Database['public']['Tables']['collections']['Row'];
@@ -433,6 +434,11 @@ export function BusinessCollectionManagement() {
                         )}
                       </button>
                     </div>
+                  </div>
+
+                  {/* Export/Download Section */}
+                  <div className="mt-4 pt-4 border-t border-slate-200 dark:border-gray-700">
+                    <ExportJobsManager businessId={business.id} businessName={business.name} />
                   </div>
                 </div>
 

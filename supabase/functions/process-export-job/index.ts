@@ -252,9 +252,84 @@ async function processExport(supabase: any, jobId: string, businessId: string) {
         .eq("id", jobData.requested_by)
         .single();
 
-      // Send email notification (this would use your email service in production)
-      // For now, we'll create an audit log entry
       if (profile?.email) {
+        const resendApiKey = Deno.env.get("RESEND_API_KEY");
+        const appUrl = "https://new-chat-5w59.bolt.host";
+
+        const emailHtml = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+              <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+                <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px; border-radius: 12px 12px 0 0; text-align: center;">
+                  <h1 style="color: white; margin: 0; font-size: 28px;">📦 Your Export is Ready!</h1>
+                </div>
+                <div style="background: white; padding: 40px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                  <p style="color: #333; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+                    Hello ${profile.full_name || "there"}!
+                  </p>
+                  <p style="color: #333; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+                    Your data export for <strong>${business?.name}</strong> is ready to download.
+                  </p>
+                  <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <p style="margin: 5px 0; color: #4b5563;"><strong>Export Details:</strong></p>
+                    <p style="margin: 5px 0; color: #6b7280;">• ${receipts.length} receipts</p>
+                    <p style="margin: 5px 0; color: #6b7280;">• ${downloadedCount} images</p>
+                    <p style="margin: 5px 0; color: #6b7280;">• ${collections?.length || 0} collections</p>
+                    <p style="margin: 5px 0; color: #6b7280;">• File size: ${(zipBlob.length / 1048576).toFixed(2)} MB</p>
+                  </div>
+                  <p style="color: #333; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
+                    Click the button below to go to your Settings page and download the export:
+                  </p>
+                  <div style="text-align: center; margin: 30px 0;">
+                    <a href="${appUrl}/settings?tab=businesses" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">Download Export</a>
+                  </div>
+                  <p style="color: #ef4444; font-size: 14px; line-height: 1.6; margin-top: 30px; padding: 15px; background: #fee2e2; border-radius: 8px;">
+                    ⚠️ <strong>Important:</strong> This export will expire in 7 days. Please download it soon!
+                  </p>
+                  <p style="color: #666; font-size: 14px; line-height: 1.6; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+                    The export includes:
+                  </p>
+                  <ul style="color: #666; font-size: 14px; line-height: 1.8; margin-top: 10px;">
+                    <li>Complete business data (JSON format)</li>
+                    <li>CSV files organized by collection</li>
+                    <li>All receipt images</li>
+                  </ul>
+                </div>
+                <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
+                  <p>© ${new Date().getFullYear()} AuditReady. All rights reserved.</p>
+                </div>
+              </div>
+            </body>
+          </html>
+        `;
+
+        const emailText = `
+Your Export is Ready!
+
+Your data export for ${business?.name} is ready to download.
+
+Export Details:
+- ${receipts.length} receipts
+- ${downloadedCount} images
+- ${collections?.length || 0} collections
+- File size: ${(zipBlob.length / 1048576).toFixed(2)} MB
+
+Visit ${appUrl}/settings?tab=businesses to download your export.
+
+IMPORTANT: This export will expire in 7 days. Please download it soon!
+
+The export includes:
+- Complete business data (JSON format)
+- CSV files organized by collection
+- All receipt images
+        `;
+
+        // Create audit log entry
         await supabase.from("audit_logs").insert({
           user_id: jobData.requested_by,
           action: "export_completed",
@@ -265,13 +340,41 @@ async function processExport(supabase: any, jobId: string, businessId: string) {
             business_name: business?.name,
             file_size: zipBlob.length,
             receipts_count: receipts.length,
-            notification_sent: true,
+            notification_sent: !!resendApiKey,
             user_email: profile.email,
-            message: `Your export for ${business?.name} is ready to download. Visit Settings > Businesses to download it. The export expires in 7 days.`,
           },
         });
 
-        console.log("Export notification logged for:", profile.email);
+        // Send email via Resend if configured
+        if (resendApiKey) {
+          try {
+            const emailResponse = await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${resendApiKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                from: "AuditReady <onboarding@resend.dev>",
+                to: [profile.email],
+                subject: `📦 Your ${business?.name} Export is Ready!`,
+                html: emailHtml,
+                text: emailText,
+              }),
+            });
+
+            if (!emailResponse.ok) {
+              const errorData = await emailResponse.json();
+              console.error("Failed to send email:", errorData);
+            } else {
+              console.log("Export notification email sent to:", profile.email);
+            }
+          } catch (emailError) {
+            console.error("Error sending email:", emailError);
+          }
+        } else {
+          console.log("RESEND_API_KEY not configured, skipping email notification");
+        }
       }
     }
 
