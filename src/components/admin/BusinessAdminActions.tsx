@@ -6,13 +6,13 @@ import {
   softDeleteBusiness,
   restoreBusiness,
   updateBusinessDetails,
-  exportBusinessData,
   setStorageLimit,
   checkStorageLimit,
   type BusinessStorageInfo
 } from '../../lib/businessAdminService';
 import { useAuth } from '../../contexts/AuthContext';
 import { logger } from '../../lib/logger';
+import { supabase } from '../../lib/supabase';
 
 interface BusinessAdminActionsProps {
   business: {
@@ -183,20 +183,36 @@ export function BusinessAdminActions({ business, onRefresh }: BusinessAdminActio
     try {
       setLoading(true);
       setError('');
-      const blob = await exportBusinessData(business.id);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `business-${business.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-export.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      setSuccess('Business data exported successfully');
-      logger.info('Business data exported via admin UI', { businessId: business.id, businessName: business.name }, 'USER_ACTION');
+
+      // Call Edge Function to start async export
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-export-job`;
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ businessId: business.id }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to start export');
+      }
+
+      const result = await response.json();
+
+      setSuccess('Export started! Check the Business Settings tab for download when ready (usually 1-5 minutes).');
+      logger.info('Business export job started', { businessId: business.id, jobId: result.jobId }, 'USER_ACTION');
     } catch (err: any) {
-      logger.error('Failed to export business data', err, { businessId: business.id });
-      setError(err.message || 'Failed to export business data');
+      logger.error('Failed to start export', err, { businessId: business.id });
+      setError(err.message || 'Failed to start export');
     } finally {
       setLoading(false);
     }
@@ -308,11 +324,20 @@ export function BusinessAdminActions({ business, onRefresh }: BusinessAdminActio
       <button
         onClick={handleExport}
         disabled={loading}
-        className="px-3 py-1.5 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition flex items-center gap-2 text-sm disabled:opacity-50"
-        title="Export Business Data"
+        className="px-3 py-1.5 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        title="Export Business Data (includes all receipts and images)"
       >
-        <Download size={16} />
-        Export
+        {loading ? (
+          <>
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+            Exporting...
+          </>
+        ) : (
+          <>
+            <Download size={16} />
+            Export
+          </>
+        )}
       </button>
 
       {/* Suspend/Unsuspend Modal */}

@@ -3,6 +3,7 @@ import { Plus, CreditCard as Edit2, Trash2, Building2, ArrowRightLeft } from 'lu
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Database } from '../../lib/database.types';
+import { ExportJobsManager } from './ExportJobsManager';
 
 type Business = Database['public']['Tables']['businesses']['Row'];
 type Profile = Database['public']['Tables']['profiles']['Row'];
@@ -317,6 +318,23 @@ export function BusinessManagement() {
           );
         })}
       </div>
+
+      {/* Export Jobs Section */}
+      {businesses.length > 0 && (
+        <div className="space-y-6 mt-8">
+          {businesses.map((business) => (
+            <div key={`exports-${business.id}`} className="bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 rounded-lg p-6">
+              <div className="mb-4">
+                <h4 className="text-md font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+                  <Building2 size={18} />
+                  {business.name} - Data Exports
+                </h4>
+              </div>
+              <ExportJobsManager businessId={business.id} businessName={business.name} />
+            </div>
+          ))}
+        </div>
+      )}
 
       {businesses.length === 0 && (
         <div className="text-center py-12 bg-slate-50 dark:bg-gray-800 rounded-lg border border-slate-200">
