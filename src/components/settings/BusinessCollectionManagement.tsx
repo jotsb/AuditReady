@@ -12,6 +12,7 @@ interface BusinessWithDetails extends Business {
   member_count?: number;
   collection_count?: number;
   receipt_count?: number;
+  user_role?: string;
 }
 
 interface CollectionWithDetails extends Collection {
@@ -75,15 +76,15 @@ export function BusinessCollectionManagement() {
 
         supabase
           .from('business_members')
-          .select('business_id, businesses(*)')
+          .select('business_id, role, businesses(*)')
           .eq('user_id', user.id)
       ]);
 
       if (ownedResult.error) throw ownedResult.error;
       if (memberResult.error) throw memberResult.error;
 
-      const ownedBusinesses = ownedResult.data || [];
-      const memberBusinesses = memberResult.data?.map((m: any) => m.businesses).filter(Boolean) || [];
+      const ownedBusinesses = (ownedResult.data || []).map((b: any) => ({ ...b, user_role: 'owner' }));
+      const memberBusinesses = memberResult.data?.map((m: any) => ({ ...m.businesses, user_role: m.role })).filter(Boolean) || [];
 
       const allBusinesses = [...ownedBusinesses, ...memberBusinesses];
       const uniqueBusinesses = Array.from(
@@ -436,10 +437,12 @@ export function BusinessCollectionManagement() {
                     </div>
                   </div>
 
-                  {/* Export/Download Section */}
-                  <div className="mt-4 pt-4 border-t border-slate-200 dark:border-gray-700">
-                    <ExportJobsManager businessId={business.id} businessName={business.name} />
-                  </div>
+                  {/* Export/Download Section - Only for owners and managers */}
+                  {(isOwner || business.user_role === 'manager') && (
+                    <div className="mt-4 pt-4 border-t border-slate-200 dark:border-gray-700">
+                      <ExportJobsManager businessId={business.id} businessName={business.name} />
+                    </div>
+                  )}
                 </div>
 
                 {isExpanded && (
