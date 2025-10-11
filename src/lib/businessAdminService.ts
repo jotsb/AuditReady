@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { logger } from './logger';
+import JSZip from 'jszip';
 
 /**
  * Business Administration Service
@@ -314,10 +315,11 @@ export async function getBusinessAdminInfo(businessId: string) {
 }
 
 /**
- * Export business data (for data portability before deletion)
+ * Export business data including receipt images as a ZIP file
+ * GDPR compliant - includes all business data and files
  */
 export async function exportBusinessData(businessId: string): Promise<Blob> {
-  logger.info('Exporting business data', { businessId }, 'USER_ACTION');
+  logger.info('Exporting business data with images', { businessId }, 'USER_ACTION');
 
   const startTime = Date.now();
 
@@ -360,20 +362,89 @@ export async function exportBusinessData(businessId: string): Promise<Blob> {
 
   if (membersError) throw membersError;
 
+  // Create ZIP file
+  const zip = new JSZip();
+
+  // Add metadata JSON
   const exportData = {
     business,
     collections,
     receipts: receipts.map(r => ({
-      ...r,
-      file_path: null, // Don't include file paths for privacy
+      id: r.id,
+      merchant_name: r.merchant_name,
+      amount: r.amount,
+      currency: r.currency,
+      date: r.date,
+      category: r.category,
+      notes: r.notes,
+      verified: r.verified,
+      collection_id: r.collection_id,
+      created_at: r.created_at,
+      file_name: r.file_path ? `receipts/${r.id}_${r.merchant_name || 'receipt'}.jpg` : null
     })),
-    members,
+    members: members?.map(m => ({
+      role: m.role,
+      email: m.profiles?.email,
+      full_name: m.profiles?.full_name,
+      joined_at: m.created_at
+    })),
     exported_at: new Date().toISOString(),
-    export_version: '1.0'
+    export_version: '2.0'
   };
 
-  const jsonString = JSON.stringify(exportData, null, 2);
-  const blob = new Blob([jsonString], { type: 'application/json' });
+  zip.file('business_data.json', JSON.stringify(exportData, null, 2));
+
+  // Create receipts folder
+  const receiptsFolder = zip.folder('receipts');
+
+  if (receiptsFolder && receipts.length > 0) {
+    logger.info('Downloading receipt images', { count: receipts.length }, 'PERFORMANCE');
+
+    // Download all receipt images
+    let downloadedCount = 0;
+    let failedCount = 0;
+
+    for (const receipt of receipts) {
+      if (receipt.file_path) {
+        try {
+          // Download from Supabase Storage
+          const { data: fileData, error: downloadError } = await supabase
+            .storage
+            .from('receipts')
+            .download(receipt.file_path);
+
+          if (downloadError) {
+            logger.warn('Failed to download receipt image', { receiptId: receipt.id, error: downloadError.message }, 'ERROR');
+            failedCount++;
+            continue;
+          }
+
+          if (fileData) {
+            // Add to ZIP with organized filename
+            const fileName = `${receipt.id}_${(receipt.merchant_name || 'receipt').replace(/[^a-z0-9]/gi, '_')}.jpg`;
+            receiptsFolder.file(fileName, fileData);
+            downloadedCount++;
+          }
+        } catch (error: any) {
+          logger.error('Error downloading receipt', error, { receiptId: receipt.id });
+          failedCount++;
+        }
+      }
+    }
+
+    logger.info('Receipt images processed', {
+      total: receipts.length,
+      downloaded: downloadedCount,
+      failed: failedCount
+    }, 'PERFORMANCE');
+  }
+
+  // Generate ZIP blob
+  const zipBlob = await zip.generateAsync({
+    type: 'blob',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 }
+  });
 
   const executionTime = Date.now() - startTime;
 
@@ -382,9 +453,10 @@ export async function exportBusinessData(businessId: string): Promise<Blob> {
     collections_count: collections?.length || 0,
     receipts_count: receipts.length,
     members_count: members?.length || 0,
-    size_bytes: blob.size,
+    zip_size_bytes: zipBlob.size,
+    zip_size_mb: (zipBlob.size / 1048576).toFixed(2),
     executionTime
   }, 'PERFORMANCE');
 
-  return blob;
+  return zipBlob;
 }

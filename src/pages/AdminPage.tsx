@@ -112,11 +112,20 @@ export function AdminPage() {
       const enrichedBusinesses = await Promise.all(
         businessesData.map(async (business) => {
           const [receiptCount, memberCount, collectionCount, ownerEmail] = await Promise.all([
+            // Count receipts through collections
             supabase
-              .from('receipts')
-              .select('id', { count: 'exact', head: true })
+              .from('collections')
+              .select('id')
               .eq('business_id', business.id)
-              .then(res => res.count || 0),
+              .then(async (collectionsRes) => {
+                if (!collectionsRes.data || collectionsRes.data.length === 0) return 0;
+                const collectionIds = collectionsRes.data.map(c => c.id);
+                const receiptsRes = await supabase
+                  .from('receipts')
+                  .select('id', { count: 'exact', head: true })
+                  .in('collection_id', collectionIds);
+                return receiptsRes.count || 0;
+              }),
 
             supabase
               .from('business_members')
@@ -929,7 +938,19 @@ function BusinessesTab({ businesses, totalBusinesses, currentPage, setCurrentPag
                           <Building2 className="text-blue-600 dark:text-blue-400" size={24} />
                         </div>
                         <div>
-                          <h3 className="text-xl font-bold text-slate-800 dark:text-white">{business.name}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-xl font-bold text-slate-800 dark:text-white">{business.name}</h3>
+                            {business.suspended && (
+                              <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-semibold rounded-full">
+                                SUSPENDED
+                              </span>
+                            )}
+                            {business.soft_deleted && (
+                              <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-semibold rounded-full">
+                                DELETED
+                              </span>
+                            )}
+                          </div>
                           <div className="flex items-center gap-2 mt-1 text-sm text-slate-600 dark:text-gray-400">
                             <Mail size={14} />
                             <span>{business.owner_email}</span>

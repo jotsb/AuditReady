@@ -16,6 +16,7 @@
     "isomorphic-dompurify": "^2.28.0",
     "jspdf": "^3.0.3",
     "jspdf-autotable": "^5.0.2",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.344.0",
     "pdfjs-dist": "^5.4.296",
     "qrcode": "^1.5.4",

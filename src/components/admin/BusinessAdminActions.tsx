@@ -187,7 +187,7 @@ export function BusinessAdminActions({ business, onRefresh }: BusinessAdminActio
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `business-${business.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-export.json`;
+      a.download = `business-${business.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-export.zip`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
