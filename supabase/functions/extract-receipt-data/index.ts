@@ -16,8 +16,11 @@ const corsHeaders = {
 };
 
 interface ExtractRequest {
-  filePath: string;
+  filePath?: string;
+  filePaths?: string[];
   collectionId: string;
+  isMultiPage?: boolean;
+  parentReceiptId?: string;
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -66,15 +69,26 @@ Deno.serve(async (req: Request) => {
     }
 
     requestData = bodyValidation.data;
-    const { filePath, collectionId } = requestData;
+    const { filePath, filePaths, collectionId, isMultiPage = false } = requestData;
 
-    // Validate inputs
-    const filePathValidation = validateString(filePath, 'filePath', 500, true);
-    if (!filePathValidation.valid) {
+    const pathsToProcess = isMultiPage ? filePaths : [filePath];
+
+    if (!pathsToProcess || pathsToProcess.length === 0) {
       return new Response(
-        JSON.stringify({ success: false, error: filePathValidation.error }),
+        JSON.stringify({ success: false, error: 'No file paths provided' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Validate inputs
+    for (const path of pathsToProcess) {
+      const filePathValidation = validateString(path, 'filePath', 500, true);
+      if (!filePathValidation.valid) {
+        return new Response(
+          JSON.stringify({ success: false, error: filePathValidation.error }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     const collectionIdValidation = validateUUID(collectionId);
@@ -89,8 +103,8 @@ Deno.serve(async (req: Request) => {
     await supabase.rpc('log_system_event', {
       p_level: 'INFO',
       p_category: 'EDGE_FUNCTION',
-      p_message: 'Receipt extraction started',
-      p_metadata: { filePath, collectionId, function: 'extract-receipt-data' },
+      p_message: isMultiPage ? 'Multi-page receipt extraction started' : 'Receipt extraction started',
+      p_metadata: { filePath, filePaths, collectionId, isMultiPage, pageCount: pathsToProcess.length, function: 'extract-receipt-data' },
       p_user_id: null,
       p_session_id: null,
       p_ip_address: null,
@@ -109,32 +123,43 @@ Deno.serve(async (req: Request) => {
       categoryList = categories.map(c => c.name).join(", ");
     }
 
-    const { data: fileData, error: downloadError } = await supabase.storage
-      .from("receipts")
-      .download(filePath);
+    // Download and convert all image files
+    const imageUrls: Array<{ type: string; image_url: { url: string } }> = [];
 
-    if (downloadError) {
-      throw downloadError;
+    for (const path of pathsToProcess) {
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from("receipts")
+        .download(path);
+
+      if (downloadError) {
+        throw downloadError;
+      }
+
+      const lowerFilePath = path.toLowerCase();
+      const arrayBuffer = await fileData.arrayBuffer();
+      const base64File = arrayBufferToBase64(arrayBuffer);
+
+      let imageFormat = "jpeg";
+      if (lowerFilePath.endsWith(".png")) {
+        imageFormat = "png";
+      } else if (lowerFilePath.endsWith(".jpg") || lowerFilePath.endsWith(".jpeg")) {
+        imageFormat = "jpeg";
+      } else if (lowerFilePath.endsWith(".gif")) {
+        imageFormat = "gif";
+      } else if (lowerFilePath.endsWith(".webp")) {
+        imageFormat = "webp";
+      }
+
+      const dataUrl = `data:image/${imageFormat};base64,${base64File}`;
+      imageUrls.push({
+        type: "image_url",
+        image_url: { url: dataUrl }
+      });
     }
 
-    const lowerFilePath = filePath.toLowerCase();
-    const arrayBuffer = await fileData.arrayBuffer();
-    const base64File = arrayBufferToBase64(arrayBuffer);
-    
-    let imageFormat = "jpeg";
-    if (lowerFilePath.endsWith(".png")) {
-      imageFormat = "png";
-    } else if (lowerFilePath.endsWith(".jpg") || lowerFilePath.endsWith(".jpeg")) {
-      imageFormat = "jpeg";
-    } else if (lowerFilePath.endsWith(".gif")) {
-      imageFormat = "gif";
-    } else if (lowerFilePath.endsWith(".webp")) {
-      imageFormat = "webp";
-    }
-    
-    const dataUrl = `data:image/${imageFormat};base64,${base64File}`;
-
-    const promptText = `Analyze this receipt and extract the following information. Return ONLY a valid JSON object with no additional text:\n\n{\n  \"vendor_name\": \"business name\",\n  \"vendor_address\": \"full address if visible\",\n  \"transaction_date\": \"YYYY-MM-DD format\",\n  \"transaction_time\": \"HH:MM format if visible\",\n  \"total_amount\": \"numeric value only\",\n  \"subtotal\": \"numeric value only\",\n  \"gst_amount\": \"GST/tax amount if visible\",\n  \"pst_amount\": \"PST amount if visible\",\n  \"gst_percent\": \"GST percentage if visible (just number)\",\n  \"pst_percent\": \"PST percentage if visible (just number)\",\n  \"card_last_digits\": \"last 4 digits of card if visible\",\n  \"customer_name\": \"customer name if visible\",\n  \"category\": \"Choose from: ${categoryList}\",\n  \"payment_method\": \"Cash, Credit Card, Debit Card, or Unknown\"\n}\n\nRules:\n- Return ONLY the JSON object, no other text\n- Use null for missing string values\n- Use 0 for missing amounts\n- For category: Choose the MOST APPROPRIATE category from the provided list. If none match well, use \"Miscellaneous\"\n- Extract amounts without currency symbols or percentage signs`;
+    const jsonFormat = `{\n  \"vendor_name\": \"business name\",\n  \"vendor_address\": \"full address if visible\",\n  \"transaction_date\": \"YYYY-MM-DD format\",\n  \"transaction_time\": \"HH:MM format if visible\",\n  \"total_amount\": \"numeric value only\",\n  \"subtotal\": \"numeric value only\",\n  \"gst_amount\": \"GST/tax amount if visible\",\n  \"pst_amount\": \"PST amount if visible\",\n  \"gst_percent\": \"GST percentage if visible (just number)\",\n  \"pst_percent\": \"PST percentage if visible (just number)\",\n  \"card_last_digits\": \"last 4 digits of card if visible\",\n  \"customer_name\": \"customer name if visible\",\n  \"category\": \"Choose from: ${categoryList}\",\n  \"payment_method\": \"Cash, Credit Card, Debit Card, or Unknown\"\n}`;\n\n    const rules = `\\nRules:\\n- Return ONLY the JSON object, no other text\\n- Use null for missing string values\\n- Use 0 for missing amounts\\n- For category: Choose the MOST APPROPRIATE category from the provided list. If none match well, use \"Miscellaneous\"\\n- Extract amounts without currency symbols or percentage signs`;\n\n    const promptText = isMultiPage
+      ? `Analyze this multi-page receipt (${pathsToProcess.length} pages) and extract the following information. The images are in order (page 1, 2, 3...). Consider all pages together as ONE receipt. Combine information from all pages - for example, if the vendor name is on page 1 and the total is on page 3, extract both. Return ONLY a valid JSON object with no additional text:\\n\\n${jsonFormat}${rules}`
+      : `Analyze this receipt and extract the following information. Return ONLY a valid JSON object with no additional text:\\n\\n${jsonFormat}${rules}`;
 
     const requestPayload = {
       model: "gpt-4o",
@@ -146,12 +171,7 @@ Deno.serve(async (req: Request) => {
               type: "text",
               text: promptText
             },
-            {
-              type: "image_url",
-              image_url: {
-                url: dataUrl
-              }
-            }
+            ...imageUrls
           ]
         }
       ],

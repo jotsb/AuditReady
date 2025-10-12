@@ -3,6 +3,7 @@ import { Plus, Upload, CreditCard as Edit, Search, Filter, Calendar, DollarSign,
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { ReceiptUpload } from '../components/receipts/ReceiptUpload';
+import { MultiPageCameraCapture, type CapturedPage } from '../components/receipts/MultiPageCameraCapture';
 import { ManualEntryForm } from '../components/receipts/ManualEntryForm';
 import { VerifyReceiptModal } from '../components/receipts/VerifyReceiptModal';
 import { EditReceiptModal } from '../components/receipts/EditReceiptModal';
@@ -33,6 +34,10 @@ interface Receipt {
   file_path: string | null;
   is_edited: boolean;
   created_at: string;
+  parent_receipt_id: string | null;
+  page_number: number;
+  is_parent: boolean;
+  total_pages: number;
 }
 
 interface ReceiptsPageProps {
@@ -47,6 +52,7 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
   const [selectedCollection, setSelectedCollection] = useState<string>('');
   const [showUpload, setShowUpload] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
+  const [showMultiPageCamera, setShowMultiPageCamera] = useState(false);
   const [autoTriggerPhoto, setAutoTriggerPhoto] = useState(false);
   const [verifyReceipt, setVerifyReceipt] = useState<{filePath: string, thumbnailPath: string, data: any} | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -156,13 +162,15 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
         .from('receipts')
         .select('*', { count: 'exact', head: true })
         .eq('collection_id', selectedCollection)
-        .eq('extraction_status', 'completed');
+        .eq('extraction_status', 'completed')
+        .or('is_parent.eq.true,parent_receipt_id.is.null');
 
       const { data, error } = await supabase
         .from('receipts')
         .select('*')
         .eq('collection_id', selectedCollection)
         .eq('extraction_status', 'completed')
+        .or('is_parent.eq.true,parent_receipt_id.is.null')
         .order('created_at', { ascending: false })
         .range(startIndex, endIndex);
 
@@ -173,6 +181,158 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
     } catch (error) {
       console.error('Error loading receipts:', error);
     }
+  };
+
+  const handleMultiPageUpload = async (files: Array<{ file: File; thumbnail: File }>) => {
+    if (!user || !selectedCollection || files.length === 0) return;
+
+    actionTracker.uploadStarted('multi-page-receipt', `${files.length} pages`, 0, { collectionId: selectedCollection });
+
+    setExtracting(true);
+    setShowUpload(false);
+    setShowMultiPageCamera(false);
+
+    const uploadStartTime = Date.now();
+
+    try {
+      const parentReceiptId = crypto.randomUUID();
+      const timestamp = Date.now();
+      const uploadedPaths: Array<{ filePath: string; thumbnailPath: string }> = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const { file, thumbnail } = files[i];
+        const fileName = `${user.id}/${parentReceiptId}/page_${i + 1}_${timestamp}.webp`;
+        const thumbnailName = `${user.id}/${parentReceiptId}/page_${i + 1}_${timestamp}_thumb.webp`;
+
+        const [uploadResult, thumbnailResult] = await Promise.all([
+          supabase.storage.from('receipts').upload(fileName, file, {
+            contentType: 'image/webp',
+            upsert: false
+          }),
+          supabase.storage.from('receipts').upload(thumbnailName, thumbnail, {
+            contentType: 'image/webp',
+            upsert: false
+          }),
+        ]);
+
+        if (uploadResult.error) throw uploadResult.error;
+        if (thumbnailResult.error) throw thumbnailResult.error;
+
+        uploadedPaths.push({ filePath: fileName, thumbnailPath: thumbnailName });
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-receipt-data`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session?.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            filePaths: uploadedPaths.map(p => p.filePath),
+            collectionId: selectedCollection,
+            isMultiPage: true,
+            parentReceiptId,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Edge function error:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('Multi-page extraction result:', result);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Extraction failed');
+      }
+
+      const transactionDateUTC = result.data.transaction_date
+        ? convertLocalDateToUTC(result.data.transaction_date)
+        : null;
+
+      const { data: parentReceipt, error: parentError } = await supabase
+        .from('receipts')
+        .insert({
+          id: parentReceiptId,
+          collection_id: selectedCollection,
+          uploaded_by: user.id,
+          file_path: null,
+          vendor_name: result.data.vendor_name,
+          vendor_address: result.data.vendor_address,
+          transaction_date: transactionDateUTC,
+          total_amount: parseFloat(result.data.total_amount || 0),
+          subtotal: result.data.subtotal ? parseFloat(result.data.subtotal) : null,
+          gst_amount: result.data.gst_amount ? parseFloat(result.data.gst_amount) : null,
+          pst_amount: result.data.pst_amount ? parseFloat(result.data.pst_amount) : null,
+          category: result.data.category,
+          payment_method: result.data.payment_method,
+          extraction_status: 'completed',
+          is_parent: true,
+          total_pages: files.length,
+          page_number: 1,
+          extraction_data: {
+            transaction_time: result.data.transaction_time,
+            gst_percent: result.data.gst_percent,
+            pst_percent: result.data.pst_percent,
+            card_last_digits: result.data.card_last_digits,
+            customer_name: result.data.customer_name,
+          },
+        })
+        .select()
+        .single();
+
+      if (parentError) throw parentError;
+
+      const childRecords = uploadedPaths.map((paths, index) => ({
+        collection_id: selectedCollection,
+        uploaded_by: user.id,
+        parent_receipt_id: parentReceiptId,
+        page_number: index + 1,
+        file_path: paths.filePath,
+        thumbnail_path: paths.thumbnailPath,
+        is_parent: false,
+        total_pages: files.length,
+        extraction_status: 'completed',
+      }));
+
+      const { error: childError } = await supabase
+        .from('receipts')
+        .insert(childRecords);
+
+      if (childError) throw childError;
+
+      const uploadDuration = Date.now() - uploadStartTime;
+      actionTracker.uploadCompleted('multi-page-receipt', `${files.length} pages`, uploadDuration, {
+        collectionId: selectedCollection,
+        vendor: result.data?.vendor_name,
+        pageCount: files.length
+      });
+
+      await loadReceipts();
+      alert(`Successfully uploaded ${files.length}-page receipt!`);
+    } catch (error) {
+      console.error('Multi-page upload/extraction error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to process multi-page receipt: ${errorMessage}`);
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  const handleMultiPageCameraComplete = async (pages: CapturedPage[]) => {
+    await handleMultiPageUpload(
+      pages.map((p) => ({
+        file: p.file,
+        thumbnail: p.thumbnail,
+      }))
+    );
   };
 
   const handleUpload = async (file: File, thumbnail: File) => {
@@ -1095,6 +1255,11 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
                           <div className="text-xs text-slate-500 dark:text-gray-400">{receipt.vendor_address}</div>
                         )}
                       </div>
+                      {receipt.total_pages > 1 && (
+                        <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium" title={`This receipt has ${receipt.total_pages} pages`}>
+                          {receipt.total_pages} pages
+                        </span>
+                      )}
                       {receipt.is_edited && (
                         <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded text-xs font-medium" title="This receipt has been manually edited">
                           Edited
@@ -1230,11 +1395,19 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
       {showUpload && !extracting && (
         <ReceiptUpload
           onUpload={handleUpload}
+          onMultiPageUpload={handleMultiPageUpload}
           onClose={() => {
             setShowUpload(false);
             setAutoTriggerPhoto(false);
           }}
           autoTriggerPhoto={autoTriggerPhoto}
+        />
+      )}
+
+      {showMultiPageCamera && !extracting && (
+        <MultiPageCameraCapture
+          onComplete={handleMultiPageCameraComplete}
+          onCancel={() => setShowMultiPageCamera(false)}
         />
       )}
 
