@@ -386,7 +386,7 @@
   - Location: `src/lib/pdfConverter.ts`
   - Fixed: Worker loading issues in development and production
   - Fixed: CSP violations by using Vite's asset bundling
-- [x] ✅ **Email Receipt Forwarding** (Completed 2025-10-13)
+- [ ] 🟡 **Email Receipt Forwarding** (Priority: Medium - Future Enhancement)
   - Forward receipts via email to system
   - Postmark inbound webhook integration
   - Automatic attachment extraction (PDF/images)
@@ -397,11 +397,14 @@
   - Business ID extraction from recipient email
   - Visual indicators in UI (mail icon for email receipts)
   - Complete audit logging for email processing
-  - Edge Function: `receive-email-receipt`
-  - Migration: `add_email_receipt_support.sql`
-  - Documentation: `EMAIL_RECEIPT_FORWARDING.md`
-  - Components: Mail/Camera icons in ReceiptsPage
-  - Database: `email_receipts_inbox` table, `source` enum, `email_metadata` JSONB
+  - Edge Function: `receive-email-receipt` (deployed, needs Postmark config)
+  - Migration: `add_email_receipt_support.sql` (applied)
+  - Documentation: `EMAIL_RECEIPT_FORWARDING.md`, `QUICK_START_EMAIL_FORWARDING.md`
+  - Components: Mail/Camera icons in ReceiptsPage (implemented)
+  - Database: `email_receipts_inbox` table, `source` enum, `email_metadata` JSONB (ready)
+  - Status: Code complete and deployed, requires external Postmark account setup
+  - Estimated setup time: 15 minutes (Postmark configuration)
+  - Business value: High - Seamless receipt import from email
 - [ ] 🟢 **Receipt Attachments** (Priority: Low - Future v2)
   - Attach supporting documents to receipts (invoice, PO, email)
   - Multiple files per receipt
