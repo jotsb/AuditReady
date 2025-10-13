@@ -8,7 +8,7 @@ const corsHeaders = {
 
 interface PostmarkAttachment {
   Name: string;
-  Content: string; // base64
+  Content: string;
   ContentType: string;
   ContentLength: number;
   ContentID?: string;
@@ -35,13 +35,11 @@ interface PostmarkInboundEmail {
 }
 
 Deno.serve(async (req: Request) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
-    // Only accept POST requests
     if (req.method !== 'POST') {
       return new Response(
         JSON.stringify({ error: 'Method not allowed' }),
@@ -49,7 +47,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Parse incoming email from Postmark
     const email: PostmarkInboundEmail = await req.json();
 
     console.log('📧 Received email:', {
@@ -59,20 +56,15 @@ Deno.serve(async (req: Request) => {
       attachmentCount: email.Attachments?.length || 0
     });
 
-    // Initialize Supabase client with service role
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Extract business_id from recipient email
-    // Expected format: receipts+business_uuid@yourdomain.com
-    // or use a mapping table
     const businessId = await extractBusinessId(email.To, supabase);
 
     if (!businessId) {
       console.error('❌ Could not determine business ID from recipient:', email.To);
 
-      // Log to system_logs for debugging
       await supabase.from('system_logs').insert({
         level: 'error',
         category: 'EMAIL',
@@ -91,7 +83,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Check for duplicate message
     const { data: existing } = await supabase
       .from('email_receipts_inbox')
       .select('id')
@@ -106,7 +97,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Create inbox entry
     const { data: inboxEntry, error: inboxError } = await supabase
       .from('email_receipts_inbox')
       .insert({
@@ -131,11 +121,9 @@ Deno.serve(async (req: Request) => {
 
     console.log('✅ Created inbox entry:', inboxEntry.id);
 
-    // Process attachments if any
     if (email.Attachments && email.Attachments.length > 0) {
       await processAttachments(email, inboxEntry.id, businessId, supabase);
     } else {
-      // No attachments - mark as completed with error
       await supabase
         .from('email_receipts_inbox')
         .update({
@@ -171,12 +159,10 @@ Deno.serve(async (req: Request) => {
 });
 
 async function extractBusinessId(toEmail: string, supabase: any): Promise<string | null> {
-  // Strategy 1: Check for receipts+uuid@domain.com format
   const match = toEmail.match(/receipts\+([a-f0-9-]{36})@/i);
   if (match) {
     const businessId = match[1];
 
-    // Verify business exists
     const { data } = await supabase
       .from('businesses')
       .select('id')
@@ -186,11 +172,6 @@ async function extractBusinessId(toEmail: string, supabase: any): Promise<string
     if (data) return businessId;
   }
 
-  // Strategy 2: Look up in email_aliases table (future enhancement)
-  // This would allow users to set up custom email addresses
-
-  // Strategy 3: Get first business (fallback for single-business users)
-  // Note: This is not ideal for multi-business users
   const { data: firstBusiness } = await supabase
     .from('businesses')
     .select('id')
@@ -207,13 +188,11 @@ async function processAttachments(
   supabase: any
 ) {
   try {
-    // Update status to processing
     await supabase
       .from('email_receipts_inbox')
       .update({ processing_status: 'processing' })
       .eq('id', inboxId);
 
-    // Filter valid receipt attachments (images and PDFs)
     const validAttachments = email.Attachments.filter(att => {
       const contentType = att.ContentType.toLowerCase();
       return contentType.includes('image/') || contentType.includes('pdf');
@@ -225,19 +204,15 @@ async function processAttachments(
 
     console.log(`📎 Processing ${validAttachments.length} valid attachment(s)`);
 
-    // Process first valid attachment (for now, we'll handle one receipt per email)
     const attachment = validAttachments[0];
     const fileName = attachment.Name || 'receipt.pdf';
 
-    // Decode base64 content
     const binaryData = Uint8Array.from(atob(attachment.Content), c => c.charCodeAt(0));
 
-    // Generate unique file path
     const timestamp = Date.now();
     const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
     const filePath = `${businessId}/${timestamp}_${sanitizedFileName}`;
 
-    // Upload to storage
     const { error: uploadError } = await supabase.storage
       .from('receipts')
       .upload(filePath, binaryData, {
@@ -251,7 +226,6 @@ async function processAttachments(
 
     console.log('✅ Uploaded attachment to storage:', filePath);
 
-    // Create receipt record
     const { data: receipt, error: receiptError } = await supabase
       .from('receipts')
       .insert({
@@ -282,7 +256,6 @@ async function processAttachments(
 
     console.log('✅ Created receipt record:', receipt.id);
 
-    // Update inbox entry with success
     await supabase
       .from('email_receipts_inbox')
       .update({
@@ -292,7 +265,6 @@ async function processAttachments(
       })
       .eq('id', inboxId);
 
-    // Log to system_logs
     await supabase.from('system_logs').insert({
       level: 'info',
       category: 'EMAIL',
@@ -311,7 +283,6 @@ async function processAttachments(
   } catch (error) {
     console.error('❌ Error processing attachments:', error);
 
-    // Update inbox entry with failure
     await supabase
       .from('email_receipts_inbox')
       .update({
@@ -321,7 +292,6 @@ async function processAttachments(
       })
       .eq('id', inboxId);
 
-    // Log error to system_logs
     await supabase.from('system_logs').insert({
       level: 'error',
       category: 'EMAIL',
