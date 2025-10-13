@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { SMTPClient } from "npm:emailjs@4.0.3";
 import {
   validateEmail,
   validateUUID,
@@ -188,13 +189,16 @@ This invitation will expire in 7 days.
 If you didn't expect this invitation, you can safely ignore this email.
     `;
 
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const smtpHost = Deno.env.get("SMTP_HOST");
+    const smtpPort = Deno.env.get("SMTP_PORT");
+    const smtpUser = Deno.env.get("SMTP_USER");
+    const smtpPassword = Deno.env.get("SMTP_PASSWORD");
 
-    if (!resendApiKey) {
+    if (!smtpHost || !smtpPort || !smtpUser || !smtpPassword) {
       await supabase.rpc('log_system_event', {
         p_level: 'WARN',
         p_category: 'EDGE_FUNCTION',
-        p_message: 'RESEND_API_KEY not configured',
+        p_message: 'SMTP credentials not configured',
         p_metadata: { email, inviteLink, function: 'send-invitation-email' },
         p_user_id: null,
         p_session_id: null,
@@ -203,8 +207,6 @@ If you didn't expect this invitation, you can safely ignore this email.
         p_stack_trace: null,
         p_execution_time_ms: null
       });
-
-      // RESEND_API_KEY not configured - invitation link available in team page
 
       return new Response(
         JSON.stringify({
@@ -222,12 +224,12 @@ If you didn't expect this invitation, you can safely ignore this email.
       );
     }
 
-    // Log Resend API call
+    // Log SMTP email send
     await supabase.rpc('log_system_event', {
       p_level: 'INFO',
       p_category: 'EXTERNAL_API',
-      p_message: 'Sending invitation email via Resend',
-      p_metadata: { email, businessName, function: 'send-invitation-email' },
+      p_message: 'Sending invitation email via SMTP',
+      p_metadata: { email, businessName, smtpHost, function: 'send-invitation-email' },
       p_user_id: null,
       p_session_id: null,
       p_ip_address: null,
@@ -237,34 +239,40 @@ If you didn't expect this invitation, you can safely ignore this email.
     });
 
     const apiStartTime = Date.now();
-    const emailResponse = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "Audit Proof <onboarding@resend.dev>",
-        to: [email],
+
+    try {
+      const client = new SMTPClient({
+        user: smtpUser,
+        password: smtpPassword,
+        host: smtpHost,
+        port: parseInt(smtpPort),
+        ssl: true,
+      });
+
+      await client.sendAsync({
+        from: `Audit Proof <${smtpUser}>`,
+        to: email,
         subject: `You've been invited to join ${businessName || "a team"} on Audit Proof`,
-        html: emailHtml,
         text: emailText,
-      }),
-    });
+        attachment: [
+          {
+            data: emailHtml,
+            alternative: true,
+          },
+        ],
+      });
 
-    const apiTime = Date.now() - apiStartTime;
+      const apiTime = Date.now() - apiStartTime;
 
-    if (!emailResponse.ok) {
-      const errorData = await emailResponse.json();
-
+      // Log successful send
+      const executionTime = Date.now() - startTime;
       await supabase.rpc('log_system_event', {
-        p_level: 'ERROR',
+        p_level: 'INFO',
         p_category: 'EXTERNAL_API',
-        p_message: 'Resend API error',
+        p_message: 'Invitation email sent successfully via SMTP',
         p_metadata: {
           email,
-          statusCode: emailResponse.status,
-          error: errorData,
+          smtpHost,
           function: 'send-invitation-email'
         },
         p_user_id: null,
@@ -272,43 +280,43 @@ If you didn't expect this invitation, you can safely ignore this email.
         p_ip_address: null,
         p_user_agent: req.headers.get('user-agent'),
         p_stack_trace: null,
+        p_execution_time_ms: executionTime
+      });
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Email sent successfully' }),
+        {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    } catch (emailError) {
+      const apiTime = Date.now() - apiStartTime;
+      const emailErrorMessage = emailError instanceof Error ? emailError.message : 'Unknown email error';
+
+      await supabase.rpc('log_system_event', {
+        p_level: 'ERROR',
+        p_category: 'EXTERNAL_API',
+        p_message: 'SMTP send error',
+        p_metadata: {
+          email,
+          smtpHost,
+          error: emailErrorMessage,
+          function: 'send-invitation-email'
+        },
+        p_user_id: null,
+        p_session_id: null,
+        p_ip_address: null,
+        p_user_agent: req.headers.get('user-agent'),
+        p_stack_trace: emailError instanceof Error ? emailError.stack : null,
         p_execution_time_ms: apiTime
       });
 
-      throw new Error(`Failed to send email: ${JSON.stringify(errorData)}`);
+      throw new Error(`Failed to send email: ${emailErrorMessage}`);
     }
-
-    const emailData = await emailResponse.json();
-
-    // Log successful send
-    const executionTime = Date.now() - startTime;
-    await supabase.rpc('log_system_event', {
-      p_level: 'INFO',
-      p_category: 'EXTERNAL_API',
-      p_message: 'Invitation email sent successfully',
-      p_metadata: {
-        email,
-        emailId: emailData.id,
-        function: 'send-invitation-email'
-      },
-      p_user_id: null,
-      p_session_id: null,
-      p_ip_address: null,
-      p_user_agent: req.headers.get('user-agent'),
-      p_stack_trace: null,
-      p_execution_time_ms: executionTime
-    });
-
-    return new Response(
-      JSON.stringify({ success: true, emailId: emailData.id }),
-      {
-        status: 200,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-      }
-    );
   } catch (error) {
     const executionTime = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
