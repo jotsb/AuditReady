@@ -71,17 +71,36 @@ Deno.serve(async (req: Request) => {
     requestData = bodyValidation.data;
     const { filePath, filePaths, collectionId, isMultiPage = false } = requestData;
 
-    const pathsToProcess = isMultiPage ? filePaths : [filePath];
+    // Determine which paths to process
+    let pathsToProcess: string[];
 
-    if (!pathsToProcess || pathsToProcess.length === 0) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'No file paths provided' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (isMultiPage) {
+      if (!filePaths || !Array.isArray(filePaths) || filePaths.length === 0) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'filePaths array is required for multi-page receipts' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      pathsToProcess = filePaths;
+    } else {
+      if (!filePath) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'filePath is required for single-page receipts' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      pathsToProcess = [filePath];
     }
 
     // Validate inputs
     for (const path of pathsToProcess) {
+      if (!path || typeof path !== 'string') {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Invalid file path in array' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const filePathValidation = validateString(path, 'filePath', 500, true);
       if (!filePathValidation.valid) {
         return new Response(
