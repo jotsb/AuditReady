@@ -7,7 +7,7 @@ import {
   validateString,
   validateRequestBody,
   INPUT_LIMITS
-} from "../_shared/validation.ts";
+} from "./_shared/validation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -40,7 +40,6 @@ Deno.serve(async (req: Request) => {
   let payload: InvitationPayload | null = null;
 
   try {
-    // Validate and parse request body
     const bodyValidation = await validateRequestBody(req);
     if (!bodyValidation.valid) {
       return new Response(
@@ -52,7 +51,6 @@ Deno.serve(async (req: Request) => {
     payload = bodyValidation.data;
     const { email, role, token, inviterName, businessName } = payload;
 
-    // Validate email
     const emailValidation = validateEmail(email);
     if (!emailValidation.valid) {
       return new Response(
@@ -61,7 +59,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Validate token (UUID format)
     const tokenValidation = validateUUID(token);
     if (!tokenValidation.valid) {
       return new Response(
@@ -70,7 +67,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Validate optional string fields
     if (inviterName) {
       const nameValidation = validateString(inviterName, 'inviterName', INPUT_LIMITS.full_name, false);
       if (!nameValidation.valid) {
@@ -91,7 +87,6 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Log function start
     await supabase.rpc('log_system_event', {
       p_level: 'INFO',
       p_category: 'EDGE_FUNCTION',
@@ -105,7 +100,6 @@ Deno.serve(async (req: Request) => {
       p_execution_time_ms: null
     });
 
-    // Email and token validation already done above, this check is now redundant
     if (!emailValidation.sanitized || !tokenValidation.sanitized) {
       await supabase.rpc('log_system_event', {
         p_level: 'WARN',
@@ -224,7 +218,6 @@ If you didn't expect this invitation, you can safely ignore this email.
       );
     }
 
-    // Log SMTP email send
     await supabase.rpc('log_system_event', {
       p_level: 'INFO',
       p_category: 'EXTERNAL_API',
@@ -262,17 +255,17 @@ If you didn't expect this invitation, you can safely ignore this email.
         ],
       };
 
-      // Add headers to improve deliverability and prevent spam classification
       const headers: Record<string, string> = {
-        'X-Mailer': 'Audit Proof Email Service',
+        'X-Mailer': 'Audit Proof',
         'X-Priority': '3',
         'X-MSMail-Priority': 'Normal',
         'Importance': 'Normal',
-        'List-Unsubscribe': `<mailto:${smtpUser}?subject=unsubscribe>`,
-        'Precedence': 'bulk',
         'MIME-Version': '1.0',
         'Message-ID': `<${Date.now()}.${Math.random().toString(36).substring(2)}@auditproof.ca>`,
         'Reply-To': smtpUser,
+        'From': `Audit Proof <noreply@auditproof.ca>`,
+        'Return-Path': smtpUser,
+        'Content-Type': 'multipart/alternative',
       };
 
       await client.sendAsync({
@@ -282,7 +275,6 @@ If you didn't expect this invitation, you can safely ignore this email.
 
       const apiTime = Date.now() - apiStartTime;
 
-      // Log successful send
       const executionTime = Date.now() - startTime;
       await supabase.rpc('log_system_event', {
         p_level: 'INFO',
@@ -340,7 +332,6 @@ If you didn't expect this invitation, you can safely ignore this email.
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const stackTrace = error instanceof Error ? error.stack : null;
 
-    // Log error
     await supabase.rpc('log_system_event', {
       p_level: 'ERROR',
       p_category: 'EDGE_FUNCTION',
