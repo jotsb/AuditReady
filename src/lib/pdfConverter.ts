@@ -1,6 +1,7 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+// Disable worker to avoid CSP issues in development
+pdfjsLib.GlobalWorkerOptions.workerSrc = '';
 
 export interface ConvertedPage {
   blob: Blob;
@@ -17,7 +18,10 @@ export async function convertPdfToImages(pdfFile: File): Promise<ConvertedPage[]
     const loadingTask = pdfjsLib.getDocument({
       data: arrayBuffer,
       useSystemFonts: true,
-      standardFontDataUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/standard_fonts/`
+      useWorkerFetch: false,
+      isEvalSupported: false,
+      disableAutoFetch: true,
+      disableStream: true
     });
 
     const pdf = await loadingTask.promise;
