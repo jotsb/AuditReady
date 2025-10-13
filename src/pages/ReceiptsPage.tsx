@@ -15,6 +15,7 @@ import { AdvancedFilterPanel } from '../components/receipts/AdvancedFilterPanel'
 import { convertLocalDateToUTC } from '../lib/dateUtils';
 import { usePageTracking, useDataLoadTracking } from '../hooks/usePageTracking';
 import { actionTracker } from '../lib/actionTracker';
+import { useLogger } from '../hooks/useLogger';
 
 interface Receipt {
   id: string;
@@ -46,6 +47,7 @@ interface ReceiptsPageProps {
 
 export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
   const { user } = useAuth();
+  const logger = useLogger();
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [collections, setCollections] = useState<any[]>([]);
   const [businesses, setBusinesses] = useState<any[]>([]);
