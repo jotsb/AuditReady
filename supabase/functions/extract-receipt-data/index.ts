@@ -27,14 +27,15 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = '';
   const chunkSize = 8192;
-  
+
   for (let i = 0; i < bytes.length; i += chunkSize) {
     const chunk = bytes.slice(i, i + chunkSize);
     binary += String.fromCharCode.apply(null, Array.from(chunk));
   }
-  
+
   return btoa(binary);
 }
+
 
 Deno.serve(async (req: Request) => {
   const startTime = Date.now();
@@ -150,30 +151,30 @@ Deno.serve(async (req: Request) => {
       }
 
       const lowerFilePath = path.toLowerCase();
+      const arrayBuffer = await fileData.arrayBuffer();
 
       if (lowerFilePath.endsWith(".pdf")) {
-        throw new Error("PDF files are not yet supported for OCR extraction. Please convert your PDF to an image (PNG, JPEG) before uploading. You can use online tools or take a screenshot of the PDF.");
+        throw new Error("PDF files must be converted to images before upload. This error shouldn't occur if the client validation is working properly.");
+      } else {
+        const base64File = arrayBufferToBase64(arrayBuffer);
+
+        let imageFormat = "jpeg";
+        if (lowerFilePath.endsWith(".png")) {
+          imageFormat = "png";
+        } else if (lowerFilePath.endsWith(".jpg") || lowerFilePath.endsWith(".jpeg")) {
+          imageFormat = "jpeg";
+        } else if (lowerFilePath.endsWith(".gif")) {
+          imageFormat = "gif";
+        } else if (lowerFilePath.endsWith(".webp")) {
+          imageFormat = "webp";
+        }
+
+        const dataUrl = `data:image/${imageFormat};base64,${base64File}`;
+        imageUrls.push({
+          type: "image_url",
+          image_url: { url: dataUrl }
+        });
       }
-
-      const arrayBuffer = await fileData.arrayBuffer();
-      const base64File = arrayBufferToBase64(arrayBuffer);
-
-      let imageFormat = "jpeg";
-      if (lowerFilePath.endsWith(".png")) {
-        imageFormat = "png";
-      } else if (lowerFilePath.endsWith(".jpg") || lowerFilePath.endsWith(".jpeg")) {
-        imageFormat = "jpeg";
-      } else if (lowerFilePath.endsWith(".gif")) {
-        imageFormat = "gif";
-      } else if (lowerFilePath.endsWith(".webp")) {
-        imageFormat = "webp";
-      }
-
-      const dataUrl = `data:image/${imageFormat};base64,${base64File}`;
-      imageUrls.push({
-        type: "image_url",
-        image_url: { url: dataUrl }
-      });
     }
 
     const jsonFormat = `{\n  \"vendor_name\": \"business name\",\n  \"vendor_address\": \"full address if visible\",\n  \"transaction_date\": \"YYYY-MM-DD format\",\n  \"transaction_time\": \"HH:MM format if visible\",\n  \"total_amount\": \"numeric value only\",\n  \"subtotal\": \"numeric value only\",\n  \"gst_amount\": \"GST/tax amount if visible\",\n  \"pst_amount\": \"PST amount if visible\",\n  \"gst_percent\": \"GST percentage if visible (just number)\",\n  \"pst_percent\": \"PST percentage if visible (just number)\",\n  \"card_last_digits\": \"last 4 digits of card if visible\",\n  \"customer_name\": \"customer name if visible\",\n  \"category\": \"Choose from: ${categoryList}\",\n  \"payment_method\": \"Cash, Credit Card, Debit Card, or Unknown\"\n}`;

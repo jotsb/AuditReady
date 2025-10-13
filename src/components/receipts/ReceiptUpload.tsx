@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Upload, Camera, X, Loader2 } from 'lucide-react';
 import { optimizeImage, type OptimizedImages } from '../../lib/imageOptimizer';
+import { convertPdfToImages } from '../../lib/pdfConverter';
 import { PageThumbnailStrip } from './PageThumbnailStrip';
 import { logger } from '../../lib/logger';
 
@@ -39,7 +40,53 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       if (selectedFile.type === 'application/pdf') {
-        alert('PDF files are not yet supported for OCR extraction. Please convert your PDF to an image (PNG or JPEG) before uploading.\n\nYou can:\n• Take a screenshot of the PDF\n• Use an online PDF-to-image converter\n• Print to image on your device');
+        setOptimizing(true);
+        try {
+          const pages = await convertPdfToImages(selectedFile);
+
+          if (pages.length === 1) {
+            const imageFile = new File([pages[0].blob], selectedFile.name.replace('.pdf', '.png'), { type: 'image/png' });
+            const optimized = await optimizeImage(imageFile);
+
+            setFile(optimized.full);
+            setThumbnail(optimized.thumbnail);
+
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              setPreview(reader.result as string);
+            };
+            reader.readAsDataURL(optimized.full);
+          } else {
+            const processedFiles: ProcessedFile[] = [];
+            for (const page of pages) {
+              const imageFile = new File([page.blob], `${selectedFile.name}_page${page.pageNumber}.png`, { type: 'image/png' });
+              const optimized = await optimizeImage(imageFile);
+              const reader = new FileReader();
+              const preview = await new Promise<string>((resolve) => {
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.readAsDataURL(optimized.full);
+              });
+
+              processedFiles.push({
+                id: crypto.randomUUID(),
+                file: optimized.full,
+                thumbnail: optimized.thumbnail,
+                preview,
+                pageNumber: page.pageNumber,
+              });
+            }
+            setMultiPageFiles(processedFiles);
+          }
+        } catch (error) {
+          logger.error('PDF conversion error', error as Error, {
+            fileName: selectedFile.name,
+            component: 'ReceiptUpload',
+            operation: 'convert_pdf'
+          });
+          alert('Failed to convert PDF. Please try again or use an image file.');
+        } finally {
+          setOptimizing(false);
+        }
         return;
       }
 
@@ -72,37 +119,48 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
     const selectedFiles = e.target.files;
     if (!selectedFiles || selectedFiles.length === 0) return;
 
-    // Check for PDF files
-    for (let i = 0; i < selectedFiles.length; i++) {
-      if (selectedFiles[i].type === 'application/pdf') {
-        alert('PDF files are not yet supported for OCR extraction. Please convert your PDF to an image (PNG or JPEG) before uploading.\n\nYou can:\n• Take a screenshot of the PDF\n• Use an online PDF-to-image converter\n• Print to image on your device');
-        if (multiFileInputRef.current) {
-          multiFileInputRef.current.value = '';
-        }
-        return;
-      }
-    }
-
     setOptimizing(true);
     const processedFiles: ProcessedFile[] = [];
 
     try {
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
-        const optimized = await optimizeImage(file);
-        const reader = new FileReader();
-        const preview = await new Promise<string>((resolve) => {
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(optimized.full);
-        });
 
-        processedFiles.push({
-          id: crypto.randomUUID(),
-          file: optimized.full,
-          thumbnail: optimized.thumbnail,
-          preview,
-          pageNumber: processedFiles.length + 1,
-        });
+        if (file.type === 'application/pdf') {
+          const pages = await convertPdfToImages(file);
+          for (const page of pages) {
+            const imageFile = new File([page.blob], `${file.name}_page${page.pageNumber}.png`, { type: 'image/png' });
+            const optimized = await optimizeImage(imageFile);
+            const reader = new FileReader();
+            const preview = await new Promise<string>((resolve) => {
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(optimized.full);
+            });
+
+            processedFiles.push({
+              id: crypto.randomUUID(),
+              file: optimized.full,
+              thumbnail: optimized.thumbnail,
+              preview,
+              pageNumber: processedFiles.length + 1,
+            });
+          }
+        } else {
+          const optimized = await optimizeImage(file);
+          const reader = new FileReader();
+          const preview = await new Promise<string>((resolve) => {
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(optimized.full);
+          });
+
+          processedFiles.push({
+            id: crypto.randomUUID(),
+            file: optimized.full,
+            thumbnail: optimized.thumbnail,
+            preview,
+            pageNumber: processedFiles.length + 1,
+          });
+        }
       }
 
       setMultiPageFiles(processedFiles);
@@ -187,7 +245,7 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-4">
-              Select Receipt Image
+              Select Receipt Image or PDF
             </label>
 
             {multiPageFiles.length > 0 ? (
@@ -253,14 +311,14 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
                         <p className="mb-2 text-sm text-slate-600 dark:text-gray-400">
                           <span className="font-semibold">Click to upload</span> or drag and drop
                         </p>
-                        <p className="text-xs text-slate-500 dark:text-gray-400">Single file: PNG, JPG</p>
+                        <p className="text-xs text-slate-500 dark:text-gray-400">Single file: PNG, JPG, PDF</p>
                       </>
                     )}
                   </div>
                   <input
                     type="file"
                     className="hidden"
-                    accept="image/*"
+                    accept="image/*,.pdf,application/pdf"
                     onChange={handleFileChange}
                     disabled={optimizing}
                   />
@@ -284,7 +342,7 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
                         ref={multiFileInputRef}
                         type="file"
                         className="hidden"
-                        accept="image/*"
+                        accept="image/*,.pdf,application/pdf"
                         multiple
                         onChange={handleMultiFileChange}
                         disabled={optimizing}
@@ -309,7 +367,7 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
                     ref={photoInputRef}
                     type="file"
                     className="hidden"
-                    accept="image/*"
+                    accept="image/*,.pdf,application/pdf"
                     capture="environment"
                     onChange={handleFileChange}
                   />
