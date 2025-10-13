@@ -51,9 +51,23 @@ export function ReceiptThumbnail({
       return;
     }
 
-    const { data } = supabase.storage.from('receipts').getPublicUrl(pathToLoad);
-    setImageUrl(data.publicUrl);
-    setIsLoading(false);
+    async function loadImage() {
+      try {
+        const { data, error } = await supabase.storage
+          .from('receipts')
+          .createSignedUrl(pathToLoad, 3600);
+
+        if (error) throw error;
+        setImageUrl(data.signedUrl);
+      } catch (error) {
+        console.error('Error loading thumbnail:', error);
+        setImageUrl(null);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadImage();
   }, [isVisible, thumbnailPath, filePath]);
 
   const isPdf = fileType === 'pdf' || filePath?.toLowerCase().endsWith('.pdf');
