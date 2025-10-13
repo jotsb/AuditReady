@@ -50,7 +50,7 @@ export function Sidebar({ isOpen, currentView, onNavigate }: SidebarProps) {
         <div className="p-6 border-b border-slate-700">
           <div className="flex items-center gap-3">
             <img
-              src="/icon.svg"
+              src="/logo_audit_proof.png"
               alt="Audit Proof"
               className="w-10 h-10"
             />
