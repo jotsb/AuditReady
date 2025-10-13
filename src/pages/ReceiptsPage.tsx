@@ -12,6 +12,7 @@ import { BulkActionToolbar } from '../components/receipts/BulkActionToolbar';
 import { BulkCategoryModal } from '../components/receipts/BulkCategoryModal';
 import { BulkMoveModal } from '../components/receipts/BulkMoveModal';
 import { AdvancedFilterPanel } from '../components/receipts/AdvancedFilterPanel';
+import { ReceiptThumbnail } from '../components/shared/ReceiptThumbnail';
 import { convertLocalDateToUTC } from '../lib/dateUtils';
 import { usePageTracking, useDataLoadTracking } from '../hooks/usePageTracking';
 import { actionTracker } from '../lib/actionTracker';
@@ -33,6 +34,8 @@ interface Receipt {
   extraction_status: string | null;
   extracted_data: any | null;
   file_path: string | null;
+  thumbnail_path: string | null;
+  source: string | null;
   is_edited: boolean;
   created_at: string;
   parent_receipt_id: string | null;
@@ -1458,7 +1461,13 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
                     </td>
                   )}
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
+                      <ReceiptThumbnail
+                        thumbnailPath={receipt.thumbnail_path}
+                        filePath={receipt.file_path}
+                        vendorName={receipt.vendor_name || 'Unknown Vendor'}
+                        fileType={receipt.file_path?.split('.').pop()}
+                      />
                       <div>
                         <div className="flex items-center gap-1.5 text-sm font-medium text-slate-800 dark:text-white">
                           {receipt.vendor_name || 'Unknown Vendor'}
