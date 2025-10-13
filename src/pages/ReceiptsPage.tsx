@@ -644,13 +644,12 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
     });
 
     try {
-      if (filePath) {
-        await supabase.storage.from('receipts').remove([filePath]);
-      }
-
       const { error } = await supabase
         .from('receipts')
-        .delete()
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: user?.id
+        })
         .eq('id', receiptId);
 
       if (error) throw error;
@@ -788,7 +787,7 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
     if (selectedReceipts.size === 0) return;
 
     const confirmed = window.confirm(
-      `Are you sure you want to delete ${selectedReceipts.size} receipt(s)? This action cannot be undone.`
+      `Are you sure you want to delete ${selectedReceipts.size} receipt(s)?`
     );
 
     if (!confirmed) return;
@@ -797,40 +796,28 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
     const receiptIds = Array.from(selectedReceipts);
 
     try {
-      // Get file paths for storage cleanup
-      const { data: receiptsToDelete } = await supabase
-        .from('receipts')
-        .select('id, file_path, vendor_name, total_amount')
-        .in('id', receiptIds);
-
-      // Delete from database (triggers will handle audit logs)
+      // Soft delete receipts (triggers will handle audit logs)
       const { error } = await supabase
         .from('receipts')
-        .delete()
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: user?.id
+        })
         .in('id', receiptIds);
 
       if (error) throw error;
-
-      // Delete files from storage
-      const filePaths = receiptsToDelete
-        ?.filter(r => r.file_path)
-        .map(r => r.file_path) || [];
-
-      if (filePaths.length > 0) {
-        await supabase.storage.from('receipts').remove(filePaths);
-      }
 
       // System logging
       await supabase.from('system_logs').insert({
         level: 'INFO',
         category: 'USER_ACTION',
-        message: `Bulk deleted ${receiptIds.length} receipts`,
+        message: `Bulk soft deleted ${receiptIds.length} receipts`,
         metadata: {
           user_id: user?.id,
           collection_id: selectedCollection,
           receipt_count: receiptIds.length,
           execution_time_ms: Date.now() - startTime,
-          action: 'bulk_delete'
+          action: 'bulk_soft_delete'
         }
       });
 

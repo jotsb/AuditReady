@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Building2, Users, Receipt, TrendingUp, AlertCircle, Activity, Database, BarChart3, UserCog, Search, Filter as FilterIcon, Download, FolderOpen, ChevronDown, ChevronRight, Calendar, Mail } from 'lucide-react';
+import { Building2, Users, Receipt, TrendingUp, AlertCircle, Activity, Database, BarChart3, UserCog, Search, Filter as FilterIcon, Download, FolderOpen, ChevronDown, ChevronRight, Calendar, Mail, Trash2 } from 'lucide-react';
 import { LogEntry } from '../components/shared/LogEntry';
 import { usePageTracking } from '../hooks/usePageTracking';
 import { UserManagement } from '../components/admin/UserManagement';
 import { AuditLogsView } from '../components/audit/AuditLogsView';
 import { BusinessAdminActions } from '../components/admin/BusinessAdminActions';
+import { DeletedReceiptsManagement } from '../components/admin/DeletedReceiptsManagement';
 
 interface AdminStats {
   totalUsers: number;
@@ -51,7 +52,7 @@ export function AdminPage() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'businesses' | 'logs' | 'analytics' | 'bulk-ops'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'businesses' | 'logs' | 'analytics' | 'bulk-ops' | 'deleted-receipts'>('overview');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalBusinesses, setTotalBusinesses] = useState(0);
   const itemsPerPage = 20;
@@ -275,6 +276,17 @@ export function AdminPage() {
                 <Activity className="inline mr-2" size={18} />
                 Bulk Operations
               </button>
+              <button
+                onClick={() => setActiveTab('deleted-receipts')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition ${
+                  activeTab === 'deleted-receipts'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:text-gray-300 hover:border-slate-300'
+                }`}
+              >
+                <Trash2 className="inline mr-2" size={18} />
+                Deleted Receipts
+              </button>
             </nav>
           </div>
         </div>
@@ -472,6 +484,10 @@ export function AdminPage() {
 
         {activeTab === 'bulk-ops' && (
           <BulkOperationsTab />
+        )}
+
+        {activeTab === 'deleted-receipts' && (
+          <DeletedReceiptsManagement />
         )}
         </div>
       </div>
