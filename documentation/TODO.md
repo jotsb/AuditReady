@@ -386,6 +386,22 @@
   - Location: `src/lib/pdfConverter.ts`
   - Fixed: Worker loading issues in development and production
   - Fixed: CSP violations by using Vite's asset bundling
+- [x] ✅ **Email Receipt Forwarding** (Completed 2025-10-13)
+  - Forward receipts via email to system
+  - Postmark inbound webhook integration
+  - Automatic attachment extraction (PDF/images)
+  - Receipt source tracking (upload, email, camera, api)
+  - Email metadata storage (sender, subject, received_at)
+  - Email inbox tracking table with processing status
+  - Deduplication by email message ID
+  - Business ID extraction from recipient email
+  - Visual indicators in UI (mail icon for email receipts)
+  - Complete audit logging for email processing
+  - Edge Function: `receive-email-receipt`
+  - Migration: `add_email_receipt_support.sql`
+  - Documentation: `EMAIL_RECEIPT_FORWARDING.md`
+  - Components: Mail/Camera icons in ReceiptsPage
+  - Database: `email_receipts_inbox` table, `source` enum, `email_metadata` JSONB
 - [ ] 🟢 **Receipt Attachments** (Priority: Low - Future v2)
   - Attach supporting documents to receipts (invoice, PO, email)
   - Multiple files per receipt
@@ -1420,6 +1436,63 @@
 - ⏳ Advanced features and integrations (not started)
 
 **Recent Major Updates (2025-10-13):**
+
+**SESSION 13: Email Receipt Forwarding - COMPLETE**
+1. **Email-to-Receipt System**: Users can now forward receipts via email
+   - Postmark inbound webhook integration
+   - Recipients send emails to: `receipts+business_uuid@yourdomain.com`
+   - System automatically extracts PDF/image attachments
+   - Creates receipt records with source='email'
+   - Stores email metadata (sender, subject, received_at)
+   - Deduplication prevents duplicate receipts from same email
+   - Edge Function: `receive-email-receipt` processes webhooks
+   - Location: `supabase/functions/receive-email-receipt/`
+
+2. **Database Schema for Email Receipts**:
+   - Added `source` enum column: 'upload' | 'email' | 'camera' | 'api'
+   - Added `email_metadata` JSONB for email details
+   - Added `email_message_id` for deduplication
+   - Created `email_receipts_inbox` table to track all received emails
+   - Processing status tracking: pending → processing → completed/failed
+   - Error logging for failed email processing
+   - Complete RLS policies for security
+   - Migration: `add_email_receipt_support.sql`
+
+3. **Email Processing Workflow**:
+   - Receive Postmark webhook POST with email data
+   - Extract business ID from recipient email format
+   - Check for duplicate via message_id
+   - Create inbox entry with raw email data
+   - Filter valid attachments (PDF/images only)
+   - Decode base64 attachment content
+   - Upload to Supabase Storage
+   - Create receipt record with source='email'
+   - Update inbox entry with success/failure status
+   - Complete audit logging to system_logs
+
+4. **UI Enhancements**:
+   - Blue mail icon next to vendor name for email receipts
+   - Green camera icon for camera-captured receipts
+   - Tooltips explain receipt source
+   - Icons appear in receipts list view
+   - Location: `ReceiptsPage.tsx` vendor column
+
+5. **Comprehensive Documentation**:
+   - Complete setup guide: `EMAIL_RECEIPT_FORWARDING.md`
+   - Postmark account setup instructions
+   - Domain configuration (MX records)
+   - Webhook configuration steps
+   - Edge Function deployment guide
+   - User instructions for forwarding emails
+   - Troubleshooting section with common issues
+   - Security considerations
+   - Monitoring and metrics queries
+
+**Impact:**
+- Receipt Entry: New channel for receipt submission (email forwarding)
+- User Experience: Seamless receipt import from email
+- Use Cases: Online purchases, e-receipts, email confirmations
+- Infrastructure: Production-ready email processing pipeline
 
 **SESSION 12: PDF Conversion System Fix - COMPLETE**
 1. **PDF.js Worker Configuration Fixed**: Multi-page PDF uploads now working

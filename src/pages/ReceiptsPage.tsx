@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Upload, CreditCard as Edit, Search, Filter, Calendar, DollarSign, Trash2, Loader2, Eye, CreditCard as Edit2, CheckSquare, Square } from 'lucide-react';
+import { Plus, Upload, CreditCard as Edit, Search, Filter, Calendar, DollarSign, Trash2, Loader2, Eye, CreditCard as Edit2, CheckSquare, Square, Mail, Camera } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { ReceiptUpload } from '../components/receipts/ReceiptUpload';
@@ -1460,8 +1460,14 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <div>
-                        <div className="text-sm font-medium text-slate-800 dark:text-white">
+                        <div className="flex items-center gap-1.5 text-sm font-medium text-slate-800 dark:text-white">
                           {receipt.vendor_name || 'Unknown Vendor'}
+                          {receipt.source === 'email' && (
+                            <Mail size={14} className="text-blue-600 dark:text-blue-400" title="Received via email" />
+                          )}
+                          {receipt.source === 'camera' && (
+                            <Camera size={14} className="text-green-600 dark:text-green-400" title="Captured with camera" />
+                          )}
                         </div>
                         {receipt.vendor_address && (
                           <div className="text-xs text-slate-500 dark:text-gray-400">{receipt.vendor_address}</div>

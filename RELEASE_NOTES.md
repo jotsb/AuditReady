@@ -4,6 +4,155 @@
 
 ---
 
+## 📦 Version 0.7.0 - "Email Receipt Forwarding" (2025-10-13)
+
+### 🎯 Major Features
+
+#### **Email-to-Receipt System**
+Users can now forward receipt emails directly to Audit Proof. The system automatically extracts attachments and creates receipt records.
+
+**How It Works**
+```
+User forwards email → receipts+business_id@yourdomain.com
+                    ↓
+            Postmark Inbound Parse
+                    ↓
+          Webhook to Edge Function
+                    ↓
+        Extract PDF/image attachments
+                    ↓
+        Upload to Supabase Storage
+                    ↓
+        Create receipt (source='email')
+                    ↓
+        Trigger AI extraction
+```
+
+**Key Features**
+- ✅ Forward receipts from any email client
+- ✅ Automatic PDF and image extraction
+- ✅ Supports single and multi-page PDFs
+- ✅ Deduplication prevents duplicate receipts
+- ✅ Email metadata stored (sender, subject, date)
+- ✅ Visual indicator in UI (mail icon)
+- ✅ Complete audit trail
+
+**Supported Attachments**
+- PDF files (single or multi-page)
+- Image files (JPEG, PNG, WebP)
+- Maximum size: 35 MB (Postmark limit)
+
+**How Users Forward Receipts**
+1. Find your business receipt email: `receipts+YOUR_BUSINESS_ID@domain.com`
+2. Forward receipt email with attachment
+3. Receipt appears in dashboard within 1-2 minutes
+4. Look for blue mail icon next to vendor name
+
+### 📦 New Components & Functions
+
+**Edge Function: `receive-email-receipt`**
+- Receives Postmark inbound webhooks
+- Parses email JSON payload
+- Extracts and uploads attachments
+- Creates receipt records
+- Handles errors and logging
+- Deduplication by message ID
+- Location: `supabase/functions/receive-email-receipt/`
+
+**Database Changes**
+- New table: `email_receipts_inbox`
+  - Tracks all incoming emails
+  - Stores raw email data
+  - Processing status tracking
+  - Error logging
+- New enum: `receipt_source` ('upload' | 'email' | 'camera' | 'api')
+- New columns on `receipts`:
+  - `source` - Origin of receipt
+  - `email_metadata` - Email details (JSONB)
+  - `email_message_id` - Deduplication key
+- Migration: `20251013050000_add_email_receipt_support.sql`
+
+**UI Enhancements**
+- Blue mail icon for email receipts
+- Green camera icon for camera receipts
+- Tooltips explain receipt source
+- Icons appear in receipts list
+- Location: `src/pages/ReceiptsPage.tsx`
+
+**Documentation**
+- Complete setup guide: `EMAIL_RECEIPT_FORWARDING.md`
+- Postmark account setup
+- Domain configuration (MX records)
+- Webhook configuration
+- User instructions
+- Troubleshooting guide
+- Security considerations
+
+### 🔧 Technical Implementation
+
+**Email Processing Pipeline**
+1. **Receive Webhook** - Postmark sends POST request with email data
+2. **Validate** - Check business ID, verify not duplicate
+3. **Create Inbox Entry** - Track email in `email_receipts_inbox`
+4. **Extract Attachments** - Filter valid PDFs/images
+5. **Decode Content** - Base64 decode attachment data
+6. **Upload Storage** - Save to Supabase Storage bucket
+7. **Create Receipt** - Insert receipt record with source='email'
+8. **Update Status** - Mark inbox entry as completed/failed
+9. **Log** - Comprehensive logging to `system_logs`
+
+**Business ID Extraction**
+- Strategy 1: Parse from email address (`receipts+uuid@domain`)
+- Strategy 2: Look up in email_aliases table (future)
+- Strategy 3: Default to first business (single-business users)
+
+**Deduplication**
+- Uses email `message_id` for uniqueness
+- Prevents duplicate imports from same email
+- Returns 200 OK for duplicates (idempotent)
+
+**Error Handling**
+- Invalid business ID → 400 error
+- No attachments → Failed status with error message
+- Upload failure → Failed status with error message
+- All errors logged to `system_logs` and `email_receipts_inbox`
+
+### 📊 Impact Summary
+- **Receipt Entry**: New input channel alongside upload and camera
+- **User Experience**: Seamless import from online purchases
+- **Use Cases**: E-receipts, email confirmations, forwarded invoices
+- **Infrastructure**: Production-ready email processing pipeline
+- **Bundle Size**: 349.08 KB gzipped (+0.1 KB)
+- **Build Time**: 9.50s
+
+### 🔍 Use Cases Enabled
+1. **Online Purchases** - Amazon, eBay receipts forwarded automatically
+2. **E-Receipts** - Digital receipts from email
+3. **Invoice Forwarding** - Vendors send invoices directly
+4. **Subscription Receipts** - Monthly subscription confirmations
+5. **Travel & Expenses** - Hotel, flight confirmations
+6. **Vendor Emails** - Any receipt attachment in email
+
+### 🔒 Security
+- Webhook signature verification (recommended)
+- Business ID validation
+- Attachment type validation
+- File size limits enforced
+- RLS policies on inbox table
+- Complete audit logging
+- Deduplication prevents replay attacks
+
+### ⚙️ Setup Requirements
+1. **Postmark Account** - Free tier: 100 emails/month
+2. **Domain Setup** - MX record pointing to Postmark
+3. **Webhook Configuration** - Edge Function URL
+4. **Edge Function Deployment** - Deploy `receive-email-receipt`
+5. **Database Migration** - Apply email support migration
+
+See `documentation/EMAIL_RECEIPT_FORWARDING.md` for complete setup instructions.
+
+---
+
 ## 📦 Version 0.6.5 - "PDF Conversion System Fix" (2025-10-13)
 
 ### 🐛 Critical Bug Fixes
@@ -1800,5 +1949,5 @@ Built with:
 ---
 
 **Last Updated:** 2025-10-13
-**Current Version:** 0.6.5
-**Status:** Beta - Production Ready with Enterprise Security, Business Management, Multi-Page PDF Support & Advanced Analytics
+**Current Version:** 0.7.0
+**Status:** Beta - Production Ready with Enterprise Security, Email Receipt Forwarding, Multi-Page PDF Support & Advanced Analytics
