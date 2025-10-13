@@ -443,7 +443,7 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
             )}
             <button
               type="button"
-              onClick={onCancel}
+              onClick={onClose}
               disabled={loading}
               className="px-6 py-3 bg-slate-200 dark:bg-gray-700 text-slate-700 dark:text-gray-300 rounded-lg hover:bg-slate-300 dark:hover:bg-gray-600 transition disabled:opacity-50"
             >
