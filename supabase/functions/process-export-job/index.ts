@@ -45,11 +45,14 @@ Deno.serve(async (req: Request) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
 
     if (userError || !user) {
+      console.error("Auth error:", userError);
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log(`Export requested by user: ${user.id}, email: ${user.email}`);
 
     // Create export job
     const { data: job, error: jobError } = await supabase
@@ -62,6 +65,8 @@ Deno.serve(async (req: Request) => {
       })
       .select()
       .single();
+
+    console.log(`Created export job ${job?.id} for user ${user.id}`);
 
     if (jobError || !job) {
       return new Response(
@@ -249,18 +254,22 @@ async function processExport(supabase: any, jobId: string, businessId: string) {
       .eq("id", jobId);
 
     // Get user email for notification
-    const { data: jobData } = await supabase
+    const { data: jobData, error: jobDataError } = await supabase
       .from("export_jobs")
       .select("requested_by")
       .eq("id", jobId)
       .single();
 
+    console.log(`Job data for notification: requested_by=${jobData?.requested_by}, error=${jobDataError?.message}`);
+
     if (jobData?.requested_by) {
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("email, full_name")
         .eq("id", jobData.requested_by)
         .single();
+
+      console.log(`Profile for notification: email=${profile?.email}, full_name=${profile?.full_name}, error=${profileError?.message}`);
 
       if (profile?.email) {
         const smtpHost = Deno.env.get("SMTP_HOST");
@@ -368,6 +377,8 @@ The export includes:
               port: parseInt(smtpPort),
               ssl: true,
             });
+
+            console.log(`Sending export notification email to: ${profile.email} for business: ${business?.name}`);
 
             const message = {
               from: `Audit Proof <${smtpUser}>`,
