@@ -240,13 +240,26 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
         }
       );
 
+      console.log('Edge function response status:', response.status);
+
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Edge function error:', errorText);
+        console.error('Edge function error response:', errorText);
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
-      const result = await response.json();
+      const responseText = await response.text();
+      console.log('Edge function raw response:', responseText);
+
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Failed to parse JSON response:', parseError);
+        console.error('Response was:', responseText);
+        throw new Error(`Failed to parse response: ${parseError instanceof Error ? parseError.message : 'Unknown parse error'}`);
+      }
+
       console.log('Multi-page extraction result:', result);
 
       if (!result.success) {
@@ -319,7 +332,18 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
       alert(`Successfully uploaded ${files.length}-page receipt!`);
     } catch (error) {
       console.error('Multi-page upload/extraction error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error type:', typeof error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+
+      let errorMessage = 'Unknown error';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error && typeof error === 'object') {
+        errorMessage = JSON.stringify(error);
+      }
+
       alert(`Failed to process multi-page receipt: ${errorMessage}`);
     } finally {
       setExtracting(false);
