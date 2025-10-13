@@ -270,6 +270,25 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
         ? convertLocalDateToUTC(result.data.transaction_date)
         : null;
 
+      // Ensure numeric values are valid
+      const totalAmount = result.data.total_amount
+        ? parseFloat(result.data.total_amount)
+        : 0;
+      const subtotal = result.data.subtotal
+        ? parseFloat(result.data.subtotal)
+        : null;
+      const gstAmount = result.data.gst_amount
+        ? parseFloat(result.data.gst_amount)
+        : null;
+      const pstAmount = result.data.pst_amount
+        ? parseFloat(result.data.pst_amount)
+        : null;
+
+      // Validate total_amount is a valid number
+      if (isNaN(totalAmount)) {
+        throw new Error('Invalid total amount extracted from receipt');
+      }
+
       const { data: parentReceipt, error: parentError } = await supabase
         .from('receipts')
         .insert({
@@ -277,25 +296,25 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
           collection_id: selectedCollection,
           uploaded_by: user.id,
           file_path: null,
-          vendor_name: result.data.vendor_name,
-          vendor_address: result.data.vendor_address,
+          vendor_name: result.data.vendor_name || null,
+          vendor_address: result.data.vendor_address || null,
           transaction_date: transactionDateUTC,
-          total_amount: parseFloat(result.data.total_amount || 0),
-          subtotal: result.data.subtotal ? parseFloat(result.data.subtotal) : null,
-          gst_amount: result.data.gst_amount ? parseFloat(result.data.gst_amount) : null,
-          pst_amount: result.data.pst_amount ? parseFloat(result.data.pst_amount) : null,
-          category: result.data.category,
-          payment_method: result.data.payment_method,
+          total_amount: totalAmount,
+          subtotal: subtotal,
+          gst_amount: gstAmount,
+          pst_amount: pstAmount,
+          category: result.data.category || 'Miscellaneous',
+          payment_method: result.data.payment_method || 'Unknown',
           extraction_status: 'completed',
           is_parent: true,
           total_pages: files.length,
           page_number: 1,
           extraction_data: {
-            transaction_time: result.data.transaction_time,
-            gst_percent: result.data.gst_percent,
-            pst_percent: result.data.pst_percent,
-            card_last_digits: result.data.card_last_digits,
-            customer_name: result.data.customer_name,
+            transaction_time: result.data.transaction_time || null,
+            gst_percent: result.data.gst_percent || null,
+            pst_percent: result.data.pst_percent || null,
+            card_last_digits: result.data.card_last_digits || null,
+            customer_name: result.data.customer_name || null,
           },
         })
         .select()
@@ -313,6 +332,7 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
         is_parent: false,
         total_pages: files.length,
         extraction_status: 'completed',
+        total_amount: 0, // Child pages don't have individual amounts
       }));
 
       const { error: childError } = await supabase
