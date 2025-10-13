@@ -1,6 +1,6 @@
 # Audit Proof - TODO & Implementation Status
 
-**Last Updated:** 2025-10-13 (Complete Rebranding + Multi-Page Receipt Display Fix)
+**Last Updated:** 2025-10-13 (Soft Delete for Receipts)
 **Priority Legend:** 🚨 Critical | 🔴 High | 🟡 Medium | 🟢 Nice to Have | ✅ Completed
 
 ---
@@ -350,13 +350,16 @@
   - Split history and audit trail
   - Estimated effort: 3-4 days
   - Business value: Low - Niche use case
-- [ ] 🟢 **Undo Deletion / Soft Delete** (Priority: Low - Post-launch)
-  - Soft delete with trash bin instead of permanent deletion
-  - 30-day recovery period
-  - Admin can restore deleted receipts
-  - Automatic cleanup after retention period
-  - Estimated effort: 1 day
-  - Business value: Low - Safety net, but rare need
+- [x] ✅ **Soft Delete for Receipts** (Completed 2025-10-13)
+  - Soft delete with `deleted_at` timestamp instead of permanent deletion
+  - Admin interface to view and restore deleted receipts
+  - Admin can permanently delete (hard delete) soft-deleted receipts
+  - No automatic cleanup - receipts remain soft-deleted indefinitely
+  - Audit logging for soft delete and restore operations
+  - RLS policies automatically filter out soft-deleted receipts
+  - Location: Admin Page > Deleted Receipts tab
+  - Components: `DeletedReceiptsManagement.tsx`
+  - Migration: `add_soft_delete_to_receipts.sql`, `fix_soft_delete_audit_trigger.sql`
 - [ ] 🟢 **Receipt Attachments** (Priority: Low - Future v2)
   - Attach supporting documents to receipts (invoice, PO, email)
   - Multiple files per receipt
@@ -1391,6 +1394,45 @@
 - ⏳ Advanced features and integrations (not started)
 
 **Recent Major Updates (2025-10-13):**
+
+**SESSION 11: Soft Delete for Receipts - COMPLETE**
+1. **Soft Delete Implementation**: Receipts no longer permanently deleted
+   - Added `deleted_at` and `deleted_by` columns to receipts table
+   - Soft delete on user deletion (sets timestamp instead of removing record)
+   - Bulk soft delete support (maintains same UX)
+   - Receipt images preserved in storage
+   - Automatic filtering via RLS policies (deleted receipts invisible to normal queries)
+   - Database: Two new columns with indexes for efficient filtering
+   - Migrations: `add_soft_delete_to_receipts.sql`, `fix_soft_delete_audit_trigger.sql`
+
+2. **Admin Deleted Receipts Management**: Complete admin interface
+   - New "Deleted Receipts" tab in Admin page
+   - View all soft-deleted receipts across all businesses
+   - Search by vendor, business, collection, or deleted by user
+   - Display full context: vendor, amount, date, business/collection hierarchy, deletion details
+   - Restore receipts with one click (sets `deleted_at` back to NULL)
+   - Permanently delete receipts (hard delete with storage cleanup)
+   - Real-time loading and search
+   - Component: `DeletedReceiptsManagement.tsx` (370 lines)
+
+3. **Security & Audit**: Complete access control and logging
+   - RLS policies updated to exclude soft-deleted receipts from normal queries
+   - System admins can view all receipts (including soft-deleted)
+   - Hard deletes restricted to system admins only
+   - Audit triggers log soft delete and restore operations
+   - Full audit trail: who deleted, when deleted, who restored
+   - Fixed audit trigger column mismatch (`table_name` → `resource_type`)
+
+4. **Bug Fixes**:
+   - Fixed missing logger import in ReceiptsPage causing deletion failures
+   - Fixed audit trigger using non-existent columns
+   - Receipt deletion now works properly with full logging
+
+**Impact:**
+- Data Safety: Receipts no longer permanently lost when deleted
+- Admin Tools: Complete deleted receipt management interface
+- User Experience: Peace of mind - accidental deletions recoverable
+- Compliance: Full audit trail maintained for all operations
 
 **SESSION 10: Complete Rebranding + Multi-Page Receipt Fix - COMPLETE**
 1. **Complete Application Rebranding**: "AuditReady" → "Audit Proof"

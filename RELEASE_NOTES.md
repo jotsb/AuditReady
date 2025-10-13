@@ -4,6 +4,66 @@
 
 ---
 
+## 📦 Version 0.6.4 - "Soft Delete for Receipts" (2025-10-13)
+
+### 🗑️ New Features
+
+#### **Soft Delete for Receipts**
+Receipts are no longer permanently deleted - they're now soft-deleted and can be restored by system admins.
+
+**Key Features**
+- Soft delete with `deleted_at` timestamp instead of permanent deletion
+- Admin interface to view all soft-deleted receipts
+- Restore deleted receipts with one click
+- Permanently delete receipts when needed (hard delete)
+- No automatic cleanup - receipts remain recoverable indefinitely
+- Complete audit logging for delete and restore operations
+
+**How It Works**
+- When users delete receipts, they're marked with `deleted_at` timestamp
+- Soft-deleted receipts automatically filtered from all views via RLS policies
+- Receipt images preserved in storage (not deleted)
+- System admins can access "Deleted Receipts" tab in Admin page
+
+**Admin Interface**
+- New "Deleted Receipts" tab in Admin page
+- Search through deleted receipts by vendor, business, collection, or deleted by user
+- View full details: vendor, amount, date, business, collection, deleted by, deleted at
+- Two actions available:
+  - **Restore**: Recovers receipt back to active state
+  - **Delete Forever**: Permanently removes receipt and files from storage
+- Real-time loading and search functionality
+
+**Security & Permissions**
+- Only authenticated users can soft delete receipts
+- Only system admins can view soft-deleted receipts
+- Only system admins can perform hard deletes (permanent deletion)
+- RLS policies ensure data security at database level
+
+**Technical Details**
+- Database: Added `deleted_at` (timestamptz) and `deleted_by` (uuid) columns to receipts table
+- RLS: Updated policies to exclude soft-deleted receipts from normal queries
+- Audit: Triggers log soft delete and restore operations
+- Components: `DeletedReceiptsManagement.tsx` (370 lines)
+- Migrations:
+  - `add_soft_delete_to_receipts.sql` - Schema changes and RLS policies
+  - `fix_soft_delete_audit_trigger.sql` - Audit logging fixes
+
+### 🐛 Bug Fixes
+
+#### **Fixed Receipt Deletion Errors**
+- Fixed missing logger import in `ReceiptsPage.tsx`
+- Fixed audit trigger using wrong column names (`table_name` → `resource_type`)
+- Receipt deletion now works properly with full audit trail
+
+### 📊 Impact Summary
+- **Data Safety:** Receipts no longer permanently lost when deleted
+- **Admin Tools:** Complete deleted receipt management interface
+- **User Experience:** Peace of mind - accidental deletions can be recovered
+- **Compliance:** Full audit trail for all delete and restore operations
+
+---
+
 ## 📦 Version 0.6.3 - "Complete Rebranding + Multi-Page Fix" (2025-10-13)
 
 ### 🎨 Rebranding
