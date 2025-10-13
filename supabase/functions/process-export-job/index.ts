@@ -182,8 +182,10 @@ async function processExport(supabase: any, jobId: string, businessId: string) {
     // Add CSV files organized by collection
     for (const collection of collections || []) {
       const collectionReceipts = receipts.filter((r: any) => r.collection_id === collection.id);
-      
+
       if (collectionReceipts.length > 0) {
+        console.log(`Generating CSV for collection "${collection.name}" with ${collectionReceipts.length} receipts`);
+        console.log("Sample receipt data:", JSON.stringify(collectionReceipts[0], null, 2));
         const csv = generateCSV(collectionReceipts);
         const folderName = collection.name.replace(/[^a-z0-9]/gi, "_");
         zip.file(`${folderName}/receipts.csv`, csv);
@@ -428,20 +430,33 @@ function generateCSV(receipts: any[]): string {
   if (receipts.length === 0) return "No receipts";
 
   const headers = ["Date", "Merchant", "Amount", "Currency", "Category", "Notes", "Verified", "Created At"];
-  const rows = receipts.map((r: any) => [
-    r.date || "",
-    r.merchant_name || "",
-    r.amount || "",
-    r.currency || "",
-    r.category || "",
-    r.notes || "",
-    r.verified ? "Yes" : "No",
-    r.created_at || "",
-  ]);
+
+  const rows = receipts.map((r: any) => {
+    const row = [
+      r.date || "",
+      r.merchant_name || "",
+      r.amount !== null && r.amount !== undefined ? String(r.amount) : "",
+      r.currency || "",
+      r.category || "",
+      r.notes || "",
+      r.verified ? "Yes" : "No",
+      r.created_at || "",
+    ];
+
+    return row;
+  });
 
   const csvContent = [
     headers.join(","),
-    ...rows.map((row: any[]) => row.map((cell: any) => `\"${String(cell).replace(/\"/g, '\"\"')}\"` ).join(",")),
+    ...rows.map((row: any[]) =>
+      row.map((cell: any) => {
+        const cellStr = String(cell);
+        if (cellStr.includes(",") || cellStr.includes("\"") || cellStr.includes("\n")) {
+          return `"${cellStr.replace(/"/g, '""')}"`;
+        }
+        return cellStr;
+      }).join(",")
+    ),
   ].join("\n");
 
   return csvContent;
