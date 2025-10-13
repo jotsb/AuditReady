@@ -19,6 +19,7 @@ interface ReceiptPage {
   file_path: string;
   thumbnail_path: string;
   created_at: string;
+  thumbnailSignedUrl?: string | null;
 }
 
 export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProps) {
@@ -56,7 +57,24 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
           );
 
           if (!pagesError && pagesData) {
-            setPages(pagesData as ReceiptPage[]);
+            // Generate signed URLs for thumbnails
+            const pagesWithSignedThumbnails = await Promise.all(
+              pagesData.map(async (page: ReceiptPage) => {
+                if (page.thumbnail_path) {
+                  const { data: thumbData, error: thumbError } = await supabase.storage
+                    .from('receipts')
+                    .createSignedUrl(page.thumbnail_path, 3600);
+
+                  return {
+                    ...page,
+                    thumbnailSignedUrl: thumbError ? null : thumbData?.signedUrl
+                  };
+                }
+                return page;
+              })
+            );
+
+            setPages(pagesWithSignedThumbnails as ReceiptPage[]);
 
             if (pagesData.length > 0) {
               const firstPagePath = pagesData[0].file_path;
@@ -495,7 +513,7 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
                   <PageThumbnailStrip
                     pages={pages.map((p) => ({
                       id: p.id,
-                      preview: `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/receipts/${p.thumbnail_path}`,
+                      preview: p.thumbnailSignedUrl || '',
                       pageNumber: p.page_number,
                     }))}
                     currentPage={currentPageIndex + 1}

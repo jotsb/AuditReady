@@ -349,7 +349,6 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
       });
 
       await loadReceipts();
-      alert(`Successfully uploaded ${files.length}-page receipt!`);
     } catch (error) {
       console.error('Multi-page upload/extraction error:', error);
       console.error('Error type:', typeof error);
