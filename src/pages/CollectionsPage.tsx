@@ -71,7 +71,10 @@ export function CollectionsPage() {
         setSelectedBusiness(businessData[0].id);
       }
     } catch (error) {
-      console.error('Error loading businesses:', error);
+      logger.error('Error loading businesses', error as Error, {
+        page: 'CollectionsPage',
+        operation: 'load_businesses'
+      });
     } finally {
       setLoading(false);
     }
@@ -98,7 +101,11 @@ export function CollectionsPage() {
       setCollections(data || []);
       setTotalCollections(count || 0);
     } catch (error) {
-      console.error('Error loading collections:', error);
+      logger.error('Error loading collections', error as Error, {
+        businessId,
+        page: 'CollectionsPage',
+        operation: 'load_collections'
+      });
     }
   };
 
@@ -123,7 +130,11 @@ export function CollectionsPage() {
       setNewBusinessName('');
       setShowNewBusinessForm(false);
     } catch (error) {
-      console.error('Error creating business:', error);
+      logger.error('Error creating business', error as Error, {
+        businessName: newBusinessName,
+        page: 'CollectionsPage',
+        operation: 'create_business'
+      });
     }
   };
 
@@ -152,7 +163,12 @@ export function CollectionsPage() {
       setNewCollectionYear(new Date().getFullYear());
       setShowNewCollectionForm(false);
     } catch (error) {
-      console.error('Error creating collection:', error);
+      logger.error('Error creating collection', error as Error, {
+        collectionName: newCollectionName,
+        businessId: expandedBusinessId,
+        page: 'CollectionsPage',
+        operation: 'create_collection'
+      });
     }
   };
 
@@ -183,7 +199,11 @@ export function CollectionsPage() {
         setSelectedBusiness(updatedBusinesses[0]?.id || '');
       }
     } catch (error) {
-      console.error('Error deleting business:', error);
+      logger.error('Error deleting business', error as Error, {
+        businessId,
+        page: 'CollectionsPage',
+        operation: 'delete_business'
+      });
       setDeleteError('Failed to delete business. Please try again.');
     }
   };
@@ -216,7 +236,11 @@ export function CollectionsPage() {
             .remove(filePaths);
 
           if (storageError) {
-            console.warn('Some files could not be deleted from storage:', storageError);
+            logger.warn('Some files could not be deleted from storage', {
+            businessId,
+            error: storageError,
+            page: 'CollectionsPage'
+          }, 'STORAGE');
           }
         }
       }
@@ -231,7 +255,12 @@ export function CollectionsPage() {
 
       setCollections(collections.filter(c => c.id !== collectionId));
     } catch (error) {
-      console.error('Error deleting collection:', error);
+      logger.error('Error deleting collection', error as Error, {
+        collectionId,
+        businessId: expandedBusinessId,
+        page: 'CollectionsPage',
+        operation: 'delete_collection'
+      });
       setDeleteError('Failed to delete collection. Please try again.');
     }
   };

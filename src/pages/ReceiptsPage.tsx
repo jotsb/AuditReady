@@ -145,7 +145,10 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
         setBusinesses([]);
       }
     } catch (error) {
-      console.error('Error loading collections:', error);
+      logger.error('Error loading collections', error as Error, {
+        page: 'ReceiptsPage',
+        operation: 'load_collections'
+      });
     } finally {
       setLoading(false);
     }
@@ -179,7 +182,12 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
       setTotalCount(count || 0);
       logDataLoad(data?.length || 0, { collectionId: selectedCollection, page: currentPage });
     } catch (error) {
-      console.error('Error loading receipts:', error);
+      logger.error('Error loading receipts', error as Error, {
+        collectionId: selectedCollection,
+        page: currentPage,
+        pageLocation: 'ReceiptsPage',
+        operation: 'load_receipts'
+      });
     }
   };
 
@@ -555,12 +563,24 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Edge function error:', errorText);
+        logger.error('Edge function error during single receipt extraction', new Error(`HTTP ${response.status}`), {
+          status: response.status,
+          errorText,
+          fileName,
+          page: 'ReceiptsPage',
+          operation: 'single_receipt_extraction'
+        });
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
       const result = await response.json();
-      console.log('Extraction result:', result);
+      logger.info('Single receipt extraction completed', {
+        success: result.success,
+        vendor: result.data?.vendor_name,
+        amount: result.data?.total_amount,
+        fileName,
+        page: 'ReceiptsPage'
+      });
 
       if (!result.success) {
         throw new Error(result.error || 'Extraction failed');
@@ -578,8 +598,13 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
         vendor: result.data?.vendor_name
       });
     } catch (error) {
-      console.error('Upload/extraction error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Upload/extraction error', error as Error, {
+        errorMessage,
+        collectionId: selectedCollection,
+        page: 'ReceiptsPage',
+        operation: 'single_receipt_upload'
+      });
       alert(`Failed to process receipt: ${errorMessage}`);
 
       await supabase.storage.from('receipts').remove([fileName]);
@@ -632,7 +657,11 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
 
       setReceipts(receipts.filter(r => r.id !== receiptId));
     } catch (error) {
-      console.error('Delete error:', error);
+      logger.error('Failed to delete receipt', error as Error, {
+        receiptId,
+        page: 'ReceiptsPage',
+        operation: 'delete_receipt'
+      });
       alert('Failed to delete receipt');
     }
   };
@@ -815,7 +844,11 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
 
       alert(`Successfully deleted ${receiptIds.length} receipt(s)`);
     } catch (error) {
-      console.error('Bulk delete error:', error);
+      logger.error('Bulk delete failed', error as Error, {
+        receiptCount: receiptIds.length,
+        page: 'ReceiptsPage',
+        operation: 'bulk_delete'
+      });
       alert('Failed to delete receipts. Please try again.');
 
       // Log error
@@ -868,7 +901,12 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
 
       alert(`Successfully categorized ${receiptIds.length} receipt(s)`);
     } catch (error) {
-      console.error('Bulk categorize error:', error);
+      logger.error('Bulk categorize failed', error as Error, {
+        receiptCount: receiptIds.length,
+        categoryId,
+        page: 'ReceiptsPage',
+        operation: 'bulk_categorize'
+      });
       alert('Failed to categorize receipts. Please try again.');
 
       await supabase.from('system_logs').insert({
@@ -921,7 +959,12 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
 
       alert(`Successfully moved ${receiptIds.length} receipt(s)`);
     } catch (error) {
-      console.error('Bulk move error:', error);
+      logger.error('Bulk move failed', error as Error, {
+        receiptCount: receiptIds.length,
+        targetCollectionId,
+        page: 'ReceiptsPage',
+        operation: 'bulk_move'
+      });
       alert('Failed to move receipts. Please try again.');
 
       await supabase.from('system_logs').insert({
@@ -1017,7 +1060,11 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
 
       alert(`Successfully exported ${receiptIds.length} receipt(s) to CSV`);
     } catch (error) {
-      console.error('Bulk export CSV error:', error);
+      logger.error('Bulk CSV export failed', error as Error, {
+        receiptCount: receiptIds.length,
+        page: 'ReceiptsPage',
+        operation: 'bulk_export_csv'
+      });
       alert('Failed to export receipts. Please try again.');
     }
   };
@@ -1145,7 +1192,11 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
 
       alert(`Successfully exported ${receiptIds.length} receipt(s) to PDF`);
     } catch (error) {
-      console.error('Bulk export PDF error:', error);
+      logger.error('Bulk PDF export failed', error as Error, {
+        receiptCount: receiptIds.length,
+        page: 'ReceiptsPage',
+        operation: 'bulk_export_pdf'
+      });
       alert('Failed to export receipts to PDF. Please try again.');
 
       await supabase.from('system_logs').insert({

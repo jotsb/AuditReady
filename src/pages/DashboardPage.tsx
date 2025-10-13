@@ -109,7 +109,10 @@ export function DashboardPage({ onViewReceipt }: DashboardPageProps) {
         });
       }
     } catch (error) {
-      console.error('Error loading dashboard:', error);
+      logger.error('Error loading dashboard', error as Error, {
+        page: 'DashboardPage',
+        operation: 'load_dashboard'
+      });
     } finally {
       setLoading(false);
     }

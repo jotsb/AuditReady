@@ -93,7 +93,10 @@ export async function suspendUser(
   try {
     await forceLogoutUser(targetUserId, adminUserId);
   } catch (logoutError: any) {
-    console.error('Failed to force logout suspended user:', logoutError);
+    logger.error('Failed to force logout suspended user', logoutError as Error, {
+      userId,
+      operation: 'force_logout_suspended_user'
+    });
     // Continue even if logout fails - suspension is more important
   }
 
@@ -267,7 +270,10 @@ export async function softDeleteUser(
   try {
     await forceLogoutUser(targetUserId, adminUserId);
   } catch (logoutError: any) {
-    console.error('Failed to force logout deleted user:', logoutError);
+    logger.error('Failed to force logout deleted user', logoutError as Error, {
+      userId,
+      operation: 'force_logout_deleted_user'
+    });
     // Continue even if logout fails - deletion is more important
   }
 

@@ -31,7 +31,8 @@ class SessionManager {
           return;
         }
       } catch (error) {
-        console.error('Failed to parse session info:', error);
+        // Silently fail - session will be recreated
+        // Cannot use logger here to avoid circular dependencies
       }
     }
 

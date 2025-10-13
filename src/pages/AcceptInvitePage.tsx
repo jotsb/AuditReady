@@ -61,7 +61,11 @@ export default function AcceptInvitePage() {
         setShowSignupForm(true);
       }
     } catch (err) {
-      console.error('Error checking user:', err);
+      logger.error('Error checking user during invitation load', err as Error, {
+        hasToken: !!token,
+        page: 'AcceptInvitePage',
+        operation: 'check_user'
+      });
     }
   };
 
@@ -135,7 +139,11 @@ export default function AcceptInvitePage() {
         navigate('/dashboard');
       }, 2000);
     } catch (err: any) {
-      console.error('Error accepting invitation:', err);
+      logger.error('Error accepting invitation', err as Error, {
+        invitationId: invitation?.id,
+        page: 'AcceptInvitePage',
+        operation: 'accept_invitation'
+      });
       setError(err.message);
     } finally {
       setProcessing(false);
@@ -145,7 +153,11 @@ export default function AcceptInvitePage() {
   const handleSignupAndAccept = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token || !invitation) {
-      console.error('Missing token or invitation');
+      logger.warn('Missing token or invitation during signup', {
+        hasToken: !!token,
+        hasInvitation: !!invitation,
+        page: 'AcceptInvitePage'
+      }, 'AUTH');
       setError('Invalid invitation state');
       return;
     }
@@ -200,8 +212,13 @@ export default function AcceptInvitePage() {
       logger.api('/accept-invitation', 'POST', response.status, { action: 'signup_and_accept', result });
 
       if (!response.ok) {
-        console.error('Edge function error:', result.error);
-        logger.error('Signup and accept failed', undefined, { status: response.status, error: result.error });
+        logger.error('Edge function error during signup', new Error(result.error || 'Unknown error'), {
+          status: response.status,
+          error: result.error,
+          email: invitation.email,
+          page: 'AcceptInvitePage',
+          operation: 'signup_and_accept'
+        });
         logger.edgeFunction('accept-invitation', false, { error: result.error });
         throw new Error(result.error || 'Failed to create account');
       }
@@ -214,14 +231,20 @@ export default function AcceptInvitePage() {
         try {
           const { error: sessionError } = await supabase.auth.setSession(result.session);
           if (sessionError) {
-            console.error('Session error:', sessionError);
-            logger.error('Failed to set session', sessionError, {});
+            logger.error('Session error after signup', sessionError as Error, {
+              email: invitation.email,
+              page: 'AcceptInvitePage',
+              operation: 'set_session'
+            });
             throw new Error('Failed to set session: ' + sessionError.message);
           }
           logger.info('Session set successfully', {}, 'AUTH');
         } catch (sessionErr: any) {
-          console.error('Error in setSession:', sessionErr);
-          logger.error('Error setting session', sessionErr, {});
+          logger.error('Error in setSession', sessionErr as Error, {
+            email: invitation.email,
+            page: 'AcceptInvitePage',
+            operation: 'set_session'
+          });
           throw sessionErr;
         }
       } else if (result.requiresLogin) {
@@ -232,8 +255,10 @@ export default function AcceptInvitePage() {
         }, 2000);
         return;
       } else {
-        console.warn('No session in response');
-        logger.warn('No session returned from signup', {}, 'AUTH');
+        logger.warn('No session returned from signup', {
+          email: invitation.email,
+          page: 'AcceptInvitePage'
+        }, 'AUTH');
       }
 
       setSuccess('Account created and invitation accepted! Redirecting...');
@@ -244,8 +269,11 @@ export default function AcceptInvitePage() {
         window.location.href = '/dashboard';
       }, 1500);
     } catch (err: any) {
-      console.error('Error in handleSignupAndAccept:', err);
-      logger.error('Error signing up and accepting invitation', err, { email: invitation?.email });
+      logger.error('Error in handleSignupAndAccept', err as Error, {
+        email: invitation?.email,
+        page: 'AcceptInvitePage',
+        operation: 'signup_and_accept'
+      });
       setError(err.message || 'An error occurred during signup');
       setProcessing(false);
     }
@@ -257,7 +285,10 @@ export default function AcceptInvitePage() {
         const strength = checkPasswordStrength(password);
         setPasswordStrength(strength);
       } catch (err) {
-        console.error('Error checking password strength:', err);
+        logger.error('Error checking password strength', err as Error, {
+          page: 'AcceptInvitePage',
+          operation: 'check_password_strength'
+        });
         setPasswordStrength(null);
       }
     } else {

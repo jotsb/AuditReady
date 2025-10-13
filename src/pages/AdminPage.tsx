@@ -166,7 +166,10 @@ export function AdminPage() {
 
       setBusinesses(enrichedBusinesses);
     } catch (err: any) {
-      console.error('Error loading admin data:', err);
+      logger.error('Error loading admin data', err as Error, {
+        page: 'AdminPage',
+        operation: 'load_admin_data'
+      });
       setError(err.message);
     } finally {
       setLoading(false);
@@ -496,7 +499,10 @@ function BulkOperationsTab() {
       if (error) throw error;
       setOperations(data || []);
     } catch (error) {
-      console.error('Error loading bulk operations:', error);
+      logger.error('Error loading bulk operations', error as Error, {
+        page: 'AdminPage',
+        operation: 'load_bulk_operations'
+      });
     } finally {
       setLoading(false);
     }
@@ -685,7 +691,10 @@ function AnalyticsTab() {
         totalCollections: collectionsResult.data?.length || 0
       });
     } catch (err: any) {
-      console.error('Error loading analytics:', err);
+      logger.error('Error loading analytics', err as Error, {
+        page: 'AdminPage',
+        operation: 'load_analytics'
+      });
     } finally {
       setLoading(false);
     }
@@ -884,7 +893,11 @@ function BusinessesTab({ businesses, totalBusinesses, currentPage, setCurrentPag
             });
           }
         } catch (err) {
-          console.error('Error loading collections:', err);
+          logger.error('Error loading collections for business', err as Error, {
+            businessId: business.id,
+            page: 'AdminPage',
+            operation: 'load_business_collections'
+          });
         } finally {
           const newLoading = new Set(loadingCollections);
           newLoading.delete(businessId);

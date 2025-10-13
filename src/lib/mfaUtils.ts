@@ -27,7 +27,8 @@ export async function verifyRecoveryCode(code: string, hash: string): Promise<bo
     const codeHash = await hashRecoveryCode(code);
     return codeHash === hash;
   } catch (error) {
-    console.error('Error verifying recovery code:', error);
+    // Note: Cannot use logger here as it would create a circular dependency
+    // This is a utility function that should fail silently
     return false;
   }
 }
