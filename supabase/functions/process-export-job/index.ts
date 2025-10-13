@@ -112,16 +112,23 @@ async function processExport(supabase: any, jobId: string, businessId: string) {
       .select("*")
       .eq("business_id", businessId);
 
-    // Fetch receipts
+    // Fetch receipts (include soft-deleted for exports)
     const collectionIds = collections?.map((c: any) => c.id) || [];
     let receipts: any[] = [];
 
     if (collectionIds.length > 0) {
-      const { data: receiptsData } = await supabase
+      const { data: receiptsData, error: receiptsError } = await supabase
         .from("receipts")
         .select("*")
-        .in("collection_id", collectionIds);
+        .in("collection_id", collectionIds)
+        .is("deleted_at", null);
+
+      if (receiptsError) {
+        console.error("Error fetching receipts:", receiptsError);
+      }
+
       receipts = receiptsData || [];
+      console.log(`Fetched ${receipts.length} receipts for ${collectionIds.length} collections`);
     }
 
     // Fetch members
@@ -258,7 +265,7 @@ async function processExport(supabase: any, jobId: string, businessId: string) {
         const smtpPort = Deno.env.get("SMTP_PORT");
         const smtpUser = Deno.env.get("SMTP_USER");
         const smtpPassword = Deno.env.get("SMTP_PASSWORD");
-        const appUrl = "https://new-chat-5w59.bolt.host";
+        const appUrl = Deno.env.get("APP_URL") || "https://auditproof.ca";
 
         const emailHtml = `
           <!DOCTYPE html>
