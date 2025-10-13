@@ -1,7 +1,7 @@
 # Production Readiness Analysis
 
 **Last Updated:** October 8, 2025
-**Project:** AuditReady Receipt Management System
+**Project:** Audit Proof Receipt Management System
 **Analysis Version:** 2.0
 
 ---
@@ -432,7 +432,7 @@ Deno.serve(async (req) => {
     subject: `You've been invited to join ${businessName}`,
     html: `
       <h2>Team Invitation</h2>
-      <p>${inviterName} has invited you to join ${businessName} on AuditReady.</p>
+      <p>${inviterName} has invited you to join ${businessName} on Audit Proof.</p>
       <a href="${inviteUrl}">Accept Invitation</a>
       <p>This invitation expires in 7 days.</p>
     `

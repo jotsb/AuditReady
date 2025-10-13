@@ -394,10 +394,10 @@ if (!success) {
 **Attack Scenario:**
 ```html
 <!-- Attacker's website -->
-<img src="https://auditready.com/api/delete-receipt?id=123" />
+<img src="https://auditproof.com/api/delete-receipt?id=123" />
 
 <!-- Or form auto-submit -->
-<form action="https://auditready.com/api/admin/delete-user" method="POST">
+<form action="https://auditproof.com/api/admin/delete-user" method="POST">
   <input name="userId" value="victim-id" />
 </form>
 <script>document.forms[0].submit();</script>

@@ -329,12 +329,12 @@ services:
   # MongoDB Database
   mongodb:
     image: mongo:7.0
-    container_name: auditready-db
+    container_name: auditproof-db
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
     volumes:
-      - /mnt/user/appdata/auditready/mongo:/data/db
+      - /mnt/user/appdata/auditproof/mongo:/data/db
     ports:
       - "27017:27017"
     restart: unless-stopped
@@ -342,13 +342,13 @@ services:
   # Minio Object Storage
   minio:
     image: minio/minio:latest
-    container_name: auditready-storage
+    container_name: auditproof-storage
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD}
     volumes:
-      - /mnt/user/appdata/auditready/minio:/data
+      - /mnt/user/appdata/auditproof/minio:/data
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -357,7 +357,7 @@ services:
   # Backend API (Node.js)
   api:
     build: ./backend
-    container_name: auditready-api
+    container_name: auditproof-api
     environment:
       NODE_ENV: production
       MONGODB_URI: mongodb://admin:${MONGO_PASSWORD}@mongodb:27017
@@ -376,7 +376,7 @@ services:
   # Frontend (Nginx)
   frontend:
     image: nginx:alpine
-    container_name: auditready-frontend
+    container_name: auditproof-frontend
     volumes:
       - ./dist:/usr/share/nginx/html
       - ./nginx.conf:/etc/nginx/nginx.conf
@@ -455,18 +455,18 @@ version: '3.8'
 services:
   postgres:
     image: supabase/postgres:15.1.0.117
-    container_name: auditready-postgres
+    container_name: auditproof-postgres
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - /mnt/user/appdata/auditready/postgres:/var/lib/postgresql/data
+      - /mnt/user/appdata/auditproof/postgres:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     restart: unless-stopped
 
   supabase-auth:
     image: supabase/gotrue:v2.99.0
-    container_name: auditready-auth
+    container_name: auditproof-auth
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres
       JWT_SECRET: ${JWT_SECRET}
@@ -477,7 +477,7 @@ services:
 
   supabase-rest:
     image: postgrest/postgrest:v12.0.1
-    container_name: auditready-rest
+    container_name: auditproof-rest
     environment:
       PGRST_DB_URI: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres
       PGRST_JWT_SECRET: ${JWT_SECRET}
@@ -489,12 +489,12 @@ services:
 
   supabase-storage:
     image: supabase/storage-api:v0.43.11
-    container_name: auditready-storage
+    container_name: auditproof-storage-api
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres
       FILE_STORAGE_BACKEND: file
     volumes:
-      - /mnt/user/appdata/auditready/storage:/var/lib/storage
+      - /mnt/user/appdata/auditproof/storage:/var/lib/storage
     depends_on:
       - postgres
     ports:
@@ -573,4 +573,4 @@ services:
 
 **Document Version:** 1.0
 **Last Updated:** 2025-10-06
-**Author:** AuditReady Infrastructure Team
+**Author:** Audit Proof Infrastructure Team

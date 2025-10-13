@@ -427,7 +427,7 @@ Successfully completed comprehensive security hardening across **3 major phases*
 
 ### Security Contacts
 - **Security Issues**: Report via issue tracker
-- **Vulnerability Disclosure**: security@auditready.com
+- **Vulnerability Disclosure**: security@auditproof.com
 - **Emergency Contacts**: System admins
 
 ### Regular Tasks

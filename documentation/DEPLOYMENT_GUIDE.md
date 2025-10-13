@@ -27,7 +27,7 @@
 
 ### What This Guide Covers
 
-This comprehensive guide provides step-by-step instructions for setting up a professional development, staging, and production environment for AuditReady using:
+This comprehensive guide provides step-by-step instructions for setting up a professional development, staging, and production environment for Audit Proof using:
 
 - **Frontend Hosting:** Netlify (with branch deploys)
 - **Backend/Database:** Supabase (with branching)
@@ -164,7 +164,7 @@ This comprehensive guide provides step-by-step instructions for setting up a pro
 
 **Access:**
 - `https://staging.yourdomain.com` (custom domain)
-- `https://staging-auditready.netlify.app` (Netlify subdomain)
+- `https://staging-auditproof.netlify.app` (Netlify subdomain)
 
 **Cost:** ~$25/month (Supabase Pro Plan)
 
@@ -242,7 +242,7 @@ You need **three separate Supabase projects**:
 1. Go to [Supabase Dashboard](https://supabase.com/dashboard)
 2. Click "New project"
 3. **Settings:**
-   - Name: `auditready-production`
+   - Name: `auditproof-production`
    - Database Password: Use strong password (save to password manager)
    - Region: Choose closest to your users (e.g., `us-east-1`)
    - Pricing plan: **Pro Plan** ($25/month - required for branching)
@@ -257,7 +257,7 @@ You need **three separate Supabase projects**:
 #### 3.2 Staging Project
 
 Repeat the above process:
-- Name: `auditready-staging`
+- Name: `auditproof-staging`
 - Use same region as production
 - Pro Plan required
 
@@ -307,7 +307,7 @@ supabase db pull
    - Navigate to: Integrations → GitHub
    - Click "Connect to GitHub"
    - Authorize Supabase to access your repository
-   - Select your `auditready` repository
+   - Select your `auditproof` repository
 
 2. **Configure Branch Settings:**
    - Production branch: `main`
@@ -470,11 +470,11 @@ git init
 git branch -M main
 
 # Add remote
-git remote add origin https://github.com/yourusername/auditready.git
+git remote add origin https://github.com/yourusername/auditproof.git
 
 # Initial commit
 git add .
-git commit -m "Initial commit: AuditReady application"
+git commit -m "Initial commit: Audit Proof application"
 git push -u origin main
 ```
 
@@ -572,7 +572,7 @@ git push
 1. Go to [Netlify Dashboard](https://app.netlify.com/)
 2. Click "Add new site" → "Import an existing project"
 3. Choose "GitHub" (authorize if needed)
-4. Select your `auditready` repository
+4. Select your `auditproof` repository
 5. **Configure build:**
    - Branch to deploy: `main`
    - Build command: `npm run build`
@@ -624,8 +624,8 @@ In Netlify dashboard:
 5. Save
 
 **What this does:**
-- Every push to `staging` creates a deploy at: `staging--auditready.netlify.app`
-- Every push to `main` deploys to: `auditready.netlify.app` (production)
+- Every push to `staging` creates a deploy at: `staging--auditproof.netlify.app`
+- Every push to `main` deploys to: `auditproof.netlify.app` (production)
 
 #### 4.2 Enable Deploy Previews
 
@@ -635,7 +635,7 @@ In same section:
 3. Save
 
 **What this does:**
-- Every PR to `main` or `staging` gets a preview: `deploy-preview-123--auditready.netlify.app`
+- Every PR to `main` or `staging` gets a preview: `deploy-preview-123--auditproof.netlify.app`
 
 ---
 
@@ -650,7 +650,7 @@ In same section:
    ```
    Type: CNAME
    Name: app
-   Value: auditready.netlify.app
+   Value: auditproof.netlify.app
    ```
 5. Add these records in your DNS provider (Cloudflare, Route53, etc.)
 6. Wait for DNS propagation (~5-30 minutes)
@@ -664,13 +664,13 @@ In same section:
    ```
    Type: CNAME
    Name: staging
-   Value: staging--auditready.netlify.app
+   Value: staging--auditproof.netlify.app
    ```
 
 **Final URLs:**
 - Production: `https://app.yourdomain.com`
 - Staging: `https://staging.yourdomain.com`
-- PR Preview: `https://deploy-preview-123--auditready.netlify.app`
+- PR Preview: `https://deploy-preview-123--auditproof.netlify.app`
 
 ---
 

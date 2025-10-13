@@ -6,7 +6,7 @@
 
 ## Overview
 
-Comprehensive security hardening initiative to secure the AuditReady platform against common web vulnerabilities. This document summarizes all security improvements implemented.
+Comprehensive security hardening initiative to secure the Audit Proof platform against common web vulnerabilities. This document summarizes all security improvements implemented.
 
 ---
 
