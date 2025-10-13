@@ -152,7 +152,7 @@ function AppContent() {
       case 'admin':
         return 'System Administration';
       default:
-        return 'AuditReady';
+        return 'Audit Proof';
     }
   };
 

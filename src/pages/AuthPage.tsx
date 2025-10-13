@@ -54,7 +54,7 @@ export function AuthPage() {
             <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-600 dark:bg-blue-500 rounded-2xl mb-6">
               <Receipt size={40} className="text-white" />
             </div>
-            <h2 className="text-4xl font-bold text-slate-800 dark:text-white mb-4">AuditReady</h2>
+            <h2 className="text-4xl font-bold text-slate-800 dark:text-white mb-4">Audit Proof</h2>
             <p className="text-xl text-slate-600 dark:text-gray-300 mb-8">
               Digital Receipt Management for Small Businesses
             </p>

@@ -301,7 +301,7 @@ async function processExport(supabase: any, jobId: string, businessId: string) {
                   </ul>
                 </div>
                 <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
-                  <p>© ${new Date().getFullYear()} AuditReady. All rights reserved.</p>
+                  <p>© ${new Date().getFullYear()} Audit Proof. All rights reserved.</p>
                 </div>
               </div>
             </body>
@@ -355,7 +355,7 @@ The export includes:
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                from: "AuditReady <onboarding@resend.dev>",
+                from: "Audit Proof <onboarding@resend.dev>",
                 to: [profile.email],
                 subject: `📦 Your ${business?.name} Export is Ready!`,
                 html: emailHtml,

@@ -51,11 +51,11 @@ export function Sidebar({ isOpen, currentView, onNavigate }: SidebarProps) {
           <div className="flex items-center gap-3">
             <img
               src="/icon.svg"
-              alt="AuditReady"
+              alt="Audit Proof"
               className="w-10 h-10"
             />
             <div>
-              <h1 className="text-xl font-bold">AuditReady</h1>
+              <h1 className="text-xl font-bold">Audit Proof</h1>
               <p className="text-xs text-slate-400 dark:text-gray-500">Receipt Manager</p>
             </div>
           </div>

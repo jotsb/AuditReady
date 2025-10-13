@@ -1,7 +1,7 @@
 # Multi-Factor Authentication (MFA) Implementation Plan
 
 ## Overview
-This document outlines the complete implementation plan for adding TOTP-based Multi-Factor Authentication to AuditReady.
+This document outlines the complete implementation plan for adding TOTP-based Multi-Factor Authentication to Audit Proof.
 
 ---
 

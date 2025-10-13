@@ -17,7 +17,7 @@ export function ThemeSettings() {
           Appearance
         </h2>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Customize how AuditReady looks on your device
+          Customize how Audit Proof looks on your device
         </p>
       </div>
 

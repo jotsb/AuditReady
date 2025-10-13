@@ -104,7 +104,7 @@ export function formatRecoveryCode(code: string): string {
 
 export function downloadRecoveryCodes(codes: string[], filename: string = 'recovery-codes.txt'): void {
   const content = [
-    'AuditReady - Multi-Factor Authentication Recovery Codes',
+    'Audit Proof - Multi-Factor Authentication Recovery Codes',
     '========================================================',
     '',
     'IMPORTANT: Keep these codes safe and secure!',

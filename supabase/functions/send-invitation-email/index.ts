@@ -151,7 +151,7 @@ Deno.serve(async (req: Request) => {
                 Hello!
               </p>
               <p style="color: #333; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
-                ${inviterName ? `<strong>${inviterName}</strong>` : "Someone"} has invited you to join ${businessName ? `<strong>${businessName}</strong>` : "their team"} on AuditReady as a <strong>${role}</strong>.
+                ${inviterName ? `<strong>${inviterName}</strong>` : "Someone"} has invited you to join ${businessName ? `<strong>${businessName}</strong>` : "their team"} on Audit Proof as a <strong>${role}</strong>.
               </p>
               <p style="color: #333; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
                 Click the button below to accept the invitation and get started:
@@ -168,7 +168,7 @@ Deno.serve(async (req: Request) => {
               </p>
             </div>
             <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
-              <p>© ${new Date().getFullYear()} AuditReady. All rights reserved.</p>
+              <p>© ${new Date().getFullYear()} Audit Proof. All rights reserved.</p>
             </div>
           </div>
         </body>
@@ -176,7 +176,7 @@ Deno.serve(async (req: Request) => {
     `;
 
     const emailText = `
-You've been invited to join ${businessName || "a team"} on AuditReady!
+You've been invited to join ${businessName || "a team"} on Audit Proof!
 
 ${inviterName ? `${inviterName} has` : "Someone has"} invited you to join as a ${role}.
 
@@ -244,9 +244,9 @@ If you didn't expect this invitation, you can safely ignore this email.
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "AuditReady <onboarding@resend.dev>",
+        from: "Audit Proof <onboarding@resend.dev>",
         to: [email],
-        subject: `You've been invited to join ${businessName || "a team"} on AuditReady`,
+        subject: `You've been invited to join ${businessName || "a team"} on Audit Proof`,
         html: emailHtml,
         text: emailText,
       }),

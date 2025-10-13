@@ -1,4 +1,4 @@
-# AuditReady - Infrastructure Documentation
+# Audit Proof - Infrastructure Documentation
 
 ## Current Infrastructure Overview
 

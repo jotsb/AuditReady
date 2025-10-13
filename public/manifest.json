@@ -1,6 +1,6 @@
 {
-  "name": "AuditReady - Receipt Manager",
-  "short_name": "AuditReady",
+  "name": "Audit Proof - Receipt Manager",
+  "short_name": "Audit Proof",
   "description": "Professional receipt management and expense tracking for businesses",
   "start_url": "/",
   "display": "standalone",

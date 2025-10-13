@@ -31,7 +31,7 @@ export function RecoveryCodesDisplay({ codes, onConfirm, onCancel }: RecoveryCod
       <!DOCTYPE html>
       <html>
         <head>
-          <title>AuditReady - Recovery Codes</title>
+          <title>Audit Proof - Recovery Codes</title>
           <style>
             body {
               font-family: Arial, sans-serif;
@@ -76,7 +76,7 @@ export function RecoveryCodesDisplay({ codes, onConfirm, onCancel }: RecoveryCod
           </style>
         </head>
         <body>
-          <h1>AuditReady - Recovery Codes</h1>
+          <h1>Audit Proof - Recovery Codes</h1>
           <div class="warning">
             <strong>IMPORTANT:</strong> Keep these codes safe and secure!
             <ul>

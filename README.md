@@ -1,6 +1,6 @@
-# AuditReady
+# Audit Proof
 
-A comprehensive receipt management and expense tracking application built with React, TypeScript, and Supabase. AuditReady helps businesses organize receipts, track expenses, and generate professional reports for audit and tax purposes.
+A comprehensive receipt management and expense tracking application built with React, TypeScript, and Supabase. Audit Proof helps businesses organize receipts, track expenses, and generate professional reports for audit and tax purposes.
 
 ## Features
 

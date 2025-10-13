@@ -69,7 +69,7 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
           <ol className="list-decimal list-inside space-y-2">
             <li>Check your email inbox for the verification link</li>
             <li>Click the link to verify your email address</li>
-            <li>Return here and sign in to start using AuditReady</li>
+            <li>Return here and sign in to start using Audit Proof</li>
           </ol>
           <p className="text-xs text-slate-500 dark:text-gray-400 pt-2">
             If you don't see the email, check your spam folder.

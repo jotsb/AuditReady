@@ -78,7 +78,7 @@ export function LoginForm({ onToggleMode, onForgotPassword, onMFARequired }: Log
     <div className="w-full max-w-md mx-auto p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">Welcome Back</h1>
-        <p className="text-slate-600 dark:text-gray-400">Sign in to your AuditReady account</p>
+        <p className="text-slate-600 dark:text-gray-400">Sign in to your Audit Proof account</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
