@@ -4,6 +4,74 @@
 
 ---
 
+## 📦 Version 0.6.5 - "PDF Conversion System Fix" (2025-10-13)
+
+### 🐛 Critical Bug Fixes
+
+#### **PDF Upload & Conversion - Now Working**
+Fixed critical issue preventing multi-page PDF uploads from converting to images.
+
+**The Problem**
+- Multi-page PDF uploads were failing with CSP (Content Security Policy) errors
+- PDF.js worker couldn't load due to cross-origin restrictions
+- Error: "Refused to load worker from CDN due to CSP restrictions"
+- PDF conversion completely non-functional
+
+**Root Cause**
+- PDF.js worker file was being loaded from external CDN
+- CSP policies block loading workers from external origins for security
+- Multiple failed attempts to configure CSP to allow CDN
+- Development environment has strict networking isolation
+
+**The Solution**
+- Implemented Vite's special `?url` import syntax for worker bundling
+- Worker file now bundled with application assets (same-origin)
+- Import: `import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'`
+- Configuration: `pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker`
+- Vite automatically bundles worker and provides correct asset URL
+
+**Technical Implementation**
+- Worker bundled as: `dist/assets/pdf.worker.min-qwK7q_zL.mjs` (~1MB)
+- Served from same origin as application (no CSP violations)
+- Works in both development and production environments
+- No external CDN dependencies
+- Location: `src/lib/pdfConverter.ts`
+
+**What Now Works**
+- ✅ Upload multi-page PDF files
+- ✅ Automatic conversion of each PDF page to high-quality JPEG
+- ✅ Scale 2.0 rendering for sharp images (quality 0.92)
+- ✅ Parent receipt created with consolidated data
+- ✅ Child page records created for each PDF page
+- ✅ Thumbnail strip shows all pages
+- ✅ Click thumbnail to view full-size page image
+- ✅ AI extraction processes first page
+- ✅ Complete error handling and logging
+- ✅ Supports unlimited pages per PDF
+
+### 📊 Impact Summary
+- **PDF Upload**: Multi-page PDFs now fully functional
+- **User Experience**: Seamless PDF upload without CSP errors
+- **Production Ready**: PDF conversion verified working in production build
+- **Bundle Size**: 348.98 KB gzipped (+1KB for worker overhead)
+- **Build Time**: 11.40s (unchanged)
+- **Technical Debt**: Eliminated CSP worker loading issues
+
+### 🔍 Use Cases Enabled
+1. **Multi-Page Invoices** - Upload complete invoices as single PDF
+2. **Long Receipts** - Handle receipts that span multiple pages
+3. **Bundled Documents** - Upload multiple related receipts as one PDF
+4. **Scanned Documents** - Process multi-page scanned documents
+5. **Complete Records** - Maintain full documentation without splitting files
+
+### 🔒 Security
+- Worker loaded from same origin (same-origin policy compliant)
+- No external CDN dependencies (reduces attack surface)
+- CSP-compliant implementation (no policy violations)
+- All worker files bundled and served by application
+
+---
+
 ## 📦 Version 0.6.4 - "Soft Delete for Receipts" (2025-10-13)
 
 ### 🗑️ New Features
@@ -1732,5 +1800,5 @@ Built with:
 ---
 
 **Last Updated:** 2025-10-13
-**Current Version:** 0.6.3
-**Status:** Beta - Production Ready with Enterprise Security, Business Management, Data Export & Advanced Analytics
+**Current Version:** 0.6.5
+**Status:** Beta - Production Ready with Enterprise Security, Business Management, Multi-Page PDF Support & Advanced Analytics
