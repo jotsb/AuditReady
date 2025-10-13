@@ -183,9 +183,28 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
         .range(startIndex, endIndex);
 
       if (error) throw error;
-      setReceipts(data || []);
+
+      const receiptsWithThumbnails = await Promise.all((data || []).map(async (receipt) => {
+        if (receipt.is_parent && receipt.total_pages > 1 && !receipt.thumbnail_path) {
+          const { data: firstPage } = await supabase
+            .from('receipts')
+            .select('thumbnail_path, file_path')
+            .eq('parent_receipt_id', receipt.id)
+            .eq('page_number', 1)
+            .single();
+
+          return {
+            ...receipt,
+            thumbnail_path: firstPage?.thumbnail_path || null,
+            file_path: firstPage?.file_path || receipt.file_path
+          };
+        }
+        return receipt;
+      }));
+
+      setReceipts(receiptsWithThumbnails);
       setTotalCount(count || 0);
-      logDataLoad(data?.length || 0, { collectionId: selectedCollection, page: currentPage });
+      logDataLoad(receiptsWithThumbnails.length, { collectionId: selectedCollection, page: currentPage });
     } catch (error) {
       logger.error('Error loading receipts', error as Error, {
         collectionId: selectedCollection,
