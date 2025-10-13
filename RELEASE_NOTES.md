@@ -4,6 +4,83 @@
 
 ---
 
+## 📦 Version 0.6.2 - "Multi-Page Receipt Fixes" (2025-10-13)
+
+### 🐛 Bug Fixes
+
+#### **Multi-Page Receipt Upload - Fixed Critical Issues**
+Fixed multiple issues preventing multi-page receipt uploads from working correctly.
+
+**Database Constraint Fix**
+- **Problem:** Uploads failing with "null value in column 'total_amount' violates not-null constraint"
+- **Root Cause:** Child page records were being inserted without `total_amount` field
+- **Solution:** Added `total_amount: 0` to child page records (only parent has actual amount)
+- **Additional Fix:** Added validation to ensure parent record always has valid numeric amount
+
+**Thumbnail Display Fix**
+- **Problem:** Thumbnails showing as broken images in receipt details page
+- **Root Cause:** Thumbnails trying to use public storage URLs instead of signed URLs
+- **Solution:** Generate signed URLs for all thumbnails when loading multi-page receipts
+- **Technical Details:**
+  - Created signed URLs with 1-hour expiration for security
+  - Updated `ReceiptPage` interface to include `thumbnailSignedUrl`
+  - Modified thumbnail rendering to use signed URLs
+  - All thumbnails now display correctly in the page thumbnail strip
+
+**User Experience Improvements**
+- **Removed Success Alert:** Multi-page uploads now complete silently without popup
+- **Silent Completion:** Receipts list refreshes automatically to show new upload
+- **Better UX:** Users see the completed upload immediately without interruption
+
+### 🔍 Enhanced Logging
+
+#### **Comprehensive Multi-Page Upload Logging**
+Added detailed logging throughout the entire multi-page receipt upload process.
+
+**Upload Flow Logging (12+ log points):**
+- Upload start with page count and user info
+- Individual page upload success/failure for each page
+- Edge function call and response status
+- JSON parsing success/failure with error details
+- Data validation (total amount check)
+- Parent receipt creation
+- Child page record creation
+- Upload completion with duration metrics
+
+**Error Logging Enhanced:**
+- Storage upload errors with page number and file names
+- Thumbnail upload errors with detailed context
+- Edge function errors with HTTP status and response text
+- JSON parse errors with response preview (first 500 chars)
+- Database insert errors with full context
+- All errors logged to system_logs with structured metadata
+
+**Benefits:**
+- All multi-page receipt errors now visible in System Logs
+- Complete audit trail for debugging production issues
+- Structured metadata enables filtering by:
+  - `parentReceiptId` - Track entire upload lifecycle
+  - `pageNumber` - Identify which page failed
+  - `operation: 'multi_page_upload'` - Filter all multi-page operations
+  - Error types and status codes
+- Performance metrics tracked (upload duration, file sizes)
+
+### 📊 Impact
+- Multi-Page Receipts: Fixed 3 critical bugs preventing functionality
+- System Logging: Enhanced with 12+ new log points for multi-page operations
+- User Experience: Cleaner flow without unnecessary success alerts
+- Debugging: Complete visibility into upload failures
+- Bundle Size: 345.77 KB gzipped (+0.04 KB for enhanced logging)
+
+### 🔍 Use Cases Enabled
+1. **Debug Upload Failures** - Complete log trail in System Logs for every upload
+2. **Track Upload Performance** - Duration metrics for optimization
+3. **Identify Problem Pages** - Logs show which specific page failed
+4. **Monitor Edge Function** - HTTP status and response logging
+5. **Database Error Tracking** - Constraint violations fully logged
+
+---
+
 ## 📦 Version 0.6.1 - "Async Business Export System" (2025-10-11)
 
 ### 🎯 Major Features

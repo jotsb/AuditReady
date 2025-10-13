@@ -186,6 +186,13 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
   const handleMultiPageUpload = async (files: Array<{ file: File; thumbnail: File }>) => {
     if (!user || !selectedCollection || files.length === 0) return;
 
+    logger.info('Multi-page upload started', {
+      pageCount: files.length,
+      collectionId: selectedCollection,
+      userId: user.id,
+      page: 'ReceiptsPage'
+    });
+
     actionTracker.uploadStarted('multi-page-receipt', `${files.length} pages`, 0, { collectionId: selectedCollection });
 
     setExtracting(true);
@@ -198,6 +205,12 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
       const parentReceiptId = crypto.randomUUID();
       const timestamp = Date.now();
       const uploadedPaths: Array<{ filePath: string; thumbnailPath: string }> = [];
+
+      logger.info('Uploading multi-page receipt files', {
+        parentReceiptId,
+        pageCount: files.length,
+        page: 'ReceiptsPage'
+      });
 
       for (let i = 0; i < files.length; i++) {
         const { file, thumbnail } = files[i];
@@ -215,11 +228,40 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
           }),
         ]);
 
-        if (uploadResult.error) throw uploadResult.error;
-        if (thumbnailResult.error) throw thumbnailResult.error;
+        if (uploadResult.error) {
+          logger.error('Failed to upload page image', uploadResult.error as Error, {
+            pageNumber: i + 1,
+            fileName,
+            parentReceiptId,
+            page: 'ReceiptsPage'
+          });
+          throw uploadResult.error;
+        }
+        if (thumbnailResult.error) {
+          logger.error('Failed to upload thumbnail', thumbnailResult.error as Error, {
+            pageNumber: i + 1,
+            thumbnailName,
+            parentReceiptId,
+            page: 'ReceiptsPage'
+          });
+          throw thumbnailResult.error;
+        }
+
+        logger.info('Uploaded page files', {
+          pageNumber: i + 1,
+          fileName,
+          thumbnailName,
+          page: 'ReceiptsPage'
+        });
 
         uploadedPaths.push({ filePath: fileName, thumbnailPath: thumbnailName });
       }
+
+      logger.info('All pages uploaded, calling extraction function', {
+        parentReceiptId,
+        pageCount: files.length,
+        page: 'ReceiptsPage'
+      });
 
       const { data: { session } } = await supabase.auth.getSession();
 
@@ -240,29 +282,55 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
         }
       );
 
-      console.log('Edge function response status:', response.status);
+      logger.info('Edge function response received', {
+        status: response.status,
+        parentReceiptId,
+        page: 'ReceiptsPage'
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Edge function error response:', errorText);
+        logger.error('Edge function returned error', new Error(`HTTP ${response.status}`), {
+          status: response.status,
+          errorText,
+          parentReceiptId,
+          page: 'ReceiptsPage'
+        });
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
       const responseText = await response.text();
-      console.log('Edge function raw response:', responseText);
+      logger.info('Edge function response text received', {
+        responseLength: responseText.length,
+        parentReceiptId,
+        page: 'ReceiptsPage'
+      });
 
       let result;
       try {
         result = JSON.parse(responseText);
       } catch (parseError) {
-        console.error('Failed to parse JSON response:', parseError);
-        console.error('Response was:', responseText);
+        logger.error('Failed to parse JSON response', parseError as Error, {
+          responseText: responseText.substring(0, 500),
+          parentReceiptId,
+          page: 'ReceiptsPage'
+        });
         throw new Error(`Failed to parse response: ${parseError instanceof Error ? parseError.message : 'Unknown parse error'}`);
       }
 
-      console.log('Multi-page extraction result:', result);
+      logger.info('Multi-page extraction result parsed', {
+        success: result.success,
+        hasData: !!result.data,
+        parentReceiptId,
+        page: 'ReceiptsPage'
+      });
 
       if (!result.success) {
+        logger.error('Extraction failed', new Error(result.error || 'Extraction failed'), {
+          resultError: result.error,
+          parentReceiptId,
+          page: 'ReceiptsPage'
+        });
         throw new Error(result.error || 'Extraction failed');
       }
 
@@ -286,8 +354,21 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
 
       // Validate total_amount is a valid number
       if (isNaN(totalAmount)) {
+        logger.error('Invalid total amount', new Error('Invalid total amount extracted from receipt'), {
+          rawAmount: result.data.total_amount,
+          parsedAmount: totalAmount,
+          parentReceiptId,
+          page: 'ReceiptsPage'
+        });
         throw new Error('Invalid total amount extracted from receipt');
       }
+
+      logger.info('Creating parent receipt record', {
+        parentReceiptId,
+        totalAmount,
+        vendor: result.data.vendor_name,
+        page: 'ReceiptsPage'
+      });
 
       const { data: parentReceipt, error: parentError } = await supabase
         .from('receipts')
@@ -320,7 +401,21 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
         .select()
         .single();
 
-      if (parentError) throw parentError;
+      if (parentError) {
+        logger.error('Failed to create parent receipt', parentError as Error, {
+          parentReceiptId,
+          totalAmount,
+          vendor: result.data.vendor_name,
+          page: 'ReceiptsPage'
+        });
+        throw parentError;
+      }
+
+      logger.info('Parent receipt created successfully', {
+        parentReceiptId,
+        receiptData: parentReceipt,
+        page: 'ReceiptsPage'
+      });
 
       const childRecords = uploadedPaths.map((paths, index) => ({
         collection_id: selectedCollection,
@@ -335,13 +430,42 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
         total_amount: 0, // Child pages don't have individual amounts
       }));
 
+      logger.info('Creating child page records', {
+        parentReceiptId,
+        childCount: childRecords.length,
+        page: 'ReceiptsPage'
+      });
+
       const { error: childError } = await supabase
         .from('receipts')
         .insert(childRecords);
 
-      if (childError) throw childError;
+      if (childError) {
+        logger.error('Failed to create child page records', childError as Error, {
+          parentReceiptId,
+          childCount: childRecords.length,
+          page: 'ReceiptsPage'
+        });
+        throw childError;
+      }
+
+      logger.info('Child page records created successfully', {
+        parentReceiptId,
+        childCount: childRecords.length,
+        page: 'ReceiptsPage'
+      });
 
       const uploadDuration = Date.now() - uploadStartTime;
+
+      logger.info('Multi-page upload completed successfully', {
+        parentReceiptId,
+        pageCount: files.length,
+        duration: uploadDuration,
+        vendor: result.data?.vendor_name,
+        totalAmount,
+        page: 'ReceiptsPage'
+      });
+
       actionTracker.uploadCompleted('multi-page-receipt', `${files.length} pages`, uploadDuration, {
         collectionId: selectedCollection,
         vendor: result.data?.vendor_name,
@@ -350,10 +474,6 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
 
       await loadReceipts();
     } catch (error) {
-      console.error('Multi-page upload/extraction error:', error);
-      console.error('Error type:', typeof error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
-
       let errorMessage = 'Unknown error';
       if (error instanceof Error) {
         errorMessage = error.message;
@@ -362,6 +482,15 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
       } else if (error && typeof error === 'object') {
         errorMessage = JSON.stringify(error);
       }
+
+      logger.error('Multi-page upload failed', error as Error, {
+        errorMessage,
+        errorType: typeof error,
+        collectionId: selectedCollection,
+        pageCount: files.length,
+        page: 'ReceiptsPage',
+        operation: 'multi_page_upload'
+      });
 
       alert(`Failed to process multi-page receipt: ${errorMessage}`);
     } finally {
