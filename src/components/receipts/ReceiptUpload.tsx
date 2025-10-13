@@ -1,86 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { Upload, Camera, X, Loader2 } from 'lucide-react';
-import * as pdfjsLib from 'pdfjs-dist';
 import { optimizeImage, type OptimizedImages } from '../../lib/imageOptimizer';
 import { PageThumbnailStrip } from './PageThumbnailStrip';
 import { logger } from '../../lib/logger';
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 interface ReceiptUploadProps {
   onUpload: (file: File, thumbnail: File) => Promise<void>;
   onMultiPageUpload?: (files: Array<{ file: File; thumbnail: File }>) => Promise<void>;
   onClose: () => void;
   autoTriggerPhoto?: boolean;
-}
-
-async function convertPdfToImage(pdfFile: File): Promise<File> {
-  const arrayBuffer = await pdfFile.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-  const page = await pdf.getPage(1);
-
-  const scale = 2;
-  const viewport = page.getViewport({ scale });
-
-  const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d');
-  if (!context) throw new Error('Could not get canvas context');
-
-  canvas.height = viewport.height;
-  canvas.width = viewport.width;
-
-  await page.render({
-    canvasContext: context,
-    viewport: viewport
-  }).promise;
-
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const imageFile = new File([blob], pdfFile.name.replace('.pdf', '.png'), { type: 'image/png' });
-        resolve(imageFile);
-      }
-    }, 'image/png', 0.95);
-  });
-}
-
-async function convertMultiPagePdfToImages(pdfFile: File): Promise<File[]> {
-  const arrayBuffer = await pdfFile.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-
-  const images: File[] = [];
-
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const scale = 2;
-    const viewport = page.getViewport({ scale });
-
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    if (!context) throw new Error('Could not get canvas context');
-
-    canvas.height = viewport.height;
-    canvas.width = viewport.width;
-
-    await page.render({
-      canvasContext: context,
-      viewport: viewport
-    }).promise;
-
-    const blob = await new Promise<Blob>((resolve) => {
-      canvas.toBlob((b) => resolve(b!), 'image/png', 0.95);
-    });
-
-    const imageFile = new File(
-      [blob],
-      `${pdfFile.name.replace('.pdf', '')}_page_${i}.png`,
-      { type: 'image/png' }
-    );
-
-    images.push(imageFile);
-  }
-
-  return images;
 }
 
 interface ProcessedFile {
@@ -97,7 +25,6 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
   const [preview, setPreview] = useState<string | null>(null);
   const [multiPageFiles, setMultiPageFiles] = useState<ProcessedFile[]>([]);
   const [loading, setLoading] = useState(false);
-  const [converting, setConverting] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const multiFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -111,28 +38,9 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      let fileToUse = selectedFile;
-
-      if (selectedFile.type === 'application/pdf') {
-        setConverting(true);
-        try {
-          fileToUse = await convertPdfToImage(selectedFile);
-        } catch (error) {
-          logger.error('PDF conversion error', error as Error, {
-            fileName: selectedFile.name,
-            component: 'ReceiptUpload',
-            operation: 'convert_single_pdf'
-          });
-          alert('Failed to convert PDF. Please try a different file.');
-          setConverting(false);
-          return;
-        }
-        setConverting(false);
-      }
-
       setOptimizing(true);
       try {
-        const optimized = await optimizeImage(fileToUse);
+        const optimized = await optimizeImage(selectedFile);
 
         setFile(optimized.full);
         setThumbnail(optimized.thumbnail);
@@ -144,7 +52,7 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
         reader.readAsDataURL(optimized.full);
       } catch (error) {
         logger.error('Image optimization error', error as Error, {
-          fileName: fileToUse.name,
+          fileName: selectedFile.name,
           component: 'ReceiptUpload',
           operation: 'optimize_image'
         });
@@ -165,47 +73,26 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
     try {
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
-        let filesToProcess: File[] = [file];
+        const optimized = await optimizeImage(file);
+        const reader = new FileReader();
+        const preview = await new Promise<string>((resolve) => {
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(optimized.full);
+        });
 
-        if (file.type === 'application/pdf') {
-          setConverting(true);
-          try {
-            filesToProcess = await convertMultiPagePdfToImages(file);
-          } catch (error) {
-            logger.error('Multi-page PDF conversion error', error as Error, {
-              fileName: file.name,
-              component: 'ReceiptUpload',
-              operation: 'convert_multipage_pdf'
-            });
-            alert(`Failed to convert PDF: ${file.name}`);
-            continue;
-          } finally {
-            setConverting(false);
-          }
-        }
-
-        for (const fileToProcess of filesToProcess) {
-          const optimized = await optimizeImage(fileToProcess);
-          const reader = new FileReader();
-          const preview = await new Promise<string>((resolve) => {
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(optimized.full);
-          });
-
-          processedFiles.push({
-            id: crypto.randomUUID(),
-            file: optimized.full,
-            thumbnail: optimized.thumbnail,
-            preview,
-            pageNumber: processedFiles.length + 1,
-          });
-        }
+        processedFiles.push({
+          id: crypto.randomUUID(),
+          file: optimized.full,
+          thumbnail: optimized.thumbnail,
+          preview,
+          pageNumber: processedFiles.length + 1,
+        });
       }
 
       setMultiPageFiles(processedFiles);
     } catch (error) {
       logger.error('Multi-file processing error', error as Error, {
-        fileCount: files.length,
+        fileCount: selectedFiles.length,
         component: 'ReceiptUpload',
         operation: 'process_multiple_files'
       });
@@ -284,7 +171,7 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-4">
-              Select Receipt Image or PDF
+              Select Receipt Image
             </label>
 
             {multiPageFiles.length > 0 ? (
@@ -337,11 +224,11 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
               <div className="space-y-4">
                 <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-slate-300 dark:border-gray-600 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-gray-700 transition">
                   <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    {converting || optimizing ? (
+                    {optimizing ? (
                       <>
                         <Loader2 size={48} className="text-blue-600 animate-spin mb-4" />
                         <p className="text-sm text-slate-600 dark:text-gray-400">
-                          {converting ? 'Converting PDF...' : 'Optimizing images...'}
+                          Optimizing images...
                         </p>
                       </>
                     ) : (
@@ -350,16 +237,16 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
                         <p className="mb-2 text-sm text-slate-600 dark:text-gray-400">
                           <span className="font-semibold">Click to upload</span> or drag and drop
                         </p>
-                        <p className="text-xs text-slate-500 dark:text-gray-400">Single file: PNG, JPG, PDF</p>
+                        <p className="text-xs text-slate-500 dark:text-gray-400">Single file: PNG, JPG</p>
                       </>
                     )}
                   </div>
                   <input
                     type="file"
                     className="hidden"
-                    accept="image/*,.pdf"
+                    accept="image/*"
                     onChange={handleFileChange}
-                    disabled={converting || optimizing}
+                    disabled={optimizing}
                   />
                 </label>
 
@@ -381,10 +268,10 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
                         ref={multiFileInputRef}
                         type="file"
                         className="hidden"
-                        accept="image/*,.pdf"
+                        accept="image/*"
                         multiple
                         onChange={handleMultiFileChange}
-                        disabled={converting || optimizing}
+                        disabled={optimizing}
                       />
                     </label>
                   </>
