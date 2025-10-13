@@ -42,10 +42,12 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
       if (selectedFile.type === 'application/pdf') {
         setOptimizing(true);
         try {
+          console.log('PDF file detected, starting conversion:', selectedFile.name);
           const pages = await convertPdfToImages(selectedFile);
+          console.log('PDF conversion successful, pages:', pages.length);
 
           if (pages.length === 1) {
-            const imageFile = new File([pages[0].blob], selectedFile.name.replace('.pdf', '.png'), { type: 'image/png' });
+            const imageFile = new File([pages[0].blob], selectedFile.name.replace('.pdf', '.jpg'), { type: 'image/jpeg' });
             const optimized = await optimizeImage(imageFile);
 
             setFile(optimized.full);
@@ -59,7 +61,7 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
           } else {
             const processedFiles: ProcessedFile[] = [];
             for (const page of pages) {
-              const imageFile = new File([page.blob], `${selectedFile.name}_page${page.pageNumber}.png`, { type: 'image/png' });
+              const imageFile = new File([page.blob], `${selectedFile.name}_page${page.pageNumber}.jpg`, { type: 'image/jpeg' });
               const optimized = await optimizeImage(imageFile);
               const reader = new FileReader();
               const preview = await new Promise<string>((resolve) => {
@@ -78,12 +80,17 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
             setMultiPageFiles(processedFiles);
           }
         } catch (error) {
+          console.error('PDF conversion failed:', error);
           logger.error('PDF conversion error', error as Error, {
             fileName: selectedFile.name,
+            fileSize: selectedFile.size,
+            fileType: selectedFile.type,
+            errorMessage: error instanceof Error ? error.message : 'Unknown',
             component: 'ReceiptUpload',
             operation: 'convert_pdf'
           });
-          alert('Failed to convert PDF. Please try again or use an image file.');
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          alert(`Failed to convert PDF: ${errorMessage}\n\nPlease try again or use an image file (JPG, PNG).`);
         } finally {
           setOptimizing(false);
         }
@@ -127,9 +134,10 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
         const file = selectedFiles[i];
 
         if (file.type === 'application/pdf') {
+          console.log('Converting PDF in multi-file upload:', file.name);
           const pages = await convertPdfToImages(file);
           for (const page of pages) {
-            const imageFile = new File([page.blob], `${file.name}_page${page.pageNumber}.png`, { type: 'image/png' });
+            const imageFile = new File([page.blob], `${file.name}_page${page.pageNumber}.jpg`, { type: 'image/jpeg' });
             const optimized = await optimizeImage(imageFile);
             const reader = new FileReader();
             const preview = await new Promise<string>((resolve) => {
