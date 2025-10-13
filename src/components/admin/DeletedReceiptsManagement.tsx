@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Trash2, RotateCcw, Search, Calendar, DollarSign, Building2, FolderOpen } from 'lucide-react';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface DeletedReceipt {
   id: string;
@@ -17,7 +18,12 @@ interface DeletedReceipt {
   file_path: string;
 }
 
-export function DeletedReceiptsManagement() {
+interface DeletedReceiptsManagementProps {
+  scope?: 'admin' | 'owner';
+}
+
+export function DeletedReceiptsManagement({ scope = 'admin' }: DeletedReceiptsManagementProps) {
+  const { user } = useAuth();
   const [deletedReceipts, setDeletedReceipts] = useState<DeletedReceipt[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -159,10 +165,11 @@ export function DeletedReceiptsManagement() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Deleted Receipts
+            {scope === 'owner' ? 'My Deleted Receipts' : 'Deleted Receipts'}
           </h2>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
             {filteredReceipts.length} soft-deleted receipt(s)
+            {scope === 'owner' && ' from your businesses'}
           </p>
         </div>
       </div>
