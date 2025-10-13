@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import JSZip from "npm:jszip@3";
+import { SMTPClient } from "npm:emailjs@4.0.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -253,7 +254,10 @@ async function processExport(supabase: any, jobId: string, businessId: string) {
         .single();
 
       if (profile?.email) {
-        const resendApiKey = Deno.env.get("RESEND_API_KEY");
+        const smtpHost = Deno.env.get("SMTP_HOST");
+        const smtpPort = Deno.env.get("SMTP_PORT");
+        const smtpUser = Deno.env.get("SMTP_USER");
+        const smtpPassword = Deno.env.get("SMTP_PASSWORD");
         const appUrl = "https://new-chat-5w59.bolt.host";
 
         const emailHtml = `
@@ -266,7 +270,7 @@ async function processExport(supabase: any, jobId: string, businessId: string) {
             <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
               <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
                 <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px; border-radius: 12px 12px 0 0; text-align: center;">
-                  <h1 style="color: white; margin: 0; font-size: 28px;">📦 Your Export is Ready!</h1>
+                  <h1 style="color: white; margin: 0; font-size: 28px;">Your Export is Ready!</h1>
                 </div>
                 <div style="background: white; padding: 40px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
                   <p style="color: #333; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
@@ -289,7 +293,7 @@ async function processExport(supabase: any, jobId: string, businessId: string) {
                     <a href="${appUrl}/settings?tab=businesses" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">Download Export</a>
                   </div>
                   <p style="color: #ef4444; font-size: 14px; line-height: 1.6; margin-top: 30px; padding: 15px; background: #fee2e2; border-radius: 8px;">
-                    ⚠️ <strong>Important:</strong> This export will expire in 7 days. Please download it soon!
+                    <strong>Important:</strong> This export will expire in 7 days. Please download it soon!
                   </p>
                   <p style="color: #666; font-size: 14px; line-height: 1.6; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
                     The export includes:
@@ -340,40 +344,59 @@ The export includes:
             business_name: business?.name,
             file_size: zipBlob.length,
             receipts_count: receipts.length,
-            notification_sent: !!resendApiKey,
+            notification_sent: !!(smtpHost && smtpPort && smtpUser && smtpPassword),
             user_email: profile.email,
           },
         });
 
-        // Send email via Resend if configured
-        if (resendApiKey) {
+        // Send email via SMTP if configured
+        if (smtpHost && smtpPort && smtpUser && smtpPassword) {
           try {
-            const emailResponse = await fetch("https://api.resend.com/emails", {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${resendApiKey}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                from: "Audit Proof <onboarding@resend.dev>",
-                to: [profile.email],
-                subject: `📦 Your ${business?.name} Export is Ready!`,
-                html: emailHtml,
-                text: emailText,
-              }),
+            const client = new SMTPClient({
+              user: smtpUser,
+              password: smtpPassword,
+              host: smtpHost,
+              port: parseInt(smtpPort),
+              ssl: true,
             });
 
-            if (!emailResponse.ok) {
-              const errorData = await emailResponse.json();
-              console.error("Failed to send email:", errorData);
-            } else {
-              console.log("Export notification email sent to:", profile.email);
-            }
+            const message = {
+              from: `Audit Proof <${smtpUser}>`,
+              to: profile.email,
+              subject: `Your ${business?.name} Export is Ready!`,
+              text: emailText,
+              attachment: [
+                {
+                  data: emailHtml,
+                  alternative: true,
+                },
+              ],
+            };
+
+            const headers: Record<string, string> = {
+              'X-Mailer': 'Audit Proof',
+              'X-Priority': '3',
+              'X-MSMail-Priority': 'Normal',
+              'Importance': 'Normal',
+              'MIME-Version': '1.0',
+              'Message-ID': `<${Date.now()}.${Math.random().toString(36).substring(2)}@auditproof.ca>`,
+              'Reply-To': smtpUser,
+              'From': `Audit Proof <noreply@auditproof.ca>`,
+              'Return-Path': smtpUser,
+              'Content-Type': 'multipart/alternative',
+            };
+
+            await client.sendAsync({
+              ...message,
+              headers,
+            });
+
+            console.log("Export notification email sent to:", profile.email);
           } catch (emailError) {
             console.error("Error sending email:", emailError);
           }
         } else {
-          console.log("RESEND_API_KEY not configured, skipping email notification");
+          console.log("SMTP not configured, skipping email notification");
         }
       }
     }
