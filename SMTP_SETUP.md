@@ -95,3 +95,61 @@ If emails are not being sent:
 ## Migration from Resend
 
 The old `RESEND_API_KEY` environment variable is no longer used and can be removed once you confirm SMTP is working correctly.
+
+## Preventing Emails from Going to Spam
+
+The Edge Function has been updated with anti-spam headers, but you also need to configure your DNS records properly.
+
+### Quick DNS Check
+
+Run the included script to check your DNS configuration:
+
+```bash
+./check-dns.sh
+```
+
+### Required DNS Records (in Cloudflare)
+
+**Critical for deliverability:**
+
+1. **SPF Record** (TXT):
+   ```
+   Name: @
+   Content: v=spf1 include:_spf.privateemail.com ~all
+   ```
+
+2. **DKIM Record** (TXT):
+   ```
+   Name: default._domainkey (get from PrivateEmail)
+   Content: v=DKIM1; k=rsa; p=... (get from PrivateEmail)
+   ```
+
+3. **DMARC Record** (TXT):
+   ```
+   Name: _dmarc
+   Content: v=DMARC1; p=quarantine; rua=mailto:dmarc@auditproof.ca
+   ```
+
+### Detailed Configuration
+
+See **EMAIL_DELIVERABILITY_GUIDE.md** for:
+- Step-by-step DNS setup instructions
+- How to verify your configuration
+- Troubleshooting spam issues
+- Best practices for email deliverability
+
+### Anti-Spam Headers Added
+
+The code now includes these headers to improve deliverability:
+- `Message-ID`: Unique identifier for tracking
+- `Reply-To`: Proper reply address
+- `X-Mailer`: Application identifier
+- `List-Unsubscribe`: Helps with email client trust
+- `X-Priority`: Normal priority flag
+
+### Testing Deliverability
+
+1. Send a test invitation email
+2. Check the email at: https://www.mail-tester.com/
+3. Aim for a score of 9/10 or 10/10
+4. If score is low, follow the recommendations provided
