@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Upload, Camera, X, Loader2, FileText } from 'lucide-react';
+import { Upload, Camera, X, Loader2 } from 'lucide-react';
 import { optimizeImage, type OptimizedImages } from '../../lib/imageOptimizer';
 import { PageThumbnailStrip } from './PageThumbnailStrip';
 import { logger } from '../../lib/logger';
@@ -39,32 +39,31 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       if (selectedFile.type === 'application/pdf') {
-        setFile(selectedFile);
-        setThumbnail(selectedFile);
-        setPreview('pdf');
-      } else {
-        setOptimizing(true);
-        try {
-          const optimized = await optimizeImage(selectedFile);
+        alert('PDF files are not yet supported for OCR extraction. Please convert your PDF to an image (PNG or JPEG) before uploading.\n\nYou can:\n• Take a screenshot of the PDF\n• Use an online PDF-to-image converter\n• Print to image on your device');
+        return;
+      }
 
-          setFile(optimized.full);
-          setThumbnail(optimized.thumbnail);
+      setOptimizing(true);
+      try {
+        const optimized = await optimizeImage(selectedFile);
 
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            setPreview(reader.result as string);
-          };
-          reader.readAsDataURL(optimized.full);
-        } catch (error) {
-          logger.error('Image optimization error', error as Error, {
-            fileName: selectedFile.name,
-            component: 'ReceiptUpload',
-            operation: 'optimize_image'
-          });
-          alert('Failed to optimize image. Please try a different file.');
-        } finally {
-          setOptimizing(false);
-        }
+        setFile(optimized.full);
+        setThumbnail(optimized.thumbnail);
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPreview(reader.result as string);
+        };
+        reader.readAsDataURL(optimized.full);
+      } catch (error) {
+        logger.error('Image optimization error', error as Error, {
+          fileName: selectedFile.name,
+          component: 'ReceiptUpload',
+          operation: 'optimize_image'
+        });
+        alert('Failed to optimize image. Please try a different file.');
+      } finally {
+        setOptimizing(false);
       }
     }
   };
@@ -73,37 +72,37 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
     const selectedFiles = e.target.files;
     if (!selectedFiles || selectedFiles.length === 0) return;
 
+    // Check for PDF files
+    for (let i = 0; i < selectedFiles.length; i++) {
+      if (selectedFiles[i].type === 'application/pdf') {
+        alert('PDF files are not yet supported for OCR extraction. Please convert your PDF to an image (PNG or JPEG) before uploading.\n\nYou can:\n• Take a screenshot of the PDF\n• Use an online PDF-to-image converter\n• Print to image on your device');
+        if (multiFileInputRef.current) {
+          multiFileInputRef.current.value = '';
+        }
+        return;
+      }
+    }
+
     setOptimizing(true);
     const processedFiles: ProcessedFile[] = [];
 
     try {
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
+        const optimized = await optimizeImage(file);
+        const reader = new FileReader();
+        const preview = await new Promise<string>((resolve) => {
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(optimized.full);
+        });
 
-        if (file.type === 'application/pdf') {
-          processedFiles.push({
-            id: crypto.randomUUID(),
-            file: file,
-            thumbnail: file,
-            preview: 'pdf',
-            pageNumber: processedFiles.length + 1,
-          });
-        } else {
-          const optimized = await optimizeImage(file);
-          const reader = new FileReader();
-          const preview = await new Promise<string>((resolve) => {
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(optimized.full);
-          });
-
-          processedFiles.push({
-            id: crypto.randomUUID(),
-            file: optimized.full,
-            thumbnail: optimized.thumbnail,
-            preview,
-            pageNumber: processedFiles.length + 1,
-          });
-        }
+        processedFiles.push({
+          id: crypto.randomUUID(),
+          file: optimized.full,
+          thumbnail: optimized.thumbnail,
+          preview,
+          pageNumber: processedFiles.length + 1,
+        });
       }
 
       setMultiPageFiles(processedFiles);
@@ -188,7 +187,7 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-4">
-              Select Receipt Image or PDF
+              Select Receipt Image
             </label>
 
             {multiPageFiles.length > 0 ? (
@@ -206,17 +205,11 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
                   {multiPageFiles.map((file) => (
                     <div key={file.id} className="relative group">
                       <div className="aspect-[3/4] rounded-lg overflow-hidden border-2 border-slate-200 dark:border-gray-700">
-                        {file.preview === 'pdf' ? (
-                          <div className="w-full h-full flex items-center justify-center bg-slate-50 dark:bg-gray-800">
-                            <FileText size={48} className="text-red-500" />
-                          </div>
-                        ) : (
-                          <img
-                            src={file.preview}
-                            alt={`Page ${file.pageNumber}`}
-                            className="w-full h-full object-cover"
-                          />
-                        )}
+                        <img
+                          src={file.preview}
+                          alt={`Page ${file.pageNumber}`}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                       <div className="absolute bottom-2 left-2 bg-slate-900 bg-opacity-75 text-white px-2 py-1 rounded text-xs font-medium">
                         Page {file.pageNumber}
@@ -260,14 +253,14 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
                         <p className="mb-2 text-sm text-slate-600 dark:text-gray-400">
                           <span className="font-semibold">Click to upload</span> or drag and drop
                         </p>
-                        <p className="text-xs text-slate-500 dark:text-gray-400">Single file: PNG, JPG, PDF</p>
+                        <p className="text-xs text-slate-500 dark:text-gray-400">Single file: PNG, JPG</p>
                       </>
                     )}
                   </div>
                   <input
                     type="file"
                     className="hidden"
-                    accept="image/*,.pdf,application/pdf"
+                    accept="image/*"
                     onChange={handleFileChange}
                     disabled={optimizing}
                   />
@@ -291,7 +284,7 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
                         ref={multiFileInputRef}
                         type="file"
                         className="hidden"
-                        accept="image/*,.pdf,application/pdf"
+                        accept="image/*"
                         multiple
                         onChange={handleMultiFileChange}
                         disabled={optimizing}
@@ -325,17 +318,7 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
             ) : (
               <div className="space-y-4">
                 <div className="relative border border-slate-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                  {preview === 'pdf' ? (
-                    <div className="flex items-center justify-center h-64 bg-slate-50 dark:bg-gray-800">
-                      <div className="text-center">
-                        <FileText size={64} className="text-red-500 mx-auto mb-4" />
-                        <p className="text-slate-700 dark:text-gray-300 font-medium">{file?.name}</p>
-                        <p className="text-sm text-slate-500 dark:text-gray-400 mt-2">PDF Document</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <img src={preview || ''} alt="Receipt preview" className="w-full" />
-                  )}
+                  <img src={preview || ''} alt="Receipt preview" className="w-full" />
                 </div>
                 <button
                   type="button"

@@ -59,7 +59,6 @@ Deno.serve(async (req: Request) => {
       throw new Error("OPENAI_API_KEY not configured");
     }
 
-    // Validate and parse request body
     const bodyValidation = await validateRequestBody(req);
     if (!bodyValidation.valid) {
       return new Response(
@@ -71,7 +70,6 @@ Deno.serve(async (req: Request) => {
     requestData = bodyValidation.data;
     const { filePath, filePaths, collectionId, isMultiPage = false } = requestData;
 
-    // Determine which paths to process
     let pathsToProcess: string[];
 
     if (isMultiPage) {
@@ -92,7 +90,6 @@ Deno.serve(async (req: Request) => {
       pathsToProcess = [filePath];
     }
 
-    // Validate inputs
     for (const path of pathsToProcess) {
       if (!path || typeof path !== 'string') {
         return new Response(
@@ -118,7 +115,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Log edge function start
     await supabase.rpc('log_system_event', {
       p_level: 'INFO',
       p_category: 'EDGE_FUNCTION',
@@ -142,7 +138,6 @@ Deno.serve(async (req: Request) => {
       categoryList = categories.map(c => c.name).join(", ");
     }
 
-    // Download and convert all image files
     const imageUrls: Array<{ type: string; image_url: { url: string } }> = [];
 
     for (const path of pathsToProcess) {
@@ -155,6 +150,11 @@ Deno.serve(async (req: Request) => {
       }
 
       const lowerFilePath = path.toLowerCase();
+
+      if (lowerFilePath.endsWith(".pdf")) {
+        throw new Error("PDF files are not yet supported for OCR extraction. Please convert your PDF to an image (PNG, JPEG) before uploading. You can use online tools or take a screenshot of the PDF.");
+      }
+
       const arrayBuffer = await fileData.arrayBuffer();
       const base64File = arrayBufferToBase64(arrayBuffer);
 
@@ -202,7 +202,6 @@ Deno.serve(async (req: Request) => {
       temperature: 0.1
     };
 
-    // Log OpenAI request
     await supabase.rpc('log_system_event', {
       p_level: 'INFO',
       p_category: 'EXTERNAL_API',
@@ -237,7 +236,6 @@ Deno.serve(async (req: Request) => {
     if (!openaiResponse.ok) {
       const errorText = await openaiResponse.text();
 
-      // Log OpenAI error response
       await supabase.rpc('log_system_event', {
         p_level: 'ERROR',
         p_category: 'EXTERNAL_API',
@@ -262,7 +260,6 @@ Deno.serve(async (req: Request) => {
     const openaiData = await openaiResponse.json();
     const responseText = openaiData.choices[0].message.content;
 
-    // Log OpenAI successful response
     await supabase.rpc('log_system_event', {
       p_level: 'INFO',
       p_category: 'EXTERNAL_API',
@@ -293,10 +290,8 @@ Deno.serve(async (req: Request) => {
 
     const extractedData = JSON.parse(jsonMatch[0]);
 
-    // Validate extracted data before returning
     const validatedData: any = {};
 
-    // Validate vendor_name
     if (extractedData.vendor_name) {
       const vendorValidation = validateString(extractedData.vendor_name, 'vendor_name', INPUT_LIMITS.vendor_name, false);
       validatedData.vendor_name = vendorValidation.valid ? vendorValidation.sanitized : null;
@@ -304,7 +299,6 @@ Deno.serve(async (req: Request) => {
       validatedData.vendor_name = null;
     }
 
-    // Validate vendor_address
     if (extractedData.vendor_address) {
       const addressValidation = validateString(extractedData.vendor_address, 'vendor_address', INPUT_LIMITS.vendor_address, false);
       validatedData.vendor_address = addressValidation.valid ? addressValidation.sanitized : null;
@@ -312,7 +306,6 @@ Deno.serve(async (req: Request) => {
       validatedData.vendor_address = null;
     }
 
-    // Validate transaction_date
     if (extractedData.transaction_date) {
       const dateValidation = validateDate(extractedData.transaction_date);
       validatedData.transaction_date = dateValidation.valid ? dateValidation.sanitized : null;
@@ -320,7 +313,6 @@ Deno.serve(async (req: Request) => {
       validatedData.transaction_date = null;
     }
 
-    // Validate amounts
     const amountFields = ['total_amount', 'subtotal', 'gst_amount', 'pst_amount'];
     for (const field of amountFields) {
       if (extractedData[field] !== null && extractedData[field] !== undefined) {
@@ -331,7 +323,6 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Validate category
     if (extractedData.category) {
       const categoryValidation = validateString(extractedData.category, 'category', INPUT_LIMITS.category, false);
       validatedData.category = categoryValidation.valid ? categoryValidation.sanitized : 'Miscellaneous';
@@ -339,7 +330,6 @@ Deno.serve(async (req: Request) => {
       validatedData.category = 'Miscellaneous';
     }
 
-    // Validate payment_method
     if (extractedData.payment_method) {
       const paymentValidation = validateString(extractedData.payment_method, 'payment_method', INPUT_LIMITS.payment_method, false);
       validatedData.payment_method = paymentValidation.valid ? paymentValidation.sanitized : 'Unknown';
@@ -347,7 +337,6 @@ Deno.serve(async (req: Request) => {
       validatedData.payment_method = 'Unknown';
     }
 
-    // Pass through other optional fields (no validation needed for these low-risk fields)
     validatedData.transaction_time = extractedData.transaction_time || null;
     validatedData.gst_percent = extractedData.gst_percent || null;
     validatedData.pst_percent = extractedData.pst_percent || null;
@@ -356,7 +345,6 @@ Deno.serve(async (req: Request) => {
 
     const executionTime = Date.now() - startTime;
 
-    // Log successful extraction
     await supabase.rpc('log_system_event', {
       p_level: 'INFO',
       p_category: 'EDGE_FUNCTION',
@@ -391,7 +379,6 @@ Deno.serve(async (req: Request) => {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     const stackTrace = error instanceof Error ? error.stack : null;
 
-    // Log error
     await supabase.rpc('log_system_event', {
       p_level: 'ERROR',
       p_category: 'EDGE_FUNCTION',
