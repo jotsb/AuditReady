@@ -9,11 +9,12 @@
 ### 🗑️ New Features
 
 #### **Soft Delete for Receipts**
-Receipts are no longer permanently deleted - they're now soft-deleted and can be restored by system admins.
+Receipts are no longer permanently deleted - they're now soft-deleted and can be restored by both system admins and business owners.
 
 **Key Features**
 - Soft delete with `deleted_at` timestamp instead of permanent deletion
-- Admin interface to view all soft-deleted receipts
+- Admin interface to view all soft-deleted receipts across all businesses
+- Business owner interface to view their own soft-deleted receipts
 - Restore deleted receipts with one click
 - Permanently delete receipts when needed (hard delete)
 - No automatic cleanup - receipts remain recoverable indefinitely
@@ -24,9 +25,11 @@ Receipts are no longer permanently deleted - they're now soft-deleted and can be
 - Soft-deleted receipts automatically filtered from all views via RLS policies
 - Receipt images preserved in storage (not deleted)
 - System admins can access "Deleted Receipts" tab in Admin page
+- Business owners can access "Deleted Receipts" tab in Settings page
 
 **Admin Interface**
 - New "Deleted Receipts" tab in Admin page
+- View ALL soft-deleted receipts across entire platform
 - Search through deleted receipts by vendor, business, collection, or deleted by user
 - View full details: vendor, amount, date, business, collection, deleted by, deleted at
 - Two actions available:
@@ -34,20 +37,33 @@ Receipts are no longer permanently deleted - they're now soft-deleted and can be
   - **Delete Forever**: Permanently removes receipt and files from storage
 - Real-time loading and search functionality
 
+**Business Owner Interface**
+- New "Deleted Receipts" tab in Settings page
+- View ONLY soft-deleted receipts from owned businesses
+- Same search and filtering capabilities as admin interface
+- Same restore and hard delete actions
+- Self-service recovery without admin intervention
+- Scoped automatically via RLS policies
+
 **Security & Permissions**
 - Only authenticated users can soft delete receipts
-- Only system admins can view soft-deleted receipts
-- Only system admins can perform hard deletes (permanent deletion)
+- System admins can view ALL soft-deleted receipts
+- Business owners can view ONLY their business's soft-deleted receipts
+- Both admins and business owners can perform hard deletes (within their scope)
+- Regular members cannot see or manage deleted receipts
 - RLS policies ensure data security at database level
 
 **Technical Details**
 - Database: Added `deleted_at` (timestamptz) and `deleted_by` (uuid) columns to receipts table
 - RLS: Updated policies to exclude soft-deleted receipts from normal queries
+- RLS: New policies for business owner access to their deleted receipts
 - Audit: Triggers log soft delete and restore operations
-- Components: `DeletedReceiptsManagement.tsx` (370 lines)
+- Components: `DeletedReceiptsManagement.tsx` (supports both admin and owner scope)
+- Pages: `AdminPage.tsx` (Deleted Receipts tab), `SettingsPage.tsx` (Deleted Receipts tab)
 - Migrations:
   - `add_soft_delete_to_receipts.sql` - Schema changes and RLS policies
   - `fix_soft_delete_audit_trigger.sql` - Audit logging fixes
+  - `allow_business_owners_view_deleted_receipts.sql` - Business owner permissions
 
 ### 🐛 Bug Fixes
 
@@ -59,7 +75,8 @@ Receipts are no longer permanently deleted - they're now soft-deleted and can be
 ### 📊 Impact Summary
 - **Data Safety:** Receipts no longer permanently lost when deleted
 - **Admin Tools:** Complete deleted receipt management interface
-- **User Experience:** Peace of mind - accidental deletions can be recovered
+- **Owner Tools:** Business owners can self-service deleted receipt recovery
+- **User Experience:** Peace of mind - accidental deletions recoverable without admin help
 - **Compliance:** Full audit trail for all delete and restore operations
 
 ---

@@ -352,14 +352,15 @@
   - Business value: Low - Niche use case
 - [x] ✅ **Soft Delete for Receipts** (Completed 2025-10-13)
   - Soft delete with `deleted_at` timestamp instead of permanent deletion
-  - Admin interface to view and restore deleted receipts
-  - Admin can permanently delete (hard delete) soft-deleted receipts
+  - Admin interface to view and restore deleted receipts (Admin Page > Deleted Receipts tab)
+  - Business owner interface to manage their deleted receipts (Settings > Deleted Receipts tab)
+  - Admin and business owners can permanently delete (hard delete) soft-deleted receipts
   - No automatic cleanup - receipts remain soft-deleted indefinitely
   - Audit logging for soft delete and restore operations
   - RLS policies automatically filter out soft-deleted receipts
-  - Location: Admin Page > Deleted Receipts tab
-  - Components: `DeletedReceiptsManagement.tsx`
-  - Migration: `add_soft_delete_to_receipts.sql`, `fix_soft_delete_audit_trigger.sql`
+  - RLS policies allow business owners to see only their deleted receipts
+  - Components: `DeletedReceiptsManagement.tsx` (supports both admin and owner scope)
+  - Migrations: `add_soft_delete_to_receipts.sql`, `fix_soft_delete_audit_trigger.sql`, `allow_business_owners_view_deleted_receipts.sql`
 - [ ] 🟢 **Receipt Attachments** (Priority: Low - Future v2)
   - Attach supporting documents to receipts (invoice, PO, email)
   - Multiple files per receipt
@@ -1413,17 +1414,28 @@
    - Restore receipts with one click (sets `deleted_at` back to NULL)
    - Permanently delete receipts (hard delete with storage cleanup)
    - Real-time loading and search
-   - Component: `DeletedReceiptsManagement.tsx` (370 lines)
+   - Component: `DeletedReceiptsManagement.tsx` with admin scope
 
-3. **Security & Audit**: Complete access control and logging
+3. **Business Owner Deleted Receipts Management**: Owner self-service
+   - New "Deleted Receipts" tab in Settings page
+   - Business owners can view their own deleted receipts
+   - Scoped to only show receipts from owned businesses
+   - Same restore and hard delete capabilities as admins
+   - No admin intervention needed for receipt recovery
+   - Component: `DeletedReceiptsManagement.tsx` with owner scope (reused component)
+   - Migration: `allow_business_owners_view_deleted_receipts.sql`
+
+4. **Security & Audit**: Complete access control and logging
    - RLS policies updated to exclude soft-deleted receipts from normal queries
-   - System admins can view all receipts (including soft-deleted)
-   - Hard deletes restricted to system admins only
+   - System admins can view ALL soft-deleted receipts
+   - Business owners can view ONLY their business's soft-deleted receipts
+   - Hard deletes allowed for both admins and business owners (scoped appropriately)
+   - Regular members cannot see or manage deleted receipts
    - Audit triggers log soft delete and restore operations
    - Full audit trail: who deleted, when deleted, who restored
    - Fixed audit trigger column mismatch (`table_name` → `resource_type`)
 
-4. **Bug Fixes**:
+5. **Bug Fixes**:
    - Fixed missing logger import in ReceiptsPage causing deletion failures
    - Fixed audit trigger using non-existent columns
    - Receipt deletion now works properly with full logging
@@ -1431,7 +1443,8 @@
 **Impact:**
 - Data Safety: Receipts no longer permanently lost when deleted
 - Admin Tools: Complete deleted receipt management interface
-- User Experience: Peace of mind - accidental deletions recoverable
+- Owner Tools: Business owners can self-service deleted receipt recovery
+- User Experience: Peace of mind - accidental deletions recoverable without admin help
 - Compliance: Full audit trail maintained for all operations
 
 **SESSION 10: Complete Rebranding + Multi-Page Receipt Fix - COMPLETE**
