@@ -89,7 +89,8 @@ export function AdminPage() {
 
         supabase
           .from('receipts')
-          .select('id', { count: 'exact', head: true }),
+          .select('id', { count: 'exact', head: true })
+          .is('parent_receipt_id', null),
 
         supabase
           .from('system_roles')
@@ -123,6 +124,7 @@ export function AdminPage() {
                 const receiptsRes = await supabase
                   .from('receipts')
                   .select('id', { count: 'exact', head: true })
+                  .is('parent_receipt_id', null)
                   .in('collection_id', collectionIds);
                 return receiptsRes.count || 0;
               }),
@@ -643,9 +645,9 @@ function AnalyticsTab() {
         collectionsResult
       ] = await Promise.all([
         supabase.from('businesses').select('created_at'),
-        supabase.from('receipts').select('created_at, amount'),
+        supabase.from('receipts').select('created_at, amount').is('parent_receipt_id', null),
         supabase.from('profiles').select('created_at'),
-        supabase.from('receipts').select('category'),
+        supabase.from('receipts').select('category').is('parent_receipt_id', null),
         supabase.from('collections').select('id')
       ]);
 
@@ -872,6 +874,7 @@ function BusinessesTab({ businesses, totalBusinesses, currentPage, setCurrentPag
                 const { count } = await supabase
                   .from('receipts')
                   .select('id', { count: 'exact', head: true })
+                  .is('parent_receipt_id', null)
                   .eq('collection_id', collection.id);
 
                 return {

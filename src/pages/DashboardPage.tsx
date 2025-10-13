@@ -6,6 +6,7 @@ import { CategoryChart } from '../components/dashboard/CategoryChart';
 import { RecentReceipts } from '../components/dashboard/RecentReceipts';
 import { usePageTracking, useDataLoadTracking } from '../hooks/usePageTracking';
 import { actionTracker } from '../lib/actionTracker';
+import { logger } from '../lib/logger';
 
 interface DashboardStats {
   totalExpenses: number;
@@ -47,6 +48,7 @@ export function DashboardPage({ onViewReceipt }: DashboardPageProps) {
       const { data: receipts, error } = await supabase
         .from('receipts')
         .select('*, collections(name, businesses(name))')
+        .is('parent_receipt_id', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

@@ -42,6 +42,7 @@ export function YearEndSummaryReport() {
       const { data, error } = await supabase
         .from('receipts')
         .select('*, collections(name, businesses(name))')
+        .is('parent_receipt_id', null)
         .gte('transaction_date', `${year}-01-01`)
         .lte('transaction_date', `${year}-12-31`);
 
