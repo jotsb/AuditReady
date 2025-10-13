@@ -1,7 +1,10 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Disable worker to avoid CSP issues in development
-pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+// Use local worker file from node_modules to avoid CSP issues
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url
+).toString();
 
 export interface ConvertedPage {
   blob: Blob;
