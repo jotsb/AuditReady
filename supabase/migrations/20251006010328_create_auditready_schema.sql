@@ -1,8 +1,8 @@
 /*
-  # AuditReady Database Schema
+  # Audit Proof Database Schema
 
   ## Overview
-  Creates the complete database schema for the AuditReady receipt management application.
+  Creates the complete database schema for the Audit Proof receipt management application.
   
   ## New Tables
   
