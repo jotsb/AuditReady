@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Download, Filter } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { logger } from '../../lib/logger';
 
 interface Business {
   id: string;
@@ -68,7 +69,10 @@ export function CSVExportReport() {
       setBusinesses(businessData.data || []);
       setCategories(categoryData.data?.map(c => c.name) || []);
     } catch (error) {
-      console.error('Error loading filters:', error);
+      logger.error('Error loading filters', error as Error, {
+        component: 'CSVExportReport',
+        operation: 'load_filters'
+      });
     }
   };
 
@@ -82,7 +86,10 @@ export function CSVExportReport() {
 
       setCollections(data || []);
     } catch (error) {
-      console.error('Error loading collections:', error);
+      logger.error('Error loading collections', error as Error, {
+        component: 'CSVExportReport',
+        operation: 'load_collections'
+      });
     }
   };
 
@@ -168,7 +175,12 @@ export function CSVExportReport() {
       setExportSuccess(true);
       setTimeout(() => setExportSuccess(false), 3000);
     } catch (error) {
-      console.error('Error exporting CSV:', error);
+      logger.error('Error exporting CSV', error as Error, {
+        selectedCollection,
+        year,
+        component: 'CSVExportReport',
+        operation: 'export_csv'
+      });
       alert('Failed to export CSV. Please try again.');
     } finally {
       setLoading(false);

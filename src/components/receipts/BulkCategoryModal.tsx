@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Tag } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { logger } from '../../lib/logger';
 
 interface BulkCategoryModalProps {
   selectedCount: number;
@@ -27,7 +28,10 @@ export function BulkCategoryModal({ selectedCount, onConfirm, onClose }: BulkCat
       if (error) throw error;
       setCategories(data || []);
     } catch (error) {
-      console.error('Error loading categories:', error);
+      logger.error('Error loading categories', error as Error, {
+        component: 'BulkCategoryModal',
+        operation: 'load_categories'
+      });
     } finally {
       setLoading(false);
     }

@@ -49,7 +49,11 @@ export function ProfileManagement() {
         setPhone(data.phone_number || '');
       }
     } catch (err: any) {
-      console.error('Error loading profile:', err);
+      logger.error('Error loading profile', err as Error, {
+        userId: user?.id,
+        component: 'ProfileManagement',
+        operation: 'load_profile'
+      });
       setError(err.message);
     } finally {
       setLoading(false);

@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { Camera, Plus, Check, X, RotateCcw, Trash2, Loader2 } from 'lucide-react';
 import { optimizeImage } from '../../lib/imageOptimizer';
 import { PageThumbnailStrip } from './PageThumbnailStrip';
+import { logger } from '../../lib/logger';
 
 export interface CapturedPage {
   id: string;
@@ -57,7 +58,11 @@ export function MultiPageCameraCapture({ onComplete, onCancel }: MultiPageCamera
       };
       reader.readAsDataURL(optimized.full);
     } catch (error) {
-      console.error('Image processing error:', error);
+      logger.error('Image processing error', error as Error, {
+        pageNumber: capturedPages.length + 1,
+        component: 'MultiPageCameraCapture',
+        operation: 'process_camera_image'
+      });
       alert('Failed to process image. Please try again.');
     } finally {
       setProcessing(false);
@@ -106,7 +111,11 @@ export function MultiPageCameraCapture({ onComplete, onCancel }: MultiPageCamera
     try {
       await onComplete(capturedPages);
     } catch (error) {
-      console.error('Upload failed:', error);
+      logger.error('Multi-page upload failed from review', error as Error, {
+        pageCount: capturedPages.length,
+        component: 'MultiPageCameraCapture',
+        operation: 'complete_multipage_review'
+      });
       alert('Upload failed. Please try again.');
       setUploading(false);
     }
@@ -119,7 +128,11 @@ export function MultiPageCameraCapture({ onComplete, onCancel }: MultiPageCamera
     try {
       await onComplete([tempPage]);
     } catch (error) {
-      console.error('Upload failed:', error);
+      logger.error('Single page upload failed from preview', error as Error, {
+        pageNumber: tempPage.pageNumber,
+        component: 'MultiPageCameraCapture',
+        operation: 'complete_single_preview'
+      });
       alert('Upload failed. Please try again.');
       setUploading(false);
     }

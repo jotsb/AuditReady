@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { convertLocalDateToUTC } from '../../lib/dateUtils';
+import { logger } from '../../lib/logger';
 
 interface ManualEntryFormProps {
   onSubmit: (data: any) => Promise<void>;
@@ -59,7 +60,12 @@ export function ManualEntryForm({ onSubmit, onClose }: ManualEntryFormProps) {
       });
       onClose();
     } catch (error) {
-      console.error('Error submitting manual entry:', error);
+      logger.error('Error submitting manual entry', error as Error, {
+        vendorName: submissionData.vendor_name,
+        totalAmount: submissionData.total_amount,
+        component: 'ManualEntryForm',
+        operation: 'submit_manual_entry'
+      });
     } finally {
       setLoading(false);
     }

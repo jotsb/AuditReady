@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { MFASetup } from './MFASetup';
 import { RecoveryCodesDisplay } from './RecoveryCodesDisplay';
 import type { TrustedDevice } from '../../lib/mfaUtils';
+import { logger } from '../../lib/logger';
 
 export function MFAManagement() {
   const { user } = useAuth();
@@ -86,7 +87,11 @@ export function MFAManagement() {
         }
       }
     } catch (err) {
-      console.error('Failed to load MFA status:', err);
+      logger.error('Failed to load MFA status', err as Error, {
+        userId: user?.id,
+        component: 'MFAManagement',
+        operation: 'load_mfa_status'
+      });
     }
   };
 

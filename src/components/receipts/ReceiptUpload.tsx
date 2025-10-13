@@ -3,6 +3,7 @@ import { Upload, Camera, X, Loader2 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { optimizeImage, type OptimizedImages } from '../../lib/imageOptimizer';
 import { PageThumbnailStrip } from './PageThumbnailStrip';
+import { logger } from '../../lib/logger';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
@@ -117,7 +118,11 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
         try {
           fileToUse = await convertPdfToImage(selectedFile);
         } catch (error) {
-          console.error('PDF conversion error:', error);
+          logger.error('PDF conversion error', error as Error, {
+            fileName: selectedFile.name,
+            component: 'ReceiptUpload',
+            operation: 'convert_single_pdf'
+          });
           alert('Failed to convert PDF. Please try a different file.');
           setConverting(false);
           return;
@@ -138,7 +143,11 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
         };
         reader.readAsDataURL(optimized.full);
       } catch (error) {
-        console.error('Image optimization error:', error);
+        logger.error('Image optimization error', error as Error, {
+          fileName: fileToUse.name,
+          component: 'ReceiptUpload',
+          operation: 'optimize_image'
+        });
         alert('Failed to optimize image. Please try a different file.');
       } finally {
         setOptimizing(false);
@@ -163,7 +172,11 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
           try {
             filesToProcess = await convertMultiPagePdfToImages(file);
           } catch (error) {
-            console.error('PDF conversion error:', error);
+            logger.error('Multi-page PDF conversion error', error as Error, {
+              fileName: file.name,
+              component: 'ReceiptUpload',
+              operation: 'convert_multipage_pdf'
+            });
             alert(`Failed to convert PDF: ${file.name}`);
             continue;
           } finally {
@@ -191,7 +204,11 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
 
       setMultiPageFiles(processedFiles);
     } catch (error) {
-      console.error('Multi-file processing error:', error);
+      logger.error('Multi-file processing error', error as Error, {
+        fileCount: files.length,
+        component: 'ReceiptUpload',
+        operation: 'process_multiple_files'
+      });
       alert('Failed to process files. Please try again.');
     } finally {
       setOptimizing(false);
@@ -222,7 +239,11 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
       );
       onClose();
     } catch (error) {
-      console.error('Upload error:', error);
+      logger.error('Multi-page upload trigger error', error as Error, {
+        pageCount: multiPageFiles.length,
+        component: 'ReceiptUpload',
+        operation: 'trigger_multipage_upload'
+      });
     } finally {
       setLoading(false);
     }
@@ -237,7 +258,11 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
       await onUpload(file, thumbnail);
       onClose();
     } catch (error) {
-      console.error('Upload error:', error);
+      logger.error('Single file upload error', error as Error, {
+        fileName: file?.name,
+        component: 'ReceiptUpload',
+        operation: 'single_file_upload'
+      });
     } finally {
       setLoading(false);
     }

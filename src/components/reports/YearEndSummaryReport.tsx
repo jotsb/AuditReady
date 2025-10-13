@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar, DollarSign, TrendingUp, Download } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { logger } from '../../lib/logger';
 
 interface YearEndSummary {
   totalReceipts: number;
@@ -135,7 +136,11 @@ export function YearEndSummaryReport() {
         businessBreakdown
       });
     } catch (error) {
-      console.error('Error generating year-end summary:', error);
+      logger.error('Error generating year-end summary', error as Error, {
+        year,
+        component: 'YearEndSummaryReport',
+        operation: 'generate_yearend_summary'
+      });
     } finally {
       setLoading(false);
     }

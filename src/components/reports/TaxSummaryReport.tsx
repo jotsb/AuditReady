@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { DollarSign, TrendingUp, Calendar, Download } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { logger } from '../../lib/logger';
 
 interface TaxSummary {
   totalGST: number;
@@ -36,7 +37,10 @@ export function TaxSummaryReport() {
 
       setBusinesses(data || []);
     } catch (error) {
-      console.error('Error loading businesses:', error);
+      logger.error('Error loading businesses', error as Error, {
+        component: 'TaxSummaryReport',
+        operation: 'load_businesses'
+      });
     }
   };
 
@@ -104,7 +108,12 @@ export function TaxSummaryReport() {
         monthlyBreakdown
       });
     } catch (error) {
-      console.error('Error generating tax summary:', error);
+      logger.error('Error generating tax summary', error as Error, {
+        year,
+        selectedBusiness,
+        component: 'TaxSummaryReport',
+        operation: 'generate_tax_summary'
+      });
     } finally {
       setLoading(false);
     }

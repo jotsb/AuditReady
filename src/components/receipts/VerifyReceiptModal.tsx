@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Check } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { logger } from '../../lib/logger';
 
 interface Category {
   id: string;
@@ -63,7 +64,10 @@ export function VerifyReceiptModal({ receiptId, extractedData, onConfirm, onClos
       if (error) throw error;
       setCategories(data || []);
     } catch (err) {
-      console.error('Error loading categories:', err);
+      logger.error('Error loading categories', err as Error, {
+        component: 'VerifyReceiptModal',
+        operation: 'load_categories'
+      });
     }
   };
 
@@ -73,7 +77,12 @@ export function VerifyReceiptModal({ receiptId, extractedData, onConfirm, onClos
     try {
       await onConfirm(receiptId, formData);
     } catch (error) {
-      console.error('Confirmation error:', error);
+      logger.error('Confirmation error', error as Error, {
+        receiptId,
+        vendorName: formData.vendor_name,
+        component: 'VerifyReceiptModal',
+        operation: 'confirm_receipt'
+      });
       alert('Failed to save receipt. Please try again.');
       setLoading(false);
     }

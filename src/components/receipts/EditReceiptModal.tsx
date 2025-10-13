@@ -6,6 +6,7 @@ import { formatDateForInput, convertLocalDateToUTC, areDatesEqual } from '../../
 import { Modal } from '../shared/Modal';
 import { ErrorAlert } from '../shared/ErrorAlert';
 import { SubmitButton } from '../shared/SubmitButton';
+import { logger } from '../../lib/logger';
 
 interface Receipt {
   id: string;
@@ -76,7 +77,10 @@ export function EditReceiptModal({ receipt, onClose, onSave }: EditReceiptModalP
       if (error) throw error;
       setCategories(data || []);
     } catch (err) {
-      console.error('Error loading categories:', err);
+      logger.error('Error loading categories', err as Error, {
+        component: 'EditReceiptModal',
+        operation: 'load_categories'
+      });
     } finally {
       setLoadingCategories(false);
     }
@@ -147,7 +151,13 @@ export function EditReceiptModal({ receipt, onClose, onSave }: EditReceiptModalP
         },
       });
 
-      if (auditError) console.error('Audit log error:', auditError);
+      if (auditError) {
+        logger.error('Audit log error', auditError as Error, {
+          receiptId: receipt.id,
+          component: 'EditReceiptModal',
+          operation: 'create_audit_log'
+        });
+      }
 
       onSave();
       onClose();

@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Database } from '../../lib/database.types';
 import { ExportJobsManager } from './ExportJobsManager';
+import { logger } from '../../lib/logger';
 
 type Business = Database['public']['Tables']['businesses']['Row'];
 type Collection = Database['public']['Tables']['collections']['Row'];
@@ -169,7 +170,11 @@ export function BusinessCollectionManagement() {
             });
           }
         } catch (err) {
-          console.error('Error loading collections:', err);
+          logger.error('Error loading collections', err as Error, {
+            businessId,
+            component: 'BusinessCollectionManagement',
+            operation: 'load_collections_for_business'
+          });
         } finally {
           const newLoading = new Set(loadingCollections);
           newLoading.delete(businessId);

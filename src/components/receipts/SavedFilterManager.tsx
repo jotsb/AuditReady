@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Save, Trash2, Star, StarOff } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { logger } from '../../lib/logger';
 
 interface SavedFilter {
   id: string;
@@ -46,7 +47,10 @@ export function SavedFilterManager({
       if (error) throw error;
       setSavedFilters(data || []);
     } catch (error) {
-      console.error('Error loading saved filters:', error);
+      logger.error('Error loading saved filters', error as Error, {
+        component: 'SavedFilterManager',
+        operation: 'load_filters'
+      });
     } finally {
       setLoading(false);
     }
@@ -76,7 +80,12 @@ export function SavedFilterManager({
       setSaveAsDefault(false);
       alert('Filter saved successfully!');
     } catch (error) {
-      console.error('Error saving filter:', error);
+      logger.error('Error saving filter', error as Error, {
+        filterName,
+        isDefault: saveAsDefault,
+        component: 'SavedFilterManager',
+        operation: 'save_filter'
+      });
       alert('Failed to save filter. Please try again.');
     }
   };
@@ -95,7 +104,11 @@ export function SavedFilterManager({
       if (error) throw error;
       await loadSavedFilters();
     } catch (error) {
-      console.error('Error deleting filter:', error);
+      logger.error('Error deleting filter', error as Error, {
+        filterId,
+        component: 'SavedFilterManager',
+        operation: 'delete_filter'
+      });
       alert('Failed to delete filter. Please try again.');
     }
   };
@@ -110,7 +123,11 @@ export function SavedFilterManager({
       if (error) throw error;
       await loadSavedFilters();
     } catch (error) {
-      console.error('Error updating default filter:', error);
+      logger.error('Error updating default filter', error as Error, {
+        filterId,
+        component: 'SavedFilterManager',
+        operation: 'toggle_default'
+      });
       alert('Failed to update default filter. Please try again.');
     }
   };

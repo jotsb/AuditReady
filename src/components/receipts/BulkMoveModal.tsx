@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, FolderInput } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { logger } from '../../lib/logger';
 
 interface BulkMoveModalProps {
   selectedCount: number;
@@ -29,7 +30,11 @@ export function BulkMoveModal({ selectedCount, currentCollectionId, onConfirm, o
       // Filter out current collection
       setCollections((data || []).filter(c => c.id !== currentCollectionId));
     } catch (error) {
-      console.error('Error loading collections:', error);
+      logger.error('Error loading collections', error as Error, {
+        currentCollectionId,
+        component: 'BulkMoveModal',
+        operation: 'load_collections'
+      });
     } finally {
       setLoading(false);
     }
