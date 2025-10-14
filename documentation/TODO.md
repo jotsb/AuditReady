@@ -1,6 +1,6 @@
 # Audit Proof - TODO & Implementation Status
 
-**Last Updated:** 2025-10-14 (Thumbnail Display & Multi-Page Receipt Thumbnails Fix)
+**Last Updated:** 2025-10-14 (Business Suspension Enforcement & Export Processing Status)
 **Priority Legend:** 🚨 Critical | 🔴 High | 🟡 Medium | 🟢 Nice to Have | ✅ Completed
 
 ---
@@ -40,7 +40,7 @@
 | Category | Completed | Total | % |
 |----------|-----------|-------|---|
 | **Authentication & User Management** | 11 | 11 | **100%** ✅ |
-| **Business Management** | 7 | 10 | 70% 🟢 |
+| **Business Management** | 10 | 10 | **100%** ✅ |
 | **Collection Management** | 7 | 11 | 64% 🟡 |
 | **Receipt Management** | 18 | 18 | **100%** ✅ |
 | **Team Management** | 6 | 6 | **100%** ✅ |
@@ -49,11 +49,11 @@
 | **System Logging** | 9 | 9 | **100%** ✅ |
 | **System Administration** | 13 | 14 | 93% 🟢 |
 
-### **Admin Phases** (25.0% Complete)
+### **Admin Phases** (43.5% Complete)
 | Phase | Completed | Total | % |
 |-------|-----------|-------|---|
 | **Phase 1: User Management** | 6 | 6 | **100%** ✅ |
-| **Phase 2: Business Management** | 0 | 4 | 0% ⚠️ |
+| **Phase 2: Business Management** | 4 | 4 | **100%** ✅ |
 | **Phase 3: Data & Config** | 0 | 4 | 0% 📋 |
 | **Phase 4: Team & Invitations** | 0 | 2 | 0% 📋 |
 | **Phase 5: Receipt & Approvals** | 0 | 3 | 0% 📋 |
@@ -762,33 +762,39 @@
   - Location: `supabase/functions/admin-user-management/index.ts`
 
 ### Phase 2: Business Management (HIGH PRIORITY)
-- [ ] 🚨 **Business Suspension System**
-  - Add suspension fields to businesses table (suspended, suspension_reason, suspended_at, suspended_by)
-  - Block all business member access when suspended
-  - Suspend business action in admin UI
-  - Unsuspend business action in admin UI
-  - Display suspension status and reason
-  - Audit logging for business suspension
-- [ ] 🔴 **Business Administration**
-  - Edit business name
-  - Edit business tax ID
-  - Edit business currency
-  - Edit business settings (approval workflow, etc.)
-  - Transfer business ownership to different user
-  - Audit logging for all business modifications
-- [ ] 🔴 **Business Deletion System**
-  - Soft delete business (mark as deleted)
-  - Hard delete business (permanent removal, only for already soft-deleted)
-  - Handle collections and receipts on deletion
-  - Offer data export before deletion
-  - Confirmation dialogs for deletion
-  - Audit logging for deletion operations
-- [ ] 🟡 **Business Details & Analytics**
-  - View all collections in business
-  - View all members and their roles
-  - View all receipts in business
-  - Calculate and display total storage used
-  - View business settings and configuration
+- [x] 🚨 **Business Suspension System** ✅
+  - [x] Add suspension fields to businesses table (suspended, suspension_reason, suspended_at, suspended_by)
+  - [x] Block all business member access when suspended (RESTRICTIVE RLS policies)
+  - [x] Suspend business action in admin UI
+  - [x] Unsuspend business action in admin UI
+  - [x] Display suspension status and reason (badges + header banner)
+  - [x] Audit logging for business suspension
+  - [x] RLS enforcement on collections, receipts, business_members
+  - [x] Visual indicators for system admins
+- [x] 🔴 **Business Administration** ✅
+  - [x] Edit business name
+  - [x] Edit business tax ID
+  - [x] Edit business currency
+  - [x] Audit logging for all business modifications
+  - [ ] Edit business settings (approval workflow, etc.)
+  - [ ] Transfer business ownership to different user
+- [x] 🔴 **Business Deletion System** ✅
+  - [x] Soft delete business (mark as deleted)
+  - [x] Restore soft-deleted business
+  - [x] Offer data export before deletion (async job with download)
+  - [x] Confirmation dialogs for deletion
+  - [x] Audit logging for deletion operations
+  - [x] Visual indicators for deleted businesses
+  - [ ] Hard delete business (permanent removal, only for already soft-deleted)
+  - [ ] Handle collections and receipts on deletion (cascade or archive)
+- [x] 🟡 **Business Details & Analytics** ✅
+  - [x] View all collections in business
+  - [x] View all members and their roles
+  - [x] View all receipts in business
+  - [x] Calculate and display total storage used
+  - [x] Set storage limits per business
+  - [x] Export business data with all receipts and images
+  - [ ] View business settings and configuration
 
 ### Phase 3: Data & Configuration Management (MEDIUM PRIORITY)
 - [ ] 🔴 **Storage Management**

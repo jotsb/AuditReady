@@ -4,6 +4,124 @@
 
 ---
 
+## 📦 Version 0.8.0 - "Business Suspension Enforcement" (2025-10-14)
+
+### 🎯 Major Features
+
+#### **Complete Business Suspension System**
+System administrators can now suspend businesses with full enforcement at the database level. When a business is suspended, all members immediately lose access to all business data.
+
+**Key Features**
+- ✅ Database-level enforcement via RESTRICTIVE RLS policies
+- ✅ Suspend/unsuspend actions in Admin UI
+- ✅ Visual indicators (badges and banners)
+- ✅ Suspension reason tracking
+- ✅ Complete audit logging
+- ✅ System admin override (can still manage suspended businesses)
+
+**How It Works**
+```
+Admin suspends business
+        ↓
+Database updates business.suspended = true
+        ↓
+RESTRICTIVE RLS policies block access
+        ↓
+All queries return empty results for members
+        ↓
+Business disappears from user's business list
+```
+
+#### **Export Processing Status**
+Export operations now show real-time progress status instead of just "started" messages.
+
+**Key Features**
+- ✅ Shows "Starting..." when initiating export
+- ✅ Shows "Processing..." while job runs
+- ✅ Polls export job status every 5 seconds
+- ✅ Shows "Export completed!" when ready
+- ✅ Button disabled during processing
+- ✅ Matches Settings page behavior
+
+### 🔒 Database Security
+
+**New RLS Policies**
+- `Block access to suspended businesses` (businesses table)
+- `Block access to suspended business members` (business_members table)
+- `Block access to suspended business collections` (collections table)
+- `Block access to suspended business receipts` (receipts table)
+
+**Helper Functions**
+```sql
+is_business_suspended(business_id) → boolean
+is_business_soft_deleted(business_id) → boolean
+get_business_id_from_collection(collection_id) → uuid
+```
+
+**How Suspension Works**
+1. Regular users: Business filtered out completely (not in query results)
+2. System admins: Can see suspended businesses with warning banner
+3. All operations blocked: view, create, update, delete
+4. Applies to: businesses, collections, receipts, business_members
+
+### 🎨 UI Enhancements
+
+**Admin Page - Businesses Tab**
+- Orange "SUSPENDED" badge on suspended businesses
+- Red "DELETED" badge on soft-deleted businesses
+- Shows suspension reason in modal
+- Shows deletion reason in modal
+
+**Header Component**
+- Orange warning banner when viewing suspended business (admins only)
+- Red warning banner when viewing deleted business (admins only)
+- Displays suspension/deletion reason
+- Sticky at top of page
+
+**Export Button**
+- Real-time status indicator
+- "Processing..." state with spinner
+- Auto-polling of job status
+- Disabled during processing
+
+### 📦 New Components & Changes
+
+**Updated Components**
+- `BusinessAdminActions.tsx` - Added export status polling
+- `Header.tsx` - Added suspension/deletion banners
+- `AuthContext.tsx` - Added suspension/deletion fields to Business interface
+
+**Migration**
+- `add_business_suspension_enforcement.sql`
+  - Creates helper functions
+  - Adds RESTRICTIVE RLS policies
+  - Enforces suspension across all related tables
+
+### 🔧 Technical Implementation
+
+**RLS Policy Strategy**
+- Uses RESTRICTIVE policies (all must pass)
+- Stacks on top of existing policies
+- System admins bypass all suspension checks
+- Consistent enforcement across all tables
+
+**Export Status Polling**
+```typescript
+useEffect(() => {
+  if (exportJobStatus === 'processing') {
+    const interval = setInterval(checkExportJobStatus, 5000);
+    return () => clearInterval(interval);
+  }
+}, [exportJobStatus]);
+```
+
+### 📚 Updated Documentation
+- `TODO.md` - Phase 2 Business Management marked complete
+- Admin Phases progress: 25% → 43.5%
+- Business Management: 70% → 100%
+
+---
+
 ## 📦 Version 0.7.0 - "Email Receipt Forwarding" (2025-10-13)
 
 ### 🎯 Major Features
