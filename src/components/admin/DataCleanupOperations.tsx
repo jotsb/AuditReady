@@ -154,9 +154,11 @@ export function DataCleanupOperations() {
         try {
           if (job.job_type === 'orphaned_files') {
             console.log('Deleting storage file:', item.storage_path);
-            const { error } = await supabase.storage
-              .from('receipts')
-              .remove([item.storage_path]);
+            // Use direct SQL deletion via RPC function
+            const { error } = await supabase.rpc('delete_storage_object', {
+              bucket_name: 'receipts',
+              object_path: item.storage_path
+            });
 
             if (error) {
               console.error('Failed to delete storage file:', error);
