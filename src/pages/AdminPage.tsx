@@ -1,19 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Building2, Users, Receipt, TrendingUp, AlertCircle, Activity, Database, BarChart3, UserCog, Search, Filter as FilterIcon, Download, FolderOpen, ChevronDown, ChevronRight, Calendar, Mail, Trash2 } from 'lucide-react';
+import { Building2, Users, Receipt, TrendingUp, AlertCircle, Activity, Database, BarChart3, UserCog, Search, Filter as FilterIcon, Download, FolderOpen, ChevronDown, ChevronRight, Calendar, Mail, Trash2, HardDrive } from 'lucide-react';
 import { LogEntry } from '../components/shared/LogEntry';
 import { usePageTracking } from '../hooks/usePageTracking';
 import { UserManagement } from '../components/admin/UserManagement';
 import { AuditLogsView } from '../components/audit/AuditLogsView';
 import { BusinessAdminActions } from '../components/admin/BusinessAdminActions';
 import { DeletedReceiptsManagement } from '../components/admin/DeletedReceiptsManagement';
+import { StorageManagement } from '../components/admin/StorageManagement';
 
 interface AdminStats {
   totalUsers: number;
   totalBusinesses: number;
   totalReceipts: number;
   systemAdmins: number;
+  totalStorageBytes: number;
+  totalStorageGB: number;
 }
 
 interface Business {
@@ -48,11 +51,13 @@ export function AdminPage() {
     totalBusinesses: 0,
     totalReceipts: 0,
     systemAdmins: 0,
+    totalStorageBytes: 0,
+    totalStorageGB: 0,
   });
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'businesses' | 'logs' | 'analytics' | 'bulk-ops' | 'deleted-receipts'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'businesses' | 'logs' | 'analytics' | 'bulk-ops' | 'deleted-receipts' | 'storage'>('overview');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalBusinesses, setTotalBusinesses] = useState(0);
   const itemsPerPage = 20;
@@ -160,11 +165,15 @@ export function AdminPage() {
         })
       );
 
+      const totalStorageBytes = enrichedBusinesses.reduce((sum, b) => sum + (b.storage_used_bytes || 0), 0);
+
       setStats({
         totalUsers: uniqueOwners,
         totalBusinesses: businessesCountResult.count || 0,
         totalReceipts: receiptsResult.count || 0,
         systemAdmins: systemRolesResult.count || 0,
+        totalStorageBytes,
+        totalStorageGB: Math.round((totalStorageBytes / 1073741824) * 100) / 100,
       });
 
       setBusinesses(enrichedBusinesses);
@@ -277,6 +286,17 @@ export function AdminPage() {
                 Bulk Operations
               </button>
               <button
+                onClick={() => setActiveTab('storage')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition ${
+                  activeTab === 'storage'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:text-gray-300 hover:border-slate-300'
+                }`}
+              >
+                <HardDrive className="inline mr-2" size={18} />
+                Storage
+              </button>
+              <button
                 onClick={() => setActiveTab('deleted-receipts')}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition ${
                   activeTab === 'deleted-receipts'
@@ -300,7 +320,7 @@ export function AdminPage() {
         <div className="px-4 sm:px-6 lg:px-8">
         {activeTab === 'overview' && (
           <>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -332,6 +352,17 @@ export function AdminPage() {
             </div>
             <h3 className="text-slate-600 dark:text-gray-400 text-sm font-medium mb-1">Total Receipts</h3>
             <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.totalReceipts}</p>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                <HardDrive className="text-orange-600" size={24} />
+              </div>
+              <Database className="text-orange-600" size={20} />
+            </div>
+            <h3 className="text-slate-600 dark:text-gray-400 text-sm font-medium mb-1">Total Storage</h3>
+            <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.totalStorageGB} GB</p>
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
@@ -484,6 +515,10 @@ export function AdminPage() {
 
         {activeTab === 'bulk-ops' && (
           <BulkOperationsTab />
+        )}
+
+        {activeTab === 'storage' && (
+          <StorageManagement />
         )}
 
         {activeTab === 'deleted-receipts' && (

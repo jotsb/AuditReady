@@ -4,6 +4,86 @@
 
 ---
 
+## 📦 Version 0.8.2 - "Admin: Storage Management" (2025-10-14)
+
+### 🎯 Major Features
+
+#### **Complete Storage Management System**
+System administrators now have comprehensive visibility and control over platform storage usage across all businesses.
+
+**Key Features**
+- ✅ Platform-wide storage statistics dashboard
+- ✅ Per-business storage tracking and limits
+- ✅ Color-coded warnings (80%) and critical alerts (95%)
+- ✅ Sortable storage usage table
+- ✅ Recalculate storage for individual businesses
+- ✅ Top 20 largest receipts by file size
+- ✅ Real-time storage calculations from actual file sizes
+- ✅ Last storage check timestamp tracking
+
+**Admin Dashboard Enhancements**
+- New "Total Storage" stat card in overview (shows platform-wide usage)
+- Dedicated "Storage" tab with comprehensive management UI
+- Visual progress bars for storage usage per business
+- Warning indicators for businesses approaching limits
+
+**How Storage is Calculated**
+```
+Calculate Business Storage
+        ↓
+Query all receipts in business collections
+        ↓
+Get file paths (full images + thumbnails)
+        ↓
+Query storage.objects for actual file sizes
+        ↓
+Sum total bytes used
+        ↓
+Update business.storage_used_bytes
+        ↓
+Compare against storage_limit_bytes (default 10GB)
+        ↓
+Return usage percentage and warning status
+```
+
+**Storage Limits & Alerts**
+- Default limit: 10GB per business
+- Warning threshold: 80% (yellow indicator)
+- Critical threshold: 95% (red indicator)
+- Admins can adjust limits per business
+- Visual indicators prevent storage issues
+
+**Largest Receipts View**
+- See top 20 largest files across platform
+- Helps identify optimization opportunities
+- Shows business, collection, and file size
+- Useful for storage cleanup planning
+
+### 🔧 Technical Implementation
+
+**Database**
+- `businesses.storage_used_bytes` - Actual storage used
+- `businesses.storage_limit_bytes` - Storage limit (default 10GB)
+- `businesses.last_storage_check` - Last calculation timestamp
+- `calculate_business_storage()` function
+- `check_storage_limit()` function
+
+**Components**
+- `StorageManagement.tsx` - Main storage management UI
+- Platform statistics cards
+- Sortable business storage table
+- Largest receipts table
+- Recalculate action per business
+
+**Features**
+- Real file size calculation from storage.objects
+- Fallback estimation if storage query fails
+- Includes both full images and thumbnails
+- Efficient batch queries
+- Automatic storage tracking
+
+---
+
 ## 📦 Version 0.8.1 - "Performance: Thumbnail System" (2025-10-14)
 
 ### 🚀 Performance Improvements
