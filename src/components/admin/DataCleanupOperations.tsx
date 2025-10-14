@@ -127,12 +127,17 @@ export function DataCleanupOperations() {
   };
 
   const executeCleanup = async (jobId: string) => {
+    console.log('executeCleanup called with jobId:', jobId);
     setDeleting(jobId);
     setShowConfirm(null);
 
     try {
       const job = jobs.find(j => j.id === jobId);
       if (!job) throw new Error('Job not found');
+
+      console.log('Job found:', job);
+      console.log('Job type:', job.job_type);
+      console.log('Scan results count:', job.scan_results?.length);
 
       await supabase
         .from('cleanup_jobs')
@@ -142,16 +147,22 @@ export function DataCleanupOperations() {
       let deletedCount = 0;
       let deletedSize = 0;
 
+      console.log('Starting deletion loop for', job.scan_results?.length, 'items');
+
       for (const item of job.scan_results) {
+        console.log('Processing item:', item);
         try {
           if (job.job_type === 'orphaned_files') {
+            console.log('Deleting storage file:', item.storage_path);
             const { error } = await supabase.storage
               .from('receipts')
               .remove([item.storage_path]);
 
             if (error) {
+              console.error('Failed to delete storage file:', error);
               logger.error('Failed to delete storage file', { jobId, item, error });
             } else {
+              console.log('Successfully deleted:', item.storage_path);
               deletedCount++;
               deletedSize += item.file_size || 0;
             }
@@ -173,6 +184,8 @@ export function DataCleanupOperations() {
         }
       }
 
+      console.log('Deletion loop completed. Deleted:', deletedCount, 'items');
+
       await supabase
         .from('cleanup_jobs')
         .update({
@@ -190,8 +203,10 @@ export function DataCleanupOperations() {
         deletedSizeBytes: deletedSize
       });
 
+      console.log('Cleanup completed successfully');
       await loadJobs();
     } catch (error) {
+      console.error('Cleanup failed:', error);
       logger.error('Cleanup failed', { jobId, error });
 
       await supabase
@@ -203,7 +218,8 @@ export function DataCleanupOperations() {
         })
         .eq('id', jobId);
 
-      alert('Cleanup failed. Check console for details.');
+      const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+      alert(`Cleanup failed.\n\nError: ${errorMessage}\n\nCheck console for full details.`);
     } finally {
       setDeleting(null);
     }
