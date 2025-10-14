@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Building2, Users, Receipt, TrendingUp, AlertCircle, Activity, Database, BarChart3, UserCog, Search, Filter as FilterIcon, Download, FolderOpen, ChevronDown, ChevronRight, Calendar, Mail, Trash2, HardDrive, Menu, X } from 'lucide-react';
+import { Building2, Users, Receipt, TrendingUp, AlertCircle, Activity, Database, BarChart3, UserCog, Search, Filter as FilterIcon, Download, FolderOpen, ChevronDown, ChevronRight, Calendar, Mail, Trash2, HardDrive } from 'lucide-react';
 import { LogEntry } from '../components/shared/LogEntry';
 import { usePageTracking } from '../hooks/usePageTracking';
 import { UserManagement } from '../components/admin/UserManagement';
@@ -58,7 +58,6 @@ export function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'businesses' | 'logs' | 'analytics' | 'bulk-ops' | 'deleted-receipts' | 'storage'>('overview');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalBusinesses, setTotalBusinesses] = useState(0);
   const itemsPerPage = 20;
@@ -209,115 +208,118 @@ export function AdminPage() {
     );
   }
 
-  const menuItems = [
-    { id: 'overview' as const, label: 'Overview', icon: Building2, description: 'Platform statistics' },
-    { id: 'businesses' as const, label: 'Businesses', icon: Building2, description: 'Manage businesses & collections' },
-    { id: 'users' as const, label: 'Users', icon: UserCog, description: 'User management' },
-    { id: 'storage' as const, label: 'Storage', icon: HardDrive, description: 'Storage management' },
-    { id: 'logs' as const, label: 'Audit Logs', icon: Activity, description: 'System audit logs' },
-    { id: 'analytics' as const, label: 'Analytics', icon: BarChart3, description: 'Platform analytics' },
-    { id: 'bulk-ops' as const, label: 'Bulk Operations', icon: Download, description: 'Bulk data operations' },
-    { id: 'deleted-receipts' as const, label: 'Deleted Receipts', icon: Trash2, description: 'Manage deleted receipts' },
-  ];
-
-  const handleNavClick = (tab: typeof activeTab) => {
-    setActiveTab(tab);
-    setSidebarOpen(false);
-  };
-
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
-      {/* Mobile header */}
-      <div className="lg:hidden bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-4 py-4 sticky top-0 z-30">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-slate-800 dark:text-white">Admin</h1>
-            <p className="text-xs text-slate-600 dark:text-gray-400">{menuItems.find(m => m.id === activeTab)?.label}</p>
-          </div>
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-gray-700 transition"
-          >
-            {sidebarOpen ? <X size={24} className="text-slate-800 dark:text-white" /> : <Menu size={24} className="text-slate-800 dark:text-white" />}
-          </button>
+      <div className="max-w-7xl mx-auto py-8">
+        <div className="mb-8 px-4 sm:px-6 lg:px-8">
+          <h1 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">System Administration</h1>
+          <p className="text-slate-600 dark:text-gray-400">Manage all businesses and users across the platform</p>
         </div>
-      </div>
 
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      <div className="flex">
-        {/* Sidebar */}
-        <aside
-          className={`fixed lg:sticky top-0 left-0 h-screen bg-white dark:bg-gray-800 border-r border-slate-200 dark:border-gray-700 z-50 transition-transform duration-300 ${
-            sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-          } w-64 overflow-y-auto`}
-        >
-          {/* Desktop header */}
-          <div className="hidden lg:block p-6 border-b border-slate-200 dark:border-gray-700">
-            <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-1">System Admin</h1>
-            <p className="text-sm text-slate-600 dark:text-gray-400">Platform Management</p>
+        <div className="mb-6 px-4 sm:px-6 lg:px-8">
+          <div className="border-b border-slate-200 dark:border-gray-700 overflow-x-auto">
+            <nav className="flex space-x-8">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap ${
+                  activeTab === 'overview'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300'
+                }`}
+              >
+                <Building2 className="inline mr-2" size={18} />
+                Overview
+              </button>
+              <button
+                onClick={() => setActiveTab('businesses')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap ${
+                  activeTab === 'businesses'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300'
+                }`}
+              >
+                <Building2 className="inline mr-2" size={18} />
+                Businesses
+              </button>
+              <button
+                onClick={() => setActiveTab('users')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap ${
+                  activeTab === 'users'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300'
+                }`}
+              >
+                <UserCog className="inline mr-2" size={18} />
+                Users
+              </button>
+              <button
+                onClick={() => setActiveTab('storage')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap ${
+                  activeTab === 'storage'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300'
+                }`}
+              >
+                <HardDrive className="inline mr-2" size={18} />
+                Storage
+              </button>
+              <button
+                onClick={() => setActiveTab('logs')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap ${
+                  activeTab === 'logs'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300'
+                }`}
+              >
+                <Activity className="inline mr-2" size={18} />
+                Audit Logs
+              </button>
+              <button
+                onClick={() => setActiveTab('analytics')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap ${
+                  activeTab === 'analytics'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300'
+                }`}
+              >
+                <BarChart3 className="inline mr-2" size={18} />
+                Analytics
+              </button>
+              <button
+                onClick={() => setActiveTab('bulk-ops')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap ${
+                  activeTab === 'bulk-ops'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300'
+                }`}
+              >
+                <Activity className="inline mr-2" size={18} />
+                Bulk Operations
+              </button>
+              <button
+                onClick={() => setActiveTab('deleted-receipts')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap ${
+                  activeTab === 'deleted-receipts'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300'
+                }`}
+              >
+                <Trash2 className="inline mr-2" size={18} />
+                Deleted Receipts
+              </button>
+            </nav>
           </div>
+        </div>
 
-          {/* Navigation menu */}
-          <nav className="p-4 space-y-1">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleNavClick(item.id)}
-                  className={`w-full flex items-start gap-3 px-4 py-3 rounded-lg transition ${
-                    isActive
-                      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                      : 'text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  <Icon size={20} className="mt-0.5 flex-shrink-0" />
-                  <div className="text-left flex-1">
-                    <div className={`font-medium text-sm ${
-                      isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-800 dark:text-white'
-                    }`}>
-                      {item.label}
-                    </div>
-                    <div className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">
-                      {item.description}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </nav>
-        </aside>
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mx-4 sm:mx-6 lg:mx-8">
+            {error}
+          </div>
+        )}
 
-        {/* Main content */}
-        <main className="flex-1 min-h-screen lg:ml-0">
-          <div className="max-w-7xl mx-auto py-6 lg:py-8">
-            {/* Desktop header */}
-            <div className="hidden lg:block mb-8 px-4 sm:px-6 lg:px-8">
-              <h1 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">
-                {menuItems.find(m => m.id === activeTab)?.label}
-              </h1>
-              <p className="text-slate-600 dark:text-gray-400">
-                {menuItems.find(m => m.id === activeTab)?.description}
-              </p>
-            </div>
-
-            {error && (
-              <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                {error}
-              </div>
-            )}
-
-            <div className="px-4 sm:px-6 lg:px-8">
-              {activeTab === 'overview' && (
-                <>
+        <div className="px-4 sm:px-6 lg:px-8">
+        {activeTab === 'overview' && (
+          <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
             <div className="flex items-center justify-between mb-4">
@@ -495,36 +497,34 @@ export function AdminPage() {
           </>
         )}
 
-              {activeTab === 'businesses' && (
-                <BusinessesTab businesses={businesses} totalBusinesses={totalBusinesses} currentPage={currentPage} setCurrentPage={setCurrentPage} itemsPerPage={itemsPerPage} onRefresh={loadAdminData} />
-              )}
+        {activeTab === 'businesses' && (
+          <BusinessesTab businesses={businesses} totalBusinesses={totalBusinesses} currentPage={currentPage} setCurrentPage={setCurrentPage} itemsPerPage={itemsPerPage} onRefresh={loadAdminData} />
+        )}
 
-              {activeTab === 'users' && (
-                <UserManagement />
-              )}
+        {activeTab === 'users' && (
+          <UserManagement />
+        )}
 
-              {activeTab === 'logs' && (
-                <AuditLogsTab />
-              )}
+        {activeTab === 'logs' && (
+          <AuditLogsTab />
+        )}
 
-              {activeTab === 'analytics' && (
-                <AnalyticsTab />
-              )}
+        {activeTab === 'analytics' && (
+          <AnalyticsTab />
+        )}
 
-              {activeTab === 'bulk-ops' && (
-                <BulkOperationsTab />
-              )}
+        {activeTab === 'bulk-ops' && (
+          <BulkOperationsTab />
+        )}
 
-              {activeTab === 'storage' && (
-                <StorageManagement />
-              )}
+        {activeTab === 'storage' && (
+          <StorageManagement />
+        )}
 
-              {activeTab === 'deleted-receipts' && (
-                <DeletedReceiptsManagement />
-              )}
-            </div>
-          </div>
-        </main>
+        {activeTab === 'deleted-receipts' && (
+          <DeletedReceiptsManagement />
+        )}
+        </div>
       </div>
     </div>
   );
