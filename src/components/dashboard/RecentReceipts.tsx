@@ -1,4 +1,5 @@
 import { Receipt, Calendar, DollarSign, Folder } from 'lucide-react';
+import { ReceiptThumbnail } from '../shared/ReceiptThumbnail';
 
 interface ReceiptItem {
   id: string;
@@ -6,6 +7,8 @@ interface ReceiptItem {
   transaction_date: string | null;
   total_amount: number;
   category: string | null;
+  file_path: string | null;
+  thumbnail_path: string | null;
   collections?: {
     name: string;
     businesses?: {
@@ -41,6 +44,11 @@ export function RecentReceipts({ receipts, onViewReceipt }: RecentReceiptsProps)
             className="w-full p-4 border border-slate-200 dark:border-gray-700 rounded-lg hover:border-blue-300 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition text-left"
           >
             <div className="flex items-start justify-between gap-4">
+              <ReceiptThumbnail
+                thumbnailPath={receipt.thumbnail_path}
+                filePath={receipt.file_path}
+                vendorName={receipt.vendor_name || 'Unknown'}
+              />
               <div className="flex-1 min-w-0">
                 <h4 className="font-medium text-slate-800 dark:text-white truncate">
                   {receipt.vendor_name || 'Unknown Vendor'}
