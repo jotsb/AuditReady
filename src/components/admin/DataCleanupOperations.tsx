@@ -149,7 +149,9 @@ export function DataCleanupOperations() {
               .from('receipts')
               .remove([item.storage_path]);
 
-            if (!error) {
+            if (error) {
+              logger.error('Failed to delete storage file', { jobId, item, error });
+            } else {
               deletedCount++;
               deletedSize += item.file_size || 0;
             }
@@ -159,7 +161,9 @@ export function DataCleanupOperations() {
               .delete()
               .eq('id', item.receipt_id);
 
-            if (!error) {
+            if (error) {
+              logger.error('Failed to delete receipt', { jobId, item, error });
+            } else {
               deletedCount++;
               deletedSize += item.file_size || 0;
             }
