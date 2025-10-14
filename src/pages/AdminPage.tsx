@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Building2, Users, Receipt, TrendingUp, AlertCircle, Activity, Database, BarChart3, UserCog, Search, Filter as FilterIcon, Download, FolderOpen, ChevronDown, ChevronRight, Calendar, Mail, Trash2, HardDrive, Recycle } from 'lucide-react';
+import { Building2, Users, Receipt, TrendingUp, AlertCircle, Activity, Database, BarChart3, UserCog, Search, Filter as FilterIcon, Download, FolderOpen, ChevronDown, ChevronRight, Calendar, Mail, Trash2, HardDrive, Recycle, Settings } from 'lucide-react';
 import { LogEntry } from '../components/shared/LogEntry';
 import { usePageTracking } from '../hooks/usePageTracking';
 import { UserManagement } from '../components/admin/UserManagement';
@@ -10,6 +10,8 @@ import { BusinessAdminActions } from '../components/admin/BusinessAdminActions';
 import { DeletedReceiptsManagement } from '../components/admin/DeletedReceiptsManagement';
 import { StorageManagement } from '../components/admin/StorageManagement';
 import { DataCleanupOperations } from '../components/admin/DataCleanupOperations';
+import { LogLevelConfiguration } from '../components/admin/LogLevelConfiguration';
+import { SystemConfiguration } from '../components/admin/SystemConfiguration';
 
 interface AdminStats {
   totalUsers: number;
@@ -58,7 +60,7 @@ export function AdminPage() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'businesses' | 'logs' | 'analytics' | 'bulk-ops' | 'deleted-receipts' | 'storage' | 'cleanup'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'businesses' | 'logs' | 'analytics' | 'bulk-ops' | 'deleted-receipts' | 'storage' | 'cleanup' | 'log-config' | 'system-config'>('overview');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalBusinesses, setTotalBusinesses] = useState(0);
   const itemsPerPage = 20;
@@ -319,6 +321,28 @@ export function AdminPage() {
                 <Recycle className="inline mr-2" size={18} />
                 Data Cleanup
               </button>
+              <button
+                onClick={() => setActiveTab('log-config')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap ${
+                  activeTab === 'log-config'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300'
+                }`}
+              >
+                <Settings className="inline mr-2" size={18} />
+                Log Configuration
+              </button>
+              <button
+                onClick={() => setActiveTab('system-config')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap ${
+                  activeTab === 'system-config'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300'
+                }`}
+              >
+                <Database className="inline mr-2" size={18} />
+                System Config
+              </button>
             </nav>
           </div>
         </div>
@@ -539,6 +563,12 @@ export function AdminPage() {
 
         {activeTab === 'cleanup' && (
           <DataCleanupOperations />
+        )}
+        {activeTab === 'log-config' && (
+          <LogLevelConfiguration />
+        )}
+        {activeTab === 'system-config' && (
+          <SystemConfiguration />
         )}
         </div>
       </div>
