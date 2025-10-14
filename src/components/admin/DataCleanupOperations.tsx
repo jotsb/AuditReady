@@ -119,7 +119,8 @@ export function DataCleanupOperations() {
       await loadJobs();
     } catch (error) {
       logger.error('Scan failed', { operation: operation.type, error });
-      alert('Failed to scan for cleanup items. Check console for details.');
+      const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+      alert(`Failed to scan for cleanup items.\n\nError: ${errorMessage}\n\nCheck console for full details.`);
     } finally {
       setScanning(null);
     }
