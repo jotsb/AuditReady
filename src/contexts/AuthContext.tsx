@@ -11,6 +11,10 @@ interface Business {
   tax_id?: string;
   currency?: string;
   created_at: string;
+  suspended?: boolean;
+  suspension_reason?: string;
+  soft_deleted?: boolean;
+  deletion_reason?: string;
 }
 
 interface AuthContextType {

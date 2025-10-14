@@ -84,7 +84,7 @@ export function AdminPage() {
 
         supabase
           .from('businesses')
-          .select('id, name, created_at, owner_id')
+          .select('id, name, created_at, owner_id, suspended, suspension_reason, soft_deleted, deletion_reason, storage_used_bytes, storage_limit_bytes')
           .order('created_at', { ascending: false })
           .range(startIndex, endIndex),
 
