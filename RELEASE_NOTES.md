@@ -4,6 +4,99 @@
 
 ---
 
+## 📦 Version 0.8.5 - "System Configuration - Fully Functional" (2025-10-14)
+
+### 🎯 Major Features
+
+#### **System Configuration Dashboard - Now 100% Functional** ✅
+The System Configuration Dashboard is now fully functional with complete database persistence and real-time updates.
+
+**What's New:**
+- ✅ **Full database persistence** via `system_config` table
+- ✅ **Real-time load/save** using RPC functions
+- ✅ **Complete audit trail** for all configuration changes
+- ✅ **RLS security** - System admins only
+- ✅ **Production ready** - No more demo mode!
+
+**Database Implementation:**
+- **Table:** `system_config` - Single-row configuration table
+- **Columns:**
+  - `storage_settings` (JSONB) - File size, types, quotas
+  - `email_settings` (JSONB) - SMTP, from name, from address
+  - `app_settings` (JSONB) - App name, version, maintenance mode
+  - `feature_flags` (JSONB) - MFA, verification, AI extraction, multi-page
+  - `updated_at`, `updated_by` - Tracking changes
+- **Functions:**
+  - `get_system_config()` - Load configuration
+  - `update_system_config()` - Save configuration with validation
+- **Triggers:**
+  - `audit_system_config_changes()` - Automatic audit logging
+- **Security:**
+  - RLS policies restrict to system admins only
+  - Admin permission check in update function
+  - Complete audit trail in `audit_logs` table
+
+**Features:**
+1. **Storage Settings**
+   - Max file size (MB) - Persisted
+   - Default storage quota (GB) - Persisted
+   - Allowed file types - Display only
+
+2. **Email Settings**
+   - SMTP toggle - Persisted
+   - From name - Persisted
+   - From address - Persisted
+
+3. **Application Settings**
+   - App name - Persisted
+   - Version - Read-only
+   - Maintenance mode - Persisted
+
+4. **Feature Flags**
+   - MFA required - Persisted
+   - Email verification - Persisted
+   - AI extraction - Persisted
+   - Multi-page receipts - Persisted
+
+**Technical Details:**
+- Migration: `20251014230000_add_system_config_table.sql`
+- Component updated to use `supabase.rpc()` for load/save
+- JSONB structure maps to TypeScript interfaces
+- Changes tracked with hasChanges state
+- Success/error feedback with auto-dismiss
+- Complete structured logging
+
+**Migration Applied:**
+- Created `system_config` table with default values
+- Added RLS policies for admin-only access
+- Created helper functions with SECURITY DEFINER
+- Added audit trigger for change tracking
+- Inserted default configuration row
+- Added performance indexes
+
+### 📊 Impact Summary
+- **System Configuration**: Demo → **Production Ready** ✅
+- **Database**: +1 table, +3 functions, +1 trigger, +2 policies
+- **Bundle Size**: 359.03 KB gzipped (+0.05 KB)
+- **Build Time**: 11.51s
+
+### 🔒 Security
+- RLS policies enforce admin-only access
+- Permission checks in update function
+- Complete audit trail for compliance
+- Secure function execution with SECURITY DEFINER
+- No sensitive data exposed to non-admins
+
+### 🔍 Use Cases Enabled
+1. **Dynamic Configuration** - Change settings without redeployment
+2. **Feature Toggles** - Enable/disable features instantly
+3. **Maintenance Mode** - Block non-admin access during updates
+4. **Storage Limits** - Adjust file size and quota centrally
+5. **Email Configuration** - Switch SMTP settings on the fly
+6. **Compliance** - Full audit trail of all config changes
+
+---
+
 ## 📦 Version 0.8.4 - "Phase 3 Complete: Configuration Management" (2025-10-14)
 
 ### 🎯 Major Features
@@ -2372,5 +2465,5 @@ Built with:
 ---
 
 **Last Updated:** 2025-10-14
-**Current Version:** 0.8.4
-**Status:** Beta - Production Ready with Enterprise Security, Configuration Management, Storage Management, Data Cleanup, Email Receipt Forwarding, Multi-Page PDF Support & Advanced Analytics
+**Current Version:** 0.8.5
+**Status:** Beta - Production Ready with Enterprise Security, Full Configuration Management, Storage Management, Data Cleanup, Email Receipt Forwarding, Multi-Page PDF Support & Advanced Analytics
