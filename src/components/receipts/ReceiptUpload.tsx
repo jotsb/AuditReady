@@ -30,26 +30,54 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const multiFileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Component mount/unmount logging
+  useEffect(() => {
+    logger.info('ReceiptUpload component mounted', {
+      autoTriggerPhoto,
+      component: 'ReceiptUpload',
+      operation: 'component_mounted'
+    });
+
+    return () => {
+      logger.info('ReceiptUpload component unmounting', {
+        component: 'ReceiptUpload',
+        operation: 'component_unmounted'
+      });
+    };
+  }, []);
+
+  // Auto-trigger photo capture
   useEffect(() => {
     if (autoTriggerPhoto && photoInputRef.current) {
       logger.info('Auto-triggering photo capture', {
         component: 'ReceiptUpload',
         operation: 'auto_trigger_camera'
       });
+      // Clear any previous value to ensure change event fires
+      photoInputRef.current.value = '';
       photoInputRef.current.click();
     }
   }, [autoTriggerPhoto]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      logger.info('User selected file from camera/upload', {
-        fileName: selectedFile.name,
-        fileSize: selectedFile.size,
-        fileType: selectedFile.type,
+    if (!selectedFile) {
+      logger.info('File selection cancelled or no file selected', {
         component: 'ReceiptUpload',
-        operation: 'file_selected'
+        operation: 'file_selection_cancelled'
       });
+      return;
+    }
+
+    logger.info('User selected file from camera/upload', {
+      fileName: selectedFile.name,
+      fileSize: selectedFile.size,
+      fileType: selectedFile.type,
+      component: 'ReceiptUpload',
+      operation: 'file_selected'
+    });
+
+    if (selectedFile) {
       if (selectedFile.type === 'application/pdf') {
         setOptimizing(true);
         logger.info('PDF file detected, starting conversion', {
@@ -275,6 +303,10 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
         component: 'ReceiptUpload',
         operation: 'upload_handler_success'
       });
+      // Clear the file input
+      if (photoInputRef.current) {
+        photoInputRef.current.value = '';
+      }
       onClose();
     } catch (error) {
       logger.error('Single file upload error', error as Error, {

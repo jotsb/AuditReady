@@ -410,11 +410,18 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
   const handleUpload = async (file: File, thumbnail: File) => {
     if (!user || !selectedCollection) return;
 
+    // Get collection and business info for logging
+    const currentCollection = collections.find(c => c.id === selectedCollection);
+    const currentBusiness = currentCollection ? businesses.find(b => b.id === currentCollection.business_id) : null;
+
     logger.info('User initiated receipt upload from camera', {
       fileName: file.name,
       fileSize: file.size,
       fileType: file.type,
       collectionId: selectedCollection,
+      collectionName: currentCollection?.name,
+      businessId: currentBusiness?.id,
+      businessName: currentBusiness?.name,
       userId: user.id,
       page: 'ReceiptsPage',
       operation: 'camera_upload_start'
@@ -435,6 +442,9 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
       thumbnailName,
       userId: user.id,
       timestamp,
+      businessId: currentBusiness?.id,
+      businessName: currentBusiness?.name,
+      collectionId: selectedCollection,
       page: 'ReceiptsPage',
       operation: 'generate_file_paths'
     });
@@ -443,6 +453,9 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
       logger.info('Starting file upload to storage', {
         fileName,
         thumbnailName,
+        businessId: currentBusiness?.id,
+        businessName: currentBusiness?.name,
+        collectionId: selectedCollection,
         page: 'ReceiptsPage',
         operation: 'storage_upload_start'
       });
@@ -495,6 +508,8 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
         extractUrl,
         fileName,
         collectionId: selectedCollection,
+        businessId: currentBusiness?.id,
+        businessName: currentBusiness?.name,
         hasSession: !!session,
         page: 'ReceiptsPage',
         operation: 'extraction_api_call_start'
@@ -543,6 +558,9 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
         amount: result.data?.total_amount,
         category: result.data?.category,
         fileName,
+        businessId: currentBusiness?.id,
+        businessName: currentBusiness?.name,
+        collectionId: selectedCollection,
         page: 'ReceiptsPage',
         operation: 'extraction_result_parsed'
       });
@@ -563,6 +581,9 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
         category: result.data?.category,
         transactionDate: result.data?.transaction_date,
         fileName,
+        businessId: currentBusiness?.id,
+        businessName: currentBusiness?.name,
+        collectionId: selectedCollection,
         page: 'ReceiptsPage',
         operation: 'show_verification_modal'
       });
@@ -584,6 +605,8 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
         errorMessage,
         errorType: error instanceof Error ? error.constructor.name : typeof error,
         collectionId: selectedCollection,
+        businessId: currentBusiness?.id,
+        businessName: currentBusiness?.name,
         fileName,
         thumbnailName,
         page: 'ReceiptsPage',
