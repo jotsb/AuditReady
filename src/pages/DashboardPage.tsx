@@ -47,11 +47,41 @@ export function DashboardPage({ onViewReceipt }: DashboardPageProps) {
     try {
       const { data: receipts, error } = await supabase
         .from('receipts')
-        .select('*, collections(name, businesses(name))')
+        .select(`
+          *,
+          collections(name, businesses(name))
+        `)
         .is('parent_receipt_id', null)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+
+      // For multi-page receipts, load the first page's thumbnail
+      if (receipts) {
+        const multiPageReceipts = receipts.filter(r => r.is_parent === true);
+
+        if (multiPageReceipts.length > 0) {
+          const { data: pages } = await supabase
+            .from('receipts')
+            .select('parent_receipt_id, thumbnail_path, file_path')
+            .in('parent_receipt_id', multiPageReceipts.map(r => r.id))
+            .eq('page_number', 1);
+
+          if (pages) {
+            const pageMap = new Map(pages.map(p => [p.parent_receipt_id, p]));
+            receipts.forEach(receipt => {
+              if (receipt.is_parent) {
+                const firstPage = pageMap.get(receipt.id);
+                if (firstPage) {
+                  receipt.thumbnail_path = firstPage.thumbnail_path;
+                  receipt.file_path = firstPage.file_path;
+                }
+              }
+            });
+          }
+        }
+      }
 
       if (receipts) {
         const totalExpenses = receipts.reduce((sum, r) => sum + Number(r.total_amount), 0);
