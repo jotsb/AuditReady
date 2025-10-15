@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAlert } from '../../contexts/AlertContext';
 import { supabase } from '../../lib/supabase';
 import { logger } from '../../lib/logger';
 import {
@@ -48,6 +49,7 @@ interface User {
 
 export function UserManagement() {
   const { user: currentUser } = useAuth();
+  const { showAlert, showConfirm } = useAlert();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -219,9 +221,14 @@ export function UserManagement() {
   };
 
   const handleHardDelete = async (user: User) => {
-    if (!confirm('PERMANENT DELETE: This will permanently delete the user and all their data. This action cannot be undone. Are you absolutely sure?')) {
-      return;
-    }
+    const confirmed = await showConfirm({
+      variant: 'error',
+      title: 'Permanent Delete User',
+      message: 'PERMANENT DELETE: This will permanently delete the user and all their data. This action cannot be undone. Are you absolutely sure?',
+      confirmText: 'Delete Permanently',
+      cancelText: 'Cancel'
+    });
+    if (!confirmed) return;
 
     try {
       setActionLoading(true);
@@ -271,9 +278,14 @@ export function UserManagement() {
   };
 
   const handleForceLogout = async (user: User) => {
-    if (!confirm(`Force logout ${user.email} from all devices?`)) {
-      return;
-    }
+    const confirmed = await showConfirm({
+      variant: 'warning',
+      title: 'Force Logout',
+      message: `Force logout ${user.email} from all devices?`,
+      confirmText: 'Force Logout',
+      cancelText: 'Cancel'
+    });
+    if (!confirmed) return;
 
     try {
       setActionLoading(true);

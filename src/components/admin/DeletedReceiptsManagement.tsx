@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { Trash2, RotateCcw, Search, Calendar, DollarSign, Building2, FolderOpen } from 'lucide-react';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAlert } from '../../contexts/AlertContext';
 
 interface DeletedReceipt {
   id: string;
@@ -24,6 +25,7 @@ interface DeletedReceiptsManagementProps {
 
 export function DeletedReceiptsManagement({ scope = 'admin' }: DeletedReceiptsManagementProps) {
   const { user } = useAuth();
+  const { showAlert, showConfirm } = useAlert();
   const [deletedReceipts, setDeletedReceipts] = useState<DeletedReceipt[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -92,7 +94,14 @@ export function DeletedReceiptsManagement({ scope = 'admin' }: DeletedReceiptsMa
   };
 
   const handleRestore = async (receiptId: string) => {
-    if (!confirm('Are you sure you want to restore this receipt?')) return;
+    const confirmed = await showConfirm({
+      variant: 'info',
+      title: 'Restore Receipt',
+      message: 'Are you sure you want to restore this receipt?',
+      confirmText: 'Restore',
+      cancelText: 'Cancel'
+    });
+    if (!confirmed) return;
 
     setRestoring(receiptId);
     try {
@@ -117,7 +126,14 @@ export function DeletedReceiptsManagement({ scope = 'admin' }: DeletedReceiptsMa
   };
 
   const handlePermanentDelete = async (receiptId: string, filePath: string) => {
-    if (!confirm('Are you sure you want to PERMANENTLY delete this receipt? This action cannot be undone.')) return;
+    const confirmed = await showConfirm({
+      variant: 'error',
+      title: 'Permanent Delete',
+      message: 'Are you sure you want to PERMANENTLY delete this receipt? This action cannot be undone.',
+      confirmText: 'Delete Permanently',
+      cancelText: 'Cancel'
+    });
+    if (!confirmed) return;
 
     setRestoring(receiptId);
     try {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Plus, FolderOpen, Users, Calendar, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useAlert } from '../contexts/AlertContext';
 import { usePageTracking } from '../hooks/usePageTracking';
 import { actionTracker } from '../lib/actionTracker';
 
@@ -21,6 +22,7 @@ interface Collection {
 
 export function CollectionsPage() {
   const { user } = useAuth();
+  const { showConfirm } = useAlert();
 
   usePageTracking('Collections', { section: 'collections' });
 
@@ -173,9 +175,14 @@ export function CollectionsPage() {
   };
 
   const deleteBusiness = async (businessId: string) => {
-    if (!confirm('Are you sure you want to delete this business? You must delete all collections first.')) {
-      return;
-    }
+    const confirmed = await showConfirm({
+      variant: 'warning',
+      title: 'Delete Business',
+      message: 'Are you sure you want to delete this business? You must delete all collections first.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel'
+    });
+    if (!confirmed) return;
 
     try {
       setDeleteError(null);
@@ -209,9 +216,14 @@ export function CollectionsPage() {
   };
 
   const deleteCollection = async (collectionId: string, collectionName: string) => {
-    if (!confirm(`Are you sure you want to delete "${collectionName}"? This will permanently delete all receipts and files in this collection.`)) {
-      return;
-    }
+    const confirmed = await showConfirm({
+      variant: 'error',
+      title: 'Delete Collection',
+      message: `Are you sure you want to delete "${collectionName}"? This will permanently delete all receipts and files in this collection.`,
+      confirmText: 'Delete Collection',
+      cancelText: 'Cancel'
+    });
+    if (!confirmed) return;
 
     try {
       setDeleteError(null);

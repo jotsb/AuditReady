@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 import { Shield, ShieldOff, RefreshCw, Trash2, Smartphone, AlertTriangle, Check, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAlert } from '../../contexts/AlertContext';
 import { useMFA } from '../../hooks/useMFA';
 import { supabase } from '../../lib/supabase';
 import { MFASetup } from './MFASetup';
 import { RecoveryCodesDisplay } from './RecoveryCodesDisplay';
-import type { TrustedDevice } from '../../lib/mfaUtils';
+import { TrustedDevice } from '../../lib/mfaUtils';
 import { logger } from '../../lib/logger';
 
 export function MFAManagement() {
   const { user } = useAuth();
+  const { showConfirm } = useAlert();
   const {
     listFactors,
     unenrollFactor,
@@ -205,9 +207,14 @@ export function MFAManagement() {
   const handleRegenerateRecoveryCodes = async () => {
     if (!user) return;
 
-    if (!confirm('Are you sure you want to regenerate recovery codes? All existing codes will be invalidated.')) {
-      return;
-    }
+    const confirmed = await showConfirm({
+      variant: 'warning',
+      title: 'Regenerate Recovery Codes',
+      message: 'Are you sure you want to regenerate recovery codes? All existing codes will be invalidated.',
+      confirmText: 'Regenerate',
+      cancelText: 'Cancel'
+    });
+    if (!confirmed) return;
 
     try {
       setError('');
@@ -226,9 +233,14 @@ export function MFAManagement() {
   const handleRemoveDevice = async (deviceId: string) => {
     if (!user) return;
 
-    if (!confirm('Remove this trusted device? You will need to verify with MFA next time you sign in from this device.')) {
-      return;
-    }
+    const confirmed = await showConfirm({
+      variant: 'warning',
+      title: 'Remove Trusted Device',
+      message: 'Remove this trusted device? You will need to verify with MFA next time you sign in from this device.',
+      confirmText: 'Remove',
+      cancelText: 'Cancel'
+    });
+    if (!confirmed) return;
 
     try {
       await removeTrustedDevice(user.id, deviceId);

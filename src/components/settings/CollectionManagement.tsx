@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, CreditCard as Edit2, Trash2, Users, FolderOpen } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAlert } from '../../contexts/AlertContext';
 import { Database } from '../../lib/database.types';
 
 type Collection = Database['public']['Tables']['collections']['Row'];
@@ -13,6 +14,7 @@ interface CollectionWithBusiness extends Collection {
 
 export function CollectionManagement() {
   const { user, selectedBusiness } = useAuth();
+  const { showConfirm } = useAlert();
   const [collections, setCollections] = useState<CollectionWithBusiness[]>([]);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,9 +143,14 @@ export function CollectionManagement() {
   };
 
   const handleDelete = async (collectionId: string) => {
-    if (!confirm('Are you sure you want to delete this collection? All receipts in this collection will also be deleted.')) {
-      return;
-    }
+    const confirmed = await showConfirm({
+      variant: 'error',
+      title: 'Delete Collection',
+      message: 'Are you sure you want to delete this collection? All receipts in this collection will also be deleted.',
+      confirmText: 'Delete Collection',
+      cancelText: 'Cancel'
+    });
+    if (!confirmed) return;
 
     try {
       setError(null);

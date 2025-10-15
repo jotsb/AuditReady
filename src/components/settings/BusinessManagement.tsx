@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, CreditCard as Edit2, Trash2, Building2, ArrowRightLeft } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAlert } from '../../contexts/AlertContext';
 import { Database } from '../../lib/database.types';
 import { ExportJobsManager } from './ExportJobsManager';
 
@@ -23,6 +24,7 @@ const CURRENCIES = [
 
 export function BusinessManagement() {
   const { user, isSystemAdmin } = useAuth();
+  const { showConfirm } = useAlert();
   const [businesses, setBusinesses] = useState<BusinessWithOwner[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -137,9 +139,14 @@ export function BusinessManagement() {
   };
 
   const handleDelete = async (businessId: string) => {
-    if (!confirm('Are you sure you want to delete this business? All collections and receipts will also be deleted.')) {
-      return;
-    }
+    const confirmed = await showConfirm({
+      variant: 'error',
+      title: 'Delete Business',
+      message: 'Are you sure you want to delete this business? All collections and receipts will also be deleted.',
+      confirmText: 'Delete Business',
+      cancelText: 'Cancel'
+    });
+    if (!confirmed) return;
 
     try {
       setError(null);

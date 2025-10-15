@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Trash2, Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAlert } from '../../contexts/AlertContext';
 
 interface Category {
   id: string;
@@ -10,6 +11,7 @@ interface Category {
 }
 
 export function CategoryManagement() {
+  const { showConfirm } = useAlert();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -105,7 +107,14 @@ export function CategoryManagement() {
   };
 
   const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
-    if (!confirm(`Are you sure you want to delete the category "${categoryName}"?`)) return;
+    const confirmed = await showConfirm({
+      variant: 'warning',
+      title: 'Delete Category',
+      message: `Are you sure you want to delete the category "${categoryName}"?`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel'
+    });
+    if (!confirmed) return;
 
     try {
       setSaving(true);

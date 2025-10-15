@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Bookmark, Trash2, Star, Plus, AlertCircle } from 'lucide-react';
 import { logger } from '../../lib/logger';
+import { useAlert } from '../../contexts/AlertContext';
 
 interface SavedFilter {
   id: string;
@@ -19,6 +20,7 @@ interface LogSavedFilterManagerProps {
 }
 
 export function LogSavedFilterManager({ filterType, currentFilters, onLoadFilter, onClose }: LogSavedFilterManagerProps) {
+  const { showConfirm } = useAlert();
   const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -104,7 +106,14 @@ export function LogSavedFilterManager({ filterType, currentFilters, onLoadFilter
   };
 
   const deleteFilter = async (id: string, name: string) => {
-    if (!confirm(`Delete saved filter "${name}"?`)) return;
+    const confirmed = await showConfirm({
+      variant: 'warning',
+      title: 'Delete Filter',
+      message: `Delete saved filter "${name}"?`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel'
+    });
+    if (!confirmed) return;
 
     try {
       const { error } = await supabase

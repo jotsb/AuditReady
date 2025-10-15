@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Building2, FolderOpen, ChevronDown, ChevronRight, Users, Receipt, Calendar, Mail } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAlert } from '../../contexts/AlertContext';
 import { Database } from '../../lib/database.types';
 import { ExportJobsManager } from './ExportJobsManager';
 import { logger } from '../../lib/logger';
@@ -31,6 +32,7 @@ const CURRENCIES = [
 
 export function BusinessCollectionManagement() {
   const { user } = useAuth();
+  const { showAlert, showConfirm } = useAlert();
   const [businesses, setBusinesses] = useState<BusinessWithDetails[]>([]);
   const [expandedBusinesses, setExpandedBusinesses] = useState<Set<string>>(new Set());
   const [businessCollections, setBusinessCollections] = useState<Record<string, CollectionWithDetails[]>>({});
@@ -247,7 +249,14 @@ export function BusinessCollectionManagement() {
   };
 
   const handleDeleteBusiness = async (businessId: string) => {
-    if (!confirm('Are you sure? This will delete all collections and receipts in this business.')) return;
+    const confirmed = await showConfirm({
+      variant: 'error',
+      title: 'Delete Business',
+      message: 'Are you sure? This will delete all collections and receipts in this business.',
+      confirmText: 'Delete Business',
+      cancelText: 'Cancel'
+    });
+    if (!confirmed) return;
 
     try {
       setError(null);
@@ -266,7 +275,14 @@ export function BusinessCollectionManagement() {
   };
 
   const handleDeleteCollection = async (collectionId: string, businessId: string) => {
-    if (!confirm('Are you sure? This will delete all receipts in this collection.')) return;
+    const confirmed = await showConfirm({
+      variant: 'error',
+      title: 'Delete Collection',
+      message: 'Are you sure? This will delete all receipts in this collection.',
+      confirmText: 'Delete Collection',
+      cancelText: 'Cancel'
+    });
+    if (!confirmed) return;
 
     try {
       setError(null);
