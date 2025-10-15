@@ -52,6 +52,8 @@ export function useReceiptsData(selectedCollection: string) {
 
   const loadCollections = async () => {
     try {
+      logger.info('Starting collection load', { hook: 'useReceiptsData' });
+
       const [collectionsResult, businessesResult] = await Promise.all([
         supabase
           .from('collections')
@@ -62,13 +64,46 @@ export function useReceiptsData(selectedCollection: string) {
           .select('id, name')
       ]);
 
-      if (!collectionsResult.error && collectionsResult.data && collectionsResult.data.length > 0) {
+      logger.info('Collection query result', {
+        hasError: !!collectionsResult.error,
+        error: collectionsResult.error,
+        dataLength: collectionsResult.data?.length || 0,
+        rawData: collectionsResult.data,
+        hook: 'useReceiptsData'
+      });
+
+      logger.info('Business query result', {
+        hasError: !!businessesResult.error,
+        error: businessesResult.error,
+        dataLength: businessesResult.data?.length || 0,
+        hook: 'useReceiptsData'
+      });
+
+      if (collectionsResult.error) {
+        logger.error('Collections query error', collectionsResult.error, {
+          hook: 'useReceiptsData',
+          errorCode: collectionsResult.error.code,
+          errorMessage: collectionsResult.error.message
+        });
+        setCollections([]);
+      } else if (collectionsResult.data && collectionsResult.data.length > 0) {
+        logger.info('Setting collections state', {
+          count: collectionsResult.data.length,
+          firstCollection: collectionsResult.data[0],
+          hook: 'useReceiptsData'
+        });
         setCollections(collectionsResult.data);
       } else {
+        logger.warn('No collections found', { hook: 'useReceiptsData' });
         setCollections([]);
       }
 
-      if (!businessesResult.error && businessesResult.data) {
+      if (businessesResult.error) {
+        logger.error('Businesses query error', businessesResult.error, {
+          hook: 'useReceiptsData'
+        });
+        setBusinesses([]);
+      } else if (businessesResult.data) {
         setBusinesses(businessesResult.data);
       } else {
         setBusinesses([]);
@@ -76,10 +111,15 @@ export function useReceiptsData(selectedCollection: string) {
 
       logger.info('Collections and businesses loaded', {
         collectionCount: collectionsResult.data?.length || 0,
-        businessCount: businessesResult.data?.length || 0
+        businessCount: businessesResult.data?.length || 0,
+        hook: 'useReceiptsData'
       });
     } catch (error) {
-      logger.error('Failed to load collections', error as Error);
+      logger.error('Failed to load collections - exception thrown', error as Error, {
+        hook: 'useReceiptsData'
+      });
+      setCollections([]);
+      setBusinesses([]);
     } finally {
       setLoading(false);
     }
