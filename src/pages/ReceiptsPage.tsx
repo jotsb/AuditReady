@@ -59,26 +59,28 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
       operation: 'component_mount'
     });
 
-    loadCollections().then(() => {
-      logger.info('Collections loaded', {
-        collectionsCount: collections.length,
-        currentSelectedCollection: selectedCollection,
-        firstCollectionId: collections.length > 0 ? collections[0].id : null,
-        page: 'ReceiptsPage',
-        operation: 'collections_loaded'
-      });
-
-      if (collections.length > 0 && !selectedCollection) {
-        logger.info('Auto-selecting first collection', {
-          collectionId: collections[0].id,
-          collectionName: collections[0].name,
-          page: 'ReceiptsPage',
-          operation: 'auto_select_collection'
-        });
-        setSelectedCollection(collections[0].id);
-      }
-    });
+    loadCollections();
   }, []);
+
+  useEffect(() => {
+    logger.info('Collections state updated', {
+      collectionsCount: collections.length,
+      currentSelectedCollection: selectedCollection,
+      firstCollectionId: collections.length > 0 ? collections[0].id : null,
+      page: 'ReceiptsPage',
+      operation: 'collections_state_updated'
+    });
+
+    if (collections.length > 0 && !selectedCollection) {
+      logger.info('Auto-selecting first collection', {
+        collectionId: collections[0].id,
+        collectionName: collections[0].name,
+        page: 'ReceiptsPage',
+        operation: 'auto_select_collection'
+      });
+      setSelectedCollection(collections[0].id);
+    }
+  }, [collections]);
 
   useEffect(() => {
     logger.info('selectedCollection changed', {
