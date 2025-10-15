@@ -23,16 +23,7 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { businessId }: ExportJobRequest = await req.json();
-
-    if (!businessId) {
-      return new Response(
-        JSON.stringify({ error: "Business ID is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Get auth user
+    // Get auth user first
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -52,7 +43,45 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const { businessId }: ExportJobRequest = await req.json();
+
+    if (!businessId) {
+      return new Response(
+        JSON.stringify({ error: "Business ID is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     console.log(`Export requested by user: ${user.id}, email: ${user.email}`);
+
+    // Check if user is system admin OR business owner/manager
+    const { data: systemRole } = await supabase
+      .from('system_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .maybeSingle();
+
+    const isSystemAdmin = !!systemRole;
+
+    // If not system admin, check if user is business owner or manager
+    if (!isSystemAdmin) {
+      const { data: membership, error: memberError } = await supabase
+        .from('business_members')
+        .select('role')
+        .eq('business_id', businessId)
+        .eq('user_id', user.id)
+        .in('role', ['owner', 'manager'])
+        .maybeSingle();
+
+      if (memberError || !membership) {
+        console.error(`Unauthorized export attempt by user ${user.id} for business ${businessId}`);
+        return new Response(
+          JSON.stringify({ error: "Unauthorized: You must be a business owner or manager to export data" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
 
     // Create export job
     const { data: job, error: jobError } = await supabase
