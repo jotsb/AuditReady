@@ -8,6 +8,9 @@ export function initSentry() {
     return;
   }
 
+  console.log('Initializing Sentry with DSN:', sentryDsn.substring(0, 30) + '...');
+  console.log('Environment:', import.meta.env.MODE);
+
   Sentry.init({
     dsn: sentryDsn,
     environment: import.meta.env.MODE || 'development',
@@ -62,10 +65,7 @@ export function initSentry() {
 }
 
 export function captureException(error: Error, context?: Record<string, any>) {
-  if (import.meta.env.MODE === 'development') {
-    console.error('Sentry would capture:', error, context);
-    return;
-  }
+  console.error('Sentry capturing exception:', error, context);
 
   Sentry.captureException(error, {
     extra: context,
@@ -73,10 +73,7 @@ export function captureException(error: Error, context?: Record<string, any>) {
 }
 
 export function captureMessage(message: string, level: Sentry.SeverityLevel = 'info', context?: Record<string, any>) {
-  if (import.meta.env.MODE === 'development') {
-    console.log(`Sentry would capture [${level}]:`, message, context);
-    return;
-  }
+  console.log(`Sentry capturing message [${level}]:`, message, context);
 
   Sentry.captureMessage(message, {
     level,
