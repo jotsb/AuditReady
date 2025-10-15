@@ -51,6 +51,11 @@ class Logger {
   warn(message: string, metadata?: Record<string, any>, category: LogCategory = 'CLIENT_ERROR'): void {
     console.warn(message, metadata);
     this.sendToServer({ level: 'WARN', category, message, metadata });
+
+    // Only send warnings to Sentry in production if they're critical
+    if (import.meta.env.MODE === 'production' && category === 'SECURITY') {
+      captureMessage(message, 'warning', metadata);
+    }
   }
 
   error(message: string, error?: Error, metadata?: Record<string, any>): void {
@@ -73,6 +78,14 @@ class Logger {
 
   critical(message: string, error?: Error, metadata?: Record<string, any>): void {
     console.error('[CRITICAL]', message, error, metadata);
+
+    // Send critical errors to Sentry
+    if (error) {
+      captureException(error, { message, severity: 'critical', ...metadata });
+    } else {
+      captureMessage(message, 'fatal', metadata);
+    }
+
     this.sendToServer({
       level: 'CRITICAL',
       category: 'CLIENT_ERROR',
