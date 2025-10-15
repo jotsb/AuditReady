@@ -11,7 +11,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
+    "@sentry/react": "^10.20.0",
     "@supabase/supabase-js": "^2.57.4",
+    "@tanstack/react-query": "^5.90.3",
     "@types/qrcode": "^1.5.5",
     "isomorphic-dompurify": "^2.28.0",
     "jspdf": "^3.0.3",

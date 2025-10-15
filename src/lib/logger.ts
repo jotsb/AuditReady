@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { sessionManager } from './sessionManager';
+import { captureException, captureMessage } from './sentry';
 
 type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL';
 type LogCategory = 'AUTH' | 'DATABASE' | 'API' | 'EDGE_FUNCTION' | 'CLIENT_ERROR' | 'SECURITY' | 'PERFORMANCE' | 'USER_ACTION' | 'PAGE_VIEW' | 'NAVIGATION';
@@ -54,6 +55,13 @@ class Logger {
 
   error(message: string, error?: Error, metadata?: Record<string, any>): void {
     console.error(message, error, metadata);
+
+    if (error) {
+      captureException(error, { message, ...metadata });
+    } else {
+      captureMessage(message, 'error', metadata);
+    }
+
     this.sendToServer({
       level: 'ERROR',
       category: 'CLIENT_ERROR',

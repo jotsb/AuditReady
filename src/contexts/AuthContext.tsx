@@ -3,6 +3,7 @@ import { User, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { logger } from '../lib/logger';
 import { sessionManager } from '../lib/sessionManager';
+import { setUserContext } from '../lib/sentry';
 
 interface Business {
   id: string;
@@ -160,6 +161,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) {
         checkAdminStatus(session.user.id);
         loadBusinesses(session.user.id);
+        setUserContext({
+          id: session.user.id,
+          email: session.user.email,
+        });
+      } else {
+        setUserContext(null);
       }
       setLoading(false);
     });
@@ -180,8 +187,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           await checkAdminStatus(session.user.id);
           await loadBusinesses(session.user.id);
+          setUserContext({
+            id: session.user.id,
+            email: session.user.email,
+          });
         } else {
           setIsSystemAdmin(false);
+          setUserContext(null);
           setBusinesses([]);
           setSelectedBusiness(null);
           localStorage.removeItem(SELECTED_BUSINESS_KEY);

@@ -1,154 +1,31 @@
-import { useEffect, useState } from 'react';
 import { DollarSign, Receipt, TrendingUp, Calendar } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { StatCard } from '../components/dashboard/StatCard';
 import { CategoryChart } from '../components/dashboard/CategoryChart';
 import { RecentReceipts } from '../components/dashboard/RecentReceipts';
-import { usePageTracking, useDataLoadTracking } from '../hooks/usePageTracking';
+import { usePageTracking } from '../hooks/usePageTracking';
+import { useDashboardStats, useRecentReceipts } from '../hooks/useDashboard';
 import { actionTracker } from '../lib/actionTracker';
-import { logger } from '../lib/logger';
-
-interface DashboardStats {
-  totalExpenses: number;
-  receiptCount: number;
-  monthlyTotal: number;
-  taxTotal: number;
-}
-
-interface CategoryData {
-  name: string;
-  amount: number;
-  color: string;
-}
 
 interface DashboardPageProps {
   onViewReceipt?: (id: string) => void;
 }
 
 export function DashboardPage({ onViewReceipt }: DashboardPageProps) {
-  const [stats, setStats] = useState<DashboardStats>({
+  usePageTracking('Dashboard', { section: 'dashboard' });
+
+  const { data: dashboardData, isLoading: statsLoading } = useDashboardStats();
+  const { data: recentReceipts, isLoading: receiptsLoading } = useRecentReceipts();
+
+  const loading = statsLoading || receiptsLoading;
+
+  const stats = dashboardData?.stats || {
     totalExpenses: 0,
     receiptCount: 0,
     monthlyTotal: 0,
     taxTotal: 0,
-  });
-  const [categoryData, setCategoryData] = useState<CategoryData[]>([]);
-  const [recentReceipts, setRecentReceipts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  usePageTracking('Dashboard', { section: 'dashboard' });
-  const logDataLoad = useDataLoadTracking('dashboard_stats');
-
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  const loadDashboardData = async () => {
-    try {
-      const { data: receipts, error } = await supabase
-        .from('receipts')
-        .select(`
-          *,
-          collections(name, businesses(name))
-        `)
-        .is('parent_receipt_id', null)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      // For multi-page receipts, load the first page's thumbnail
-      if (receipts) {
-        const multiPageReceipts = receipts.filter(r => r.is_parent === true);
-
-        if (multiPageReceipts.length > 0) {
-          const { data: pages } = await supabase
-            .from('receipts')
-            .select('parent_receipt_id, thumbnail_path, file_path')
-            .in('parent_receipt_id', multiPageReceipts.map(r => r.id))
-            .eq('page_number', 1);
-
-          if (pages) {
-            const pageMap = new Map(pages.map(p => [p.parent_receipt_id, p]));
-            receipts.forEach(receipt => {
-              if (receipt.is_parent) {
-                const firstPage = pageMap.get(receipt.id);
-                if (firstPage) {
-                  receipt.thumbnail_path = firstPage.thumbnail_path;
-                  receipt.file_path = firstPage.file_path;
-                }
-              }
-            });
-          }
-        }
-      }
-
-      if (receipts) {
-        const totalExpenses = receipts.reduce((sum, r) => sum + Number(r.total_amount), 0);
-        const taxTotal = receipts.reduce(
-          (sum, r) => sum + Number(r.gst_amount) + Number(r.pst_amount),
-          0
-        );
-
-        const currentMonth = new Date().getMonth();
-        const currentYear = new Date().getFullYear();
-        const monthlyReceipts = receipts.filter((r) => {
-          const date = new Date(r.created_at);
-          return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-        });
-        const monthlyTotal = monthlyReceipts.reduce((sum, r) => sum + Number(r.total_amount), 0);
-
-        setStats({
-          totalExpenses,
-          receiptCount: receipts.length,
-          monthlyTotal,
-          taxTotal,
-        });
-
-        const categoryMap = new Map<string, number>();
-        receipts.forEach((receipt) => {
-          const category = receipt.category || 'Uncategorized';
-          const current = categoryMap.get(category) || 0;
-          categoryMap.set(category, current + Number(receipt.total_amount));
-        });
-
-        const { data: categories } = await supabase
-          .from('expense_categories')
-          .select('name, color')
-          .order('sort_order');
-
-        const categoryColors = new Map(
-          categories?.map((c) => [c.name, c.color || '#6B7280']) || []
-        );
-
-        const chartData: CategoryData[] = Array.from(categoryMap.entries())
-          .map(([name, amount]) => ({
-            name,
-            amount,
-            color: categoryColors.get(name) || '#6B7280',
-          }))
-          .sort((a, b) => b.amount - a.amount)
-          .slice(0, 6);
-
-        setCategoryData(chartData);
-        setRecentReceipts(receipts.slice(0, 5));
-
-        logDataLoad(receipts.length, {
-          totalExpenses,
-          receiptCount: receipts.length,
-          monthlyTotal: monthlyReceipts.reduce((sum, r) => sum + Number(r.total_amount), 0),
-          categoriesShown: chartData.length
-        });
-      }
-    } catch (error) {
-      logger.error('Error loading dashboard', error as Error, {
-        page: 'DashboardPage',
-        operation: 'load_dashboard'
-      });
-    } finally {
-      setLoading(false);
-    }
   };
+
+  const categoryData = dashboardData?.categoryData || [];
 
   const handleViewReceipt = (id: string) => {
     actionTracker.buttonClick('view_receipt_from_dashboard', { receiptId: id });
@@ -192,7 +69,7 @@ export function DashboardPage({ onViewReceipt }: DashboardPageProps) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <CategoryChart data={categoryData} />
-        <RecentReceipts receipts={recentReceipts} onViewReceipt={handleViewReceipt} />
+        <RecentReceipts receipts={recentReceipts || []} onViewReceipt={handleViewReceipt} />
       </div>
     </div>
   );

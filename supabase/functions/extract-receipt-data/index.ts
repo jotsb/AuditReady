@@ -8,6 +8,7 @@ import {
   validateDate,
   INPUT_LIMITS
 } from "../_shared/validation.ts";
+import { compressImage, getImageFormat } from "../_shared/imageCompression.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -151,25 +152,22 @@ Deno.serve(async (req: Request) => {
       }
 
       const lowerFilePath = path.toLowerCase();
-      const arrayBuffer = await fileData.arrayBuffer();
+      let arrayBuffer = await fileData.arrayBuffer();
 
       if (lowerFilePath.endsWith(".pdf")) {
         throw new Error("PDF files must be converted to images before upload. This error shouldn't occur if the client validation is working properly.");
       } else {
-        const base64File = arrayBufferToBase64(arrayBuffer);
+        const imageFormat = getImageFormat(path);
 
-        let imageFormat = "jpeg";
-        if (lowerFilePath.endsWith(".png")) {
-          imageFormat = "png";
-        } else if (lowerFilePath.endsWith(".jpg") || lowerFilePath.endsWith(".jpeg")) {
-          imageFormat = "jpeg";
-        } else if (lowerFilePath.endsWith(".gif")) {
-          imageFormat = "gif";
-        } else if (lowerFilePath.endsWith(".webp")) {
-          imageFormat = "webp";
-        }
+        const compressedBuffer = await compressImage(arrayBuffer, imageFormat, {
+          maxWidth: 1024,
+          maxHeight: 1024,
+          quality: 0.85
+        });
 
+        const base64File = arrayBufferToBase64(compressedBuffer);
         const dataUrl = `data:image/${imageFormat};base64,${base64File}`;
+
         imageUrls.push({
           type: "image_url",
           image_url: { url: dataUrl }
