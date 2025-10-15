@@ -20,6 +20,7 @@ import { useReceiptSelection } from '../hooks/useReceiptSelection';
 import { usePageTracking } from '../hooks/usePageTracking';
 import { actionTracker } from '../lib/actionTracker';
 import { useLogger } from '../hooks/useLogger';
+import { convertLocalDateToUTC, formatDateForDisplay } from '../lib/dateUtils';
 import * as receiptService from '../services/receiptService';
 
 interface ReceiptsPageProps {
@@ -926,7 +927,7 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
 
       // Prepare comprehensive table data
       const tableData = receiptsToExport.map(receipt => [
-        formatDate(receipt.transaction_date),
+        formatDateForDisplay(receipt.transaction_date),
         receipt.vendor_name || 'Unknown',
         receipt.vendor_address || '',
         receipt.category || 'Uncategorized',
@@ -1212,7 +1213,7 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-gray-300">
                       <Calendar size={14} />
-                      <span>{formatDate(receipt.transaction_date)}</span>
+                      <span>{formatDateForDisplay(receipt.transaction_date)}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
