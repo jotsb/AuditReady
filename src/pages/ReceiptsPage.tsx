@@ -410,7 +410,16 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
   const handleUpload = async (file: File, thumbnail: File) => {
     if (!user || !selectedCollection) return;
 
-    console.log('Starting receipt upload and extraction...');
+    logger.info('User initiated receipt upload from camera', {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+      collectionId: selectedCollection,
+      userId: user.id,
+      page: 'ReceiptsPage',
+      operation: 'camera_upload_start'
+    });
+
     actionTracker.uploadStarted('receipt', file.name, file.size, { collectionId: selectedCollection });
 
     setExtracting(true);
@@ -421,9 +430,22 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
     const fileName = `${user.id}/${timestamp}.webp`;
     const thumbnailName = `${user.id}/thumbnails/${timestamp}_thumb.webp`;
 
-    console.log('File paths:', { fileName, thumbnailName });
+    logger.info('Generated file paths for upload', {
+      fileName,
+      thumbnailName,
+      userId: user.id,
+      timestamp,
+      page: 'ReceiptsPage',
+      operation: 'generate_file_paths'
+    });
 
     try {
+      logger.info('Starting file upload to storage', {
+        fileName,
+        thumbnailName,
+        page: 'ReceiptsPage',
+        operation: 'storage_upload_start'
+      });
 
       const [uploadResult, thumbnailResult] = await Promise.all([
         supabase.storage.from('receipts').upload(fileName, file, {
@@ -436,15 +458,47 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
         }),
       ]);
 
-      if (uploadResult.error) throw uploadResult.error;
-      if (thumbnailResult.error) throw thumbnailResult.error;
+      if (uploadResult.error) {
+        logger.error('Main image upload failed', uploadResult.error as Error, {
+          fileName,
+          errorCode: uploadResult.error.message,
+          page: 'ReceiptsPage',
+          operation: 'storage_upload_main_image'
+        });
+        throw uploadResult.error;
+      }
 
-      console.log('Files uploaded successfully, starting extraction...');
+      if (thumbnailResult.error) {
+        logger.error('Thumbnail upload failed', thumbnailResult.error as Error, {
+          thumbnailName,
+          errorCode: thumbnailResult.error.message,
+          page: 'ReceiptsPage',
+          operation: 'storage_upload_thumbnail'
+        });
+        throw thumbnailResult.error;
+      }
+
+      logger.info('Files uploaded successfully to storage', {
+        fileName,
+        thumbnailName,
+        mainImagePath: uploadResult.data?.path,
+        thumbnailPath: thumbnailResult.data?.path,
+        page: 'ReceiptsPage',
+        operation: 'storage_upload_success'
+      });
 
       const { data: { session } } = await supabase.auth.getSession();
 
       const extractUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-receipt-data`;
-      console.log('Calling extraction function:', extractUrl);
+
+      logger.info('Calling extraction edge function', {
+        extractUrl,
+        fileName,
+        collectionId: selectedCollection,
+        hasSession: !!session,
+        page: 'ReceiptsPage',
+        operation: 'extraction_api_call_start'
+      });
 
       const response = await fetch(extractUrl, {
         method: 'POST',
@@ -458,38 +512,61 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
         }),
       });
 
-      console.log('Extraction response status:', response.status);
+      logger.info('Extraction API response received', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        fileName,
+        page: 'ReceiptsPage',
+        operation: 'extraction_api_response'
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Edge function returned error:', response.status, errorText);
-        logger.error('Edge function error during single receipt extraction', new Error(`HTTP ${response.status}`), {
+        logger.error('Edge function returned error status', new Error(`HTTP ${response.status}`), {
           status: response.status,
+          statusText: response.statusText,
           errorText,
           fileName,
           page: 'ReceiptsPage',
-          operation: 'single_receipt_extraction'
+          operation: 'extraction_api_error'
         });
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
       const result = await response.json();
-      console.log('Extraction result:', result);
 
-      logger.info('Single receipt extraction completed', {
+      logger.info('Extraction result parsed', {
         success: result.success,
+        hasData: !!result.data,
         vendor: result.data?.vendor_name,
         amount: result.data?.total_amount,
+        category: result.data?.category,
         fileName,
-        page: 'ReceiptsPage'
+        page: 'ReceiptsPage',
+        operation: 'extraction_result_parsed'
       });
 
       if (!result.success) {
-        console.error('Extraction failed:', result.error);
+        logger.error('Extraction failed (success=false)', new Error(result.error || 'Extraction failed'), {
+          resultError: result.error,
+          fileName,
+          page: 'ReceiptsPage',
+          operation: 'extraction_failed'
+        });
         throw new Error(result.error || 'Extraction failed');
       }
 
-      console.log('Setting verify receipt modal with data:', result.data);
+      logger.info('Opening verification modal with extracted data', {
+        vendor: result.data?.vendor_name,
+        amount: result.data?.total_amount,
+        category: result.data?.category,
+        transactionDate: result.data?.transaction_date,
+        fileName,
+        page: 'ReceiptsPage',
+        operation: 'show_verification_modal'
+      });
+
       setVerifyReceipt({
         filePath: fileName,
         thumbnailPath: thumbnailName,
@@ -503,21 +580,40 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('Receipt upload/extraction failed:', error);
-      logger.error('Upload/extraction error', error as Error, {
+      logger.error('Receipt upload/extraction failed', error as Error, {
         errorMessage,
+        errorType: error instanceof Error ? error.constructor.name : typeof error,
         collectionId: selectedCollection,
         fileName,
         thumbnailName,
         page: 'ReceiptsPage',
-        operation: 'single_receipt_upload'
+        operation: 'single_receipt_upload_failed'
       });
 
       // Clean up uploaded files on error
+      logger.info('Attempting to clean up uploaded files', {
+        fileName,
+        thumbnailName,
+        page: 'ReceiptsPage',
+        operation: 'cleanup_files_start'
+      });
+
       try {
         await supabase.storage.from('receipts').remove([fileName, thumbnailName]);
+        logger.info('Successfully cleaned up files after error', {
+          fileName,
+          thumbnailName,
+          page: 'ReceiptsPage',
+          operation: 'cleanup_files_success'
+        });
       } catch (cleanupError) {
-        console.error('Failed to clean up files:', cleanupError);
+        logger.error('Failed to clean up files', cleanupError as Error, {
+          fileName,
+          thumbnailName,
+          cleanupErrorMessage: cleanupError instanceof Error ? cleanupError.message : 'Unknown',
+          page: 'ReceiptsPage',
+          operation: 'cleanup_files_failed'
+        });
       }
 
       alert(`Failed to process receipt: ${errorMessage}\n\nPlease check your internet connection and try again. If the problem persists, the OpenAI API key may not be configured.`);

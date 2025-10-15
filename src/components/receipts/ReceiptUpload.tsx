@@ -32,6 +32,10 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
 
   useEffect(() => {
     if (autoTriggerPhoto && photoInputRef.current) {
+      logger.info('Auto-triggering photo capture', {
+        component: 'ReceiptUpload',
+        operation: 'auto_trigger_camera'
+      });
       photoInputRef.current.click();
     }
   }, [autoTriggerPhoto]);
@@ -39,12 +43,29 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
+      logger.info('User selected file from camera/upload', {
+        fileName: selectedFile.name,
+        fileSize: selectedFile.size,
+        fileType: selectedFile.type,
+        component: 'ReceiptUpload',
+        operation: 'file_selected'
+      });
       if (selectedFile.type === 'application/pdf') {
         setOptimizing(true);
+        logger.info('PDF file detected, starting conversion', {
+          fileName: selectedFile.name,
+          fileSize: selectedFile.size,
+          component: 'ReceiptUpload',
+          operation: 'pdf_conversion_start'
+        });
         try {
-          console.log('PDF file detected, starting conversion:', selectedFile.name);
           const pages = await convertPdfToImages(selectedFile);
-          console.log('PDF conversion successful, pages:', pages.length);
+          logger.info('PDF conversion successful', {
+            fileName: selectedFile.name,
+            pageCount: pages.length,
+            component: 'ReceiptUpload',
+            operation: 'pdf_conversion_success'
+          });
 
           if (pages.length === 1) {
             const imageFile = new File([pages[0].blob], selectedFile.name.replace('.pdf', '.jpg'), { type: 'image/jpeg' });
@@ -98,8 +119,24 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
       }
 
       setOptimizing(true);
+      logger.info('Starting image optimization', {
+        fileName: selectedFile.name,
+        fileSize: selectedFile.size,
+        fileType: selectedFile.type,
+        component: 'ReceiptUpload',
+        operation: 'image_optimization_start'
+      });
       try {
         const optimized = await optimizeImage(selectedFile);
+
+        logger.info('Image optimization completed', {
+          fileName: selectedFile.name,
+          originalSize: selectedFile.size,
+          optimizedSize: optimized.full.size,
+          thumbnailSize: optimized.thumbnail.size,
+          component: 'ReceiptUpload',
+          operation: 'image_optimization_success'
+        });
 
         setFile(optimized.full);
         setThumbnail(optimized.thumbnail);
@@ -222,13 +259,27 @@ export function ReceiptUpload({ onUpload, onMultiPageUpload, onClose, autoTrigge
     e.preventDefault();
     if (!file || !thumbnail) return;
 
+    logger.info('User clicked Upload & Extract Data button', {
+      fileName: file.name,
+      fileSize: file.size,
+      thumbnailSize: thumbnail.size,
+      component: 'ReceiptUpload',
+      operation: 'submit_upload_button_clicked'
+    });
+
     setLoading(true);
     try {
       await onUpload(file, thumbnail);
+      logger.info('Upload handler completed successfully', {
+        fileName: file.name,
+        component: 'ReceiptUpload',
+        operation: 'upload_handler_success'
+      });
       onClose();
     } catch (error) {
       logger.error('Single file upload error', error as Error, {
         fileName: file?.name,
+        errorMessage: error instanceof Error ? error.message : 'Unknown',
         component: 'ReceiptUpload',
         operation: 'single_file_upload'
       });
