@@ -171,6 +171,7 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
         .select('*', { count: 'exact', head: true })
         .eq('collection_id', selectedCollection)
         .eq('extraction_status', 'completed')
+        .is('deleted_at', null)
         .or('is_parent.eq.true,parent_receipt_id.is.null');
 
       const { data, error } = await supabase
@@ -178,6 +179,7 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
         .select('*')
         .eq('collection_id', selectedCollection)
         .eq('extraction_status', 'completed')
+        .is('deleted_at', null)
         .or('is_parent.eq.true,parent_receipt_id.is.null')
         .order('created_at', { ascending: false })
         .range(startIndex, endIndex);

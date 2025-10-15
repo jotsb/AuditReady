@@ -43,6 +43,7 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
         .from('receipts')
         .select('*')
         .eq('id', receiptId)
+        .is('deleted_at', null)
         .maybeSingle();
 
       if (error) throw error;

@@ -43,6 +43,7 @@ export function YearEndSummaryReport() {
         .from('receipts')
         .select('*, collections(name, businesses(name))')
         .is('parent_receipt_id', null)
+        .is('deleted_at', null)
         .gte('transaction_date', `${year}-01-01`)
         .lte('transaction_date', `${year}-12-31`);
 

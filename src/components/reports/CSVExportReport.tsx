@@ -101,7 +101,8 @@ export function CSVExportReport() {
       let query = supabase
         .from('receipts')
         .select('*, collections!inner(id, name, business_id, businesses(name))')
-        .is('parent_receipt_id', null);
+        .is('parent_receipt_id', null)
+        .is('deleted_at', null);
 
       if (selectedCollection !== 'all') {
         query = query.eq('collection_id', selectedCollection);
