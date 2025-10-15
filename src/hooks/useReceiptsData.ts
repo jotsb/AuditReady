@@ -97,17 +97,38 @@ export function useReceiptsData(selectedCollection: string) {
         .from('receipts')
         .select('*', { count: 'exact' })
         .eq('collection_id', selectedCollection)
+        .eq('extraction_status', 'completed')
+        .is('deleted_at', null)
+        .or('is_parent.eq.true,parent_receipt_id.is.null')
         .order('created_at', { ascending: false })
         .range(start, end);
 
       if (receiptsError) throw receiptsError;
 
-      setReceipts(receiptsData || []);
+      const receiptsWithThumbnails = await Promise.all((receiptsData || []).map(async (receipt) => {
+        if (receipt.is_parent && receipt.total_pages > 1 && !receipt.thumbnail_path) {
+          const { data: firstPage } = await supabase
+            .from('receipts')
+            .select('thumbnail_path, file_path')
+            .eq('parent_receipt_id', receipt.id)
+            .eq('page_number', 1)
+            .single();
+
+          return {
+            ...receipt,
+            thumbnail_path: firstPage?.thumbnail_path || null,
+            file_path: firstPage?.file_path || receipt.file_path
+          };
+        }
+        return receipt;
+      }));
+
+      setReceipts(receiptsWithThumbnails);
       setTotalCount(count || 0);
 
-      logDataLoad(receiptsData?.length || 0);
+      logDataLoad(receiptsWithThumbnails.length);
       logger.info('Receipts loaded', {
-        count: receiptsData?.length || 0,
+        count: receiptsWithThumbnails.length,
         page,
         total: count || 0
       });
