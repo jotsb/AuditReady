@@ -408,7 +408,31 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
   };
 
   const handleUpload = async (file: File, thumbnail: File) => {
-    if (!user || !selectedCollection) return;
+    logger.info('handleUpload called', {
+      hasUser: !!user,
+      userId: user?.id,
+      selectedCollection,
+      hasSelectedCollection: !!selectedCollection,
+      collectionsCount: collections.length,
+      fileName: file.name,
+      page: 'ReceiptsPage',
+      operation: 'handle_upload_entry'
+    });
+
+    if (!user || !selectedCollection) {
+      logger.error('handleUpload aborted - missing required data', new Error('Missing user or selectedCollection'), {
+        hasUser: !!user,
+        userId: user?.id,
+        selectedCollection,
+        hasSelectedCollection: !!selectedCollection,
+        collectionsCount: collections.length,
+        fileName: file.name,
+        page: 'ReceiptsPage',
+        operation: 'handle_upload_aborted'
+      });
+      alert('Cannot upload receipt: No collection selected. Please select a collection and try again.');
+      return;
+    }
 
     // Get collection and business info for logging
     const currentCollection = collections.find(c => c.id === selectedCollection);
