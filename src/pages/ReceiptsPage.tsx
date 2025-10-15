@@ -54,20 +54,57 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
   usePageTracking('Receipts', { section: 'receipts' });
 
   useEffect(() => {
+    logger.info('ReceiptsPage mounting - loading collections', {
+      page: 'ReceiptsPage',
+      operation: 'component_mount'
+    });
+
     loadCollections().then(() => {
+      logger.info('Collections loaded', {
+        collectionsCount: collections.length,
+        currentSelectedCollection: selectedCollection,
+        firstCollectionId: collections.length > 0 ? collections[0].id : null,
+        page: 'ReceiptsPage',
+        operation: 'collections_loaded'
+      });
+
       if (collections.length > 0 && !selectedCollection) {
+        logger.info('Auto-selecting first collection', {
+          collectionId: collections[0].id,
+          collectionName: collections[0].name,
+          page: 'ReceiptsPage',
+          operation: 'auto_select_collection'
+        });
         setSelectedCollection(collections[0].id);
       }
     });
   }, []);
 
   useEffect(() => {
+    logger.info('selectedCollection changed', {
+      selectedCollection,
+      hasSelectedCollection: !!selectedCollection,
+      currentPage,
+      collectionsCount: collections.length,
+      page: 'ReceiptsPage',
+      operation: 'selected_collection_changed'
+    });
+
     if (selectedCollection) {
       loadReceipts(currentPage, itemsPerPage);
     }
   }, [selectedCollection, currentPage]);
 
   useEffect(() => {
+    logger.info('quickCaptureAction changed', {
+      quickCaptureAction,
+      selectedCollection,
+      hasSelectedCollection: !!selectedCollection,
+      collectionsCount: collections.length,
+      page: 'ReceiptsPage',
+      operation: 'quick_capture_action_changed'
+    });
+
     if (quickCaptureAction === 'photo') {
       setShowUpload(true);
       setShowManualEntry(false);
