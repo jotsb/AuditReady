@@ -4,6 +4,118 @@
 
 ---
 
+## 📦 Version 0.8.6 - "Mobile Camera Upload Fixes" (2025-10-15)
+
+### 🐛 Critical Bug Fixes
+
+#### **Mobile Camera Upload Now Works** ✅
+Fixed two critical bugs preventing mobile camera uploads from working properly.
+
+**Issues Resolved:**
+1. ❌ **Bug #1:** Camera button clicked but nothing happened
+2. ❌ **Bug #2:** Buttons stopped working after first use (cancel or complete)
+
+**Root Causes Identified:**
+- **Issue #1:** React state timing bug - collections were loading but state wasn't ready when needed
+- **Issue #2:** Modal state not resetting - `quickCaptureAction` remained set after modal close
+
+### 🔧 Technical Changes
+
+#### **Fix #1: React State Timing (ReceiptsPage.tsx)**
+**Problem:**
+```typescript
+// OLD CODE - BROKEN
+loadCollections().then(() => {
+  // Bug: Reading stale 'collections' from closure
+  if (collections.length > 0) {
+    setSelectedCollection(collections[0].id);
+  }
+});
+```
+
+**Solution:**
+```typescript
+// NEW CODE - FIXED
+useEffect(() => {
+  loadCollections(); // Trigger load
+}, []);
+
+useEffect(() => {
+  // Separate effect watches for collections state changes
+  if (collections.length > 0 && !selectedCollection) {
+    setSelectedCollection(collections[0].id);
+  }
+}, [collections]); // React to state updates
+```
+
+**Why This Works:**
+- Separated load trigger from state reaction
+- `useEffect` with `[collections]` dependency runs when state actually updates
+- No more stale closures reading old empty arrays
+
+#### **Fix #2: Modal State Reset (App.tsx + ReceiptsPage.tsx)**
+**Problem:**
+```typescript
+// OLD CODE - BROKEN
+// quickCaptureAction set to 'photo' when FAB clicked
+setQuickCaptureAction('photo');
+
+// Modal closes but quickCaptureAction still 'photo'
+// Clicking again does nothing (no state change = no re-render)
+```
+
+**Solution:**
+```typescript
+// NEW CODE - FIXED
+// App.tsx - Pass reset callback
+<ReceiptsPage
+  quickCaptureAction={quickCaptureAction}
+  onQuickCaptureComplete={() => setQuickCaptureAction(null)}
+/>
+
+// ReceiptsPage.tsx - Call on modal close
+onClose={() => {
+  setShowUpload(false);
+  setAutoTriggerPhoto(false);
+  onQuickCaptureComplete?.(); // Reset parent state
+}}
+```
+
+**Why This Works:**
+- Resets `quickCaptureAction` to `null` when modal closes
+- Next click triggers state change: `null` → `'photo'`
+- State change triggers `useEffect` → modal opens again
+
+### 📱 Files Changed
+- `src/pages/ReceiptsPage.tsx` - Fixed collection loading and modal reset
+- `src/App.tsx` - Added reset callback for quick capture actions
+
+### 🧪 Testing
+**Before Fix:**
+- ❌ Click "Take Photo" → Nothing happens
+- ❌ Click "Take Photo" → Cancel → Click again → Nothing happens
+- ❌ Click "Upload Receipt" → Cancel → Click again → Nothing happens
+
+**After Fix:**
+- ✅ Click "Take Photo" → Camera opens
+- ✅ Click "Take Photo" → Cancel → Click again → Camera opens again
+- ✅ Click "Upload Receipt" → Cancel → Click again → Upload dialog opens again
+- ✅ Can alternate between photo/upload/manual entry without issues
+
+### 📊 Impact Summary
+- **Mobile UX**: Broken → **Fully Functional** ✅
+- **User Flow**: Blocked → **Seamless** ✅
+- **Bundle Size**: 457.10 KB gzipped (unchanged)
+- **Build Time**: 12.94s
+
+### 🎯 User Experience Improvements
+- Mobile camera capture now works on first load
+- Quick capture buttons are now reusable (no more "stuck" buttons)
+- Users can cancel and retry without page refresh
+- Collection auto-selection is reliable
+
+---
+
 ## 📦 Version 0.8.5 - "System Configuration - Fully Functional" (2025-10-14)
 
 ### 🎯 Major Features
