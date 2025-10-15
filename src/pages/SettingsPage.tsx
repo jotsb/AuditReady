@@ -8,6 +8,7 @@ import { MFAManagement } from '../components/settings/MFAManagement';
 import { DeletedReceiptsManagement } from '../components/admin/DeletedReceiptsManagement';
 import { usePageTracking } from '../hooks/usePageTracking';
 import { actionTracker } from '../lib/actionTracker';
+import { captureException, captureMessage } from '../lib/sentry';
 
 type SettingsTab = 'profile' | '2fa' | 'business' | 'businesses' | 'categories' | 'theme' | 'notifications' | 'deleted-receipts';
 
@@ -148,6 +149,49 @@ export function SettingsPage() {
               <p className="text-sm text-slate-600 dark:text-gray-400 mb-4">
                 Configure email and in-app notification preferences
               </p>
+
+              <div className="mt-8 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                <h4 className="text-sm font-semibold text-yellow-800 dark:text-yellow-300 mb-2">
+                  Test Sentry Error Tracking
+                </h4>
+                <p className="text-xs text-yellow-700 dark:text-yellow-400 mb-3">
+                  Click these buttons to test if Sentry is receiving errors. Check your Sentry dashboard after clicking.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      captureMessage('Test message from Settings page', 'info', {
+                        test: true,
+                        timestamp: new Date().toISOString()
+                      });
+                      alert('Test message sent! Check your Sentry dashboard in ~30 seconds.');
+                    }}
+                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                  >
+                    Send Test Message
+                  </button>
+                  <button
+                    onClick={() => {
+                      try {
+                        throw new Error('Test error from Settings page - this is intentional!');
+                      } catch (error) {
+                        captureException(error as Error, {
+                          test: true,
+                          location: 'SettingsPage',
+                          timestamp: new Date().toISOString()
+                        });
+                        alert('Test error sent! Check your Sentry dashboard in ~30 seconds.');
+                      }
+                    }}
+                    className="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition"
+                  >
+                    Send Test Error
+                  </button>
+                </div>
+                <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-2">
+                  Remove these buttons once you've verified Sentry is working.
+                </p>
+              </div>
               <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                 <p className="text-sm text-blue-800 dark:text-blue-300">
                   Notification preferences will be implemented in the next phase.
