@@ -25,9 +25,10 @@ import * as receiptService from '../services/receiptService';
 
 interface ReceiptsPageProps {
   quickCaptureAction?: 'photo' | 'upload' | 'manual' | null;
+  onQuickCaptureComplete?: () => void;
 }
 
-export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
+export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: ReceiptsPageProps) {
   const { user } = useAuth();
   const logger = useLogger();
 
@@ -1545,6 +1546,7 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
           onClose={() => {
             setShowUpload(false);
             setAutoTriggerPhoto(false);
+            onQuickCaptureComplete?.();
           }}
           autoTriggerPhoto={autoTriggerPhoto}
         />
@@ -1553,7 +1555,10 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
       {showMultiPageCamera && !extracting && (
         <MultiPageCameraCapture
           onComplete={handleMultiPageCameraComplete}
-          onCancel={() => setShowMultiPageCamera(false)}
+          onCancel={() => {
+            setShowMultiPageCamera(false);
+            onQuickCaptureComplete?.();
+          }}
         />
       )}
 
@@ -1568,7 +1573,13 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
       )}
 
       {showManualEntry && (
-        <ManualEntryForm onSubmit={handleManualEntry} onClose={() => setShowManualEntry(false)} />
+        <ManualEntryForm
+          onSubmit={handleManualEntry}
+          onClose={() => {
+            setShowManualEntry(false);
+            onQuickCaptureComplete?.();
+          }}
+        />
       )}
 
       {verifyReceipt && (

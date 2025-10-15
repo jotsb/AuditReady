@@ -161,7 +161,10 @@ function AppContent() {
       case 'dashboard':
         return <DashboardPage onViewReceipt={(id) => handleNavigate('receipt-details', id)} />;
       case 'receipts':
-        return <ReceiptsPage quickCaptureAction={quickCaptureAction} />;
+        return <ReceiptsPage
+          quickCaptureAction={quickCaptureAction}
+          onQuickCaptureComplete={() => setQuickCaptureAction(null)}
+        />;
       case 'receipt-details':
         return selectedReceiptId ? (
           <ReceiptDetailsPage
