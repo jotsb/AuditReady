@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Loader2, Eye, CreditCard as Edit2, CheckSquare, Square, Camera } from 'lucide-react';
+import { Plus, Loader2, Eye, CreditCard as Edit2, CheckSquare, Square, Camera, Calendar, DollarSign, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { ReceiptUpload } from '../components/receipts/ReceiptUpload';
