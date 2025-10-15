@@ -14,20 +14,9 @@ interface BusinessStorage {
   last_storage_check?: string;
 }
 
-interface LargestReceipt {
-  id: string;
-  vendor_name: string | null;
-  file_path: string;
-  file_size: number;
-  business_name: string;
-  collection_name: string;
-  created_at: string;
-}
-
 export function StorageManagement() {
   const logger = useLogger();
   const [businesses, setBusinesses] = useState<BusinessStorage[]>([]);
-  const [largestReceipts, setLargestReceipts] = useState<LargestReceipt[]>([]);
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,7 +26,6 @@ export function StorageManagement() {
 
   useEffect(() => {
     loadStorageData();
-    loadLargestReceipts();
   }, []);
 
   const loadStorageData = async () => {
@@ -87,73 +75,6 @@ export function StorageManagement() {
     }
   };
 
-  const loadLargestReceipts = async () => {
-    try {
-      const { data: receipts, error: receiptsError } = await supabase
-        .from('receipts')
-        .select('id, vendor_name, file_path, collection_id, created_at')
-        .not('file_path', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(1000);
-
-      if (receiptsError) throw receiptsError;
-      if (!receipts || receipts.length === 0) return;
-
-      const filePaths = receipts.map(r => {
-        const path = r.file_path;
-        return path?.startsWith('receipts/') ? path : `receipts/${path}`;
-      });
-
-      const { data: storageObjects, error: storageError } = await supabase
-        .from('storage.objects')
-        .select('name, metadata')
-        .eq('bucket_id', 'receipts')
-        .in('name', filePaths);
-
-      if (storageError) {
-        logger.warn('Could not load storage objects', { error: storageError });
-        return;
-      }
-
-      const receiptSizes = new Map(
-        (storageObjects || []).map(obj => [
-          obj.name,
-          parseInt((obj.metadata as any)?.size || '0'),
-        ])
-      );
-
-      const receiptsWithSizes = await Promise.all(
-        receipts.map(async (receipt) => {
-          const path = receipt.file_path?.startsWith('receipts/')
-            ? receipt.file_path
-            : `receipts/${receipt.file_path}`;
-          const fileSize = receiptSizes.get(path) || 0;
-
-          const { data: collection } = await supabase
-            .from('collections')
-            .select('name, business_id, businesses(name)')
-            .eq('id', receipt.collection_id)
-            .single();
-
-          return {
-            ...receipt,
-            file_size: fileSize,
-            business_name: (collection?.businesses as any)?.name || 'Unknown',
-            collection_name: collection?.name || 'Unknown',
-          };
-        })
-      );
-
-      const sorted = receiptsWithSizes
-        .filter(r => r.file_size > 0)
-        .sort((a, b) => b.file_size - a.file_size)
-        .slice(0, 20);
-
-      setLargestReceipts(sorted);
-    } catch (error) {
-      logger.error('Failed to load largest receipts', error as Error);
-    }
-  };
 
   const handleRecalculate = async (businessId: string) => {
     try {
@@ -404,72 +325,6 @@ export function StorageManagement() {
         </div>
       </div>
 
-      {/* Largest Receipts */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-gray-700">
-          <h2 className="text-xl font-bold text-slate-800 dark:text-white">Largest Receipts</h2>
-          <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">Top 20 largest receipt files in storage</p>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50 dark:bg-gray-700 border-b border-slate-200 dark:border-gray-600">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
-                  Vendor
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
-                  Business
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
-                  Collection
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
-                  File Size
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
-                  Created
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-gray-700">
-              {largestReceipts.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">
-                    No receipt data available
-                  </td>
-                </tr>
-              ) : (
-                largestReceipts.map((receipt) => (
-                  <tr key={receipt.id} className="hover:bg-slate-50 dark:hover:bg-gray-700">
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-slate-900 dark:text-white">
-                        {receipt.vendor_name || 'Unknown Vendor'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-slate-600 dark:text-gray-400">{receipt.business_name}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-slate-600 dark:text-gray-400">{receipt.collection_name}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-slate-900 dark:text-white">
-                        {formatBytes(receipt.file_size)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-slate-600 dark:text-gray-400">
-                        {new Date(receipt.created_at).toLocaleDateString()}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
   );
 }
