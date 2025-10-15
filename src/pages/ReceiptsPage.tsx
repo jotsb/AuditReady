@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Upload, CreditCard as Edit, Search, Filter, Calendar, DollarSign, Trash2, Loader2, Eye, CreditCard as Edit2, CheckSquare, Square, Mail, Camera } from 'lucide-react';
+import { Plus, Loader2, Eye, CreditCard as Edit2, CheckSquare, Square, Camera } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { ReceiptUpload } from '../components/receipts/ReceiptUpload';
@@ -12,37 +12,15 @@ import { BulkActionToolbar } from '../components/receipts/BulkActionToolbar';
 import { BulkCategoryModal } from '../components/receipts/BulkCategoryModal';
 import { BulkMoveModal } from '../components/receipts/BulkMoveModal';
 import { AdvancedFilterPanel } from '../components/receipts/AdvancedFilterPanel';
+import { ReceiptsHeader } from '../components/receipts/ReceiptsHeader';
 import { ReceiptThumbnail } from '../components/shared/ReceiptThumbnail';
-import { convertLocalDateToUTC } from '../lib/dateUtils';
-import { usePageTracking, useDataLoadTracking } from '../hooks/usePageTracking';
+import { useReceiptsData, type Receipt } from '../hooks/useReceiptsData';
+import { useReceiptFilters } from '../hooks/useReceiptFilters';
+import { useReceiptSelection } from '../hooks/useReceiptSelection';
+import { usePageTracking } from '../hooks/usePageTracking';
 import { actionTracker } from '../lib/actionTracker';
 import { useLogger } from '../hooks/useLogger';
-
-interface Receipt {
-  id: string;
-  collection_id: string;
-  vendor_name: string | null;
-  vendor_address: string | null;
-  transaction_date: string | null;
-  subtotal: number | null;
-  gst_amount: number;
-  pst_amount: number;
-  total_amount: number;
-  category: string | null;
-  payment_method: string | null;
-  notes: string | null;
-  extraction_status: string | null;
-  extracted_data: any | null;
-  file_path: string | null;
-  thumbnail_path: string | null;
-  source: string | null;
-  is_edited: boolean;
-  created_at: string;
-  parent_receipt_id: string | null;
-  page_number: number;
-  is_parent: boolean;
-  total_pages: number;
-}
+import * as receiptService from '../services/receiptService';
 
 interface ReceiptsPageProps {
   quickCaptureAction?: 'photo' | 'upload' | 'manual' | null;
@@ -51,62 +29,42 @@ interface ReceiptsPageProps {
 export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
   const { user } = useAuth();
   const logger = useLogger();
-  const [receipts, setReceipts] = useState<Receipt[]>([]);
-  const [collections, setCollections] = useState<any[]>([]);
-  const [businesses, setBusinesses] = useState<any[]>([]);
+
   const [selectedCollection, setSelectedCollection] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
+  const { receipts, collections, businesses, loading, totalCount, loadCollections, loadReceipts, reloadReceipts, setReceipts } = useReceiptsData(selectedCollection);
+  const { searchQuery, filterCategory, advancedFilters, filteredReceipts, handleSearchChange, handleCategoryFilterChange, setAdvancedFilters, clearAdvancedFilters } = useReceiptFilters(receipts);
+  const { selectedReceipts, isSelectMode, selectAll, toggleSelectMode, toggleReceiptSelection, toggleSelectAll, clearSelection } = useReceiptSelection(filteredReceipts);
+
   const [showUpload, setShowUpload] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [showMultiPageCamera, setShowMultiPageCamera] = useState(false);
   const [autoTriggerPhoto, setAutoTriggerPhoto] = useState(false);
   const [verifyReceipt, setVerifyReceipt] = useState<{filePath: string, thumbnailPath: string, data: any} | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterCategory, setFilterCategory] = useState('');
-  const [loading, setLoading] = useState(true);
   const [extracting, setExtracting] = useState(false);
   const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
   const [editingReceipt, setEditingReceipt] = useState<Receipt | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const itemsPerPage = 20;
-
-  // Bulk selection state
-  const [selectedReceipts, setSelectedReceipts] = useState<Set<string>>(new Set());
-  const [isSelectMode, setIsSelectMode] = useState(false);
-  const [selectAll, setSelectAll] = useState(false);
   const [showBulkCategoryModal, setShowBulkCategoryModal] = useState(false);
   const [showBulkMoveModal, setShowBulkMoveModal] = useState(false);
-
-  // Advanced filters
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [advancedFilters, setAdvancedFilters] = useState({
-    dateFrom: '',
-    dateTo: '',
-    amountMin: '',
-    amountMax: '',
-    paymentMethod: '',
-    categories: [] as string[],
-  });
 
   usePageTracking('Receipts', { section: 'receipts' });
-  const logDataLoad = useDataLoadTracking('receipts');
 
   useEffect(() => {
-    loadCollections();
+    loadCollections().then(() => {
+      if (collections.length > 0 && !selectedCollection) {
+        setSelectedCollection(collections[0].id);
+      }
+    });
   }, []);
 
   useEffect(() => {
     if (selectedCollection) {
-      setCurrentPage(1);
-      loadReceipts();
+      loadReceipts(currentPage, itemsPerPage);
     }
-  }, [selectedCollection]);
-
-  useEffect(() => {
-    if (selectedCollection) {
-      loadReceipts();
-    }
-  }, [currentPage]);
+  }, [selectedCollection, currentPage]);
 
   useEffect(() => {
     if (quickCaptureAction === 'photo') {
@@ -123,99 +81,6 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
       setAutoTriggerPhoto(false);
     }
   }, [quickCaptureAction]);
-
-
-  const loadCollections = async () => {
-    try {
-      const [collectionsResult, businessesResult] = await Promise.all([
-        supabase
-          .from('collections')
-          .select('*, businesses(name)')
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('businesses')
-          .select('id, name')
-      ]);
-
-      if (!collectionsResult.error && collectionsResult.data && collectionsResult.data.length > 0) {
-        setCollections(collectionsResult.data);
-        setSelectedCollection(collectionsResult.data[0].id);
-      } else {
-        setCollections([]);
-      }
-
-      if (!businessesResult.error && businessesResult.data) {
-        setBusinesses(businessesResult.data);
-      } else {
-        setBusinesses([]);
-      }
-    } catch (error) {
-      logger.error('Error loading collections', error as Error, {
-        page: 'ReceiptsPage',
-        operation: 'load_collections'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadReceipts = async () => {
-    if (!selectedCollection) return;
-
-    try {
-      const startIndex = (currentPage - 1) * itemsPerPage;
-      const endIndex = startIndex + itemsPerPage - 1;
-
-      const { count } = await supabase
-        .from('receipts')
-        .select('*', { count: 'exact', head: true })
-        .eq('collection_id', selectedCollection)
-        .eq('extraction_status', 'completed')
-        .is('deleted_at', null)
-        .or('is_parent.eq.true,parent_receipt_id.is.null');
-
-      const { data, error } = await supabase
-        .from('receipts')
-        .select('*')
-        .eq('collection_id', selectedCollection)
-        .eq('extraction_status', 'completed')
-        .is('deleted_at', null)
-        .or('is_parent.eq.true,parent_receipt_id.is.null')
-        .order('created_at', { ascending: false })
-        .range(startIndex, endIndex);
-
-      if (error) throw error;
-
-      const receiptsWithThumbnails = await Promise.all((data || []).map(async (receipt) => {
-        if (receipt.is_parent && receipt.total_pages > 1 && !receipt.thumbnail_path) {
-          const { data: firstPage } = await supabase
-            .from('receipts')
-            .select('thumbnail_path, file_path')
-            .eq('parent_receipt_id', receipt.id)
-            .eq('page_number', 1)
-            .single();
-
-          return {
-            ...receipt,
-            thumbnail_path: firstPage?.thumbnail_path || null,
-            file_path: firstPage?.file_path || receipt.file_path
-          };
-        }
-        return receipt;
-      }));
-
-      setReceipts(receiptsWithThumbnails);
-      setTotalCount(count || 0);
-      logDataLoad(receiptsWithThumbnails.length, { collectionId: selectedCollection, page: currentPage });
-    } catch (error) {
-      logger.error('Error loading receipts', error as Error, {
-        collectionId: selectedCollection,
-        page: currentPage,
-        pageLocation: 'ReceiptsPage',
-        operation: 'load_receipts'
-      });
-    }
-  };
 
   const handleMultiPageUpload = async (files: Array<{ file: File; thumbnail: File }>) => {
     if (!user || !selectedCollection || files.length === 0) return;
@@ -661,6 +526,7 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
 
   const handleDelete = async (receiptId: string, filePath: string | null) => {
     if (!confirm('Are you sure you want to delete this receipt?')) return;
+    if (!user) return;
 
     const receipt = receipts.find(r => r.id === receiptId);
     actionTracker.itemDeleted('receipt', receiptId, {
@@ -670,16 +536,7 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
     });
 
     try {
-      const { error } = await supabase
-        .from('receipts')
-        .update({
-          deleted_at: new Date().toISOString(),
-          deleted_by: user?.id
-        })
-        .eq('id', receiptId);
-
-      if (error) throw error;
-
+      await receiptService.deleteReceipt(receiptId, user.id);
       setReceipts(receipts.filter(r => r.id !== receiptId));
     } catch (error) {
       logger.error('Failed to delete receipt', error as Error, {
@@ -694,60 +551,29 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
   const handleConfirmExtraction = async (filePath: string, thumbnailPath: string, data: any) => {
     if (!user || !selectedCollection) return;
 
-    const transactionDateUTC = data.transaction_date
-      ? convertLocalDateToUTC(data.transaction_date)
-      : null;
-
-    const { error } = await supabase
-      .from('receipts')
-      .insert({
-        collection_id: selectedCollection,
-        uploaded_by: user.id,
-        file_path: filePath,
-        thumbnail_path: thumbnailPath,
-        file_type: 'image',
-        vendor_name: data.vendor_name,
-        vendor_address: data.vendor_address,
-        transaction_date: transactionDateUTC,
-        total_amount: parseFloat(data.total_amount || 0),
-        subtotal: data.subtotal ? parseFloat(data.subtotal) : null,
-        gst_amount: data.gst_amount ? parseFloat(data.gst_amount) : null,
-        pst_amount: data.pst_amount ? parseFloat(data.pst_amount) : null,
-        category: data.category,
-        payment_method: data.payment_method,
-        extraction_status: 'completed',
-        extraction_data: {
-          transaction_time: data.transaction_time,
-          gst_percent: data.gst_percent,
-          pst_percent: data.pst_percent,
-          card_last_digits: data.card_last_digits,
-          customer_name: data.customer_name,
-        },
-      });
-
-    if (error) throw error;
-
-    setVerifyReceipt(null);
-    await loadReceipts();
-  };
-
-  const handleCancelExtraction = async (filePath: string) => {
-    await supabase.storage.from('receipts').remove([filePath]);
-    setVerifyReceipt(null);
-  };
-
-  const handleSearchChange = (query: string) => {
-    setSearchQuery(query);
-    setCurrentPage(1);
-    if (query.length >= 3) {
-      actionTracker.searchPerformed(query, filteredReceipts.length, { context: 'receipts' });
+    try {
+      await receiptService.createReceipt(selectedCollection, user.id, filePath, thumbnailPath, data);
+      setVerifyReceipt(null);
+      await reloadReceipts();
+    } catch (error) {
+      logger.error('Failed to save receipt', error as Error);
+      alert('Failed to save receipt');
     }
   };
 
-  const handleCategoryFilterChange = (category: string) => {
-    setFilterCategory(category);
+  const handleCancelExtraction = async (filePath: string) => {
+    await receiptService.deleteStorageFile(filePath);
+    setVerifyReceipt(null);
+  };
+
+  const handleSearchChangeWithReset = (query: string) => {
+    handleSearchChange(query);
     setCurrentPage(1);
-    actionTracker.filterApplied('category', category, { context: 'receipts' });
+  };
+
+  const handleCategoryFilterChangeWithReset = (category: string) => {
+    handleCategoryFilterChange(category);
+    setCurrentPage(1);
   };
 
   const handleCollectionChange = (collectionId: string) => {
@@ -780,33 +606,6 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
     setSelectedReceiptId(receiptId);
   };
 
-  // Bulk selection handlers
-  const toggleSelectMode = () => {
-    setIsSelectMode(!isSelectMode);
-    setSelectedReceipts(new Set());
-    setSelectAll(false);
-  };
-
-  const toggleReceiptSelection = (receiptId: string) => {
-    const newSelected = new Set(selectedReceipts);
-    if (newSelected.has(receiptId)) {
-      newSelected.delete(receiptId);
-    } else {
-      newSelected.add(receiptId);
-    }
-    setSelectedReceipts(newSelected);
-    setSelectAll(newSelected.size === filteredReceipts.length && filteredReceipts.length > 0);
-  };
-
-  const toggleSelectAll = () => {
-    if (selectAll) {
-      setSelectedReceipts(new Set());
-      setSelectAll(false);
-    } else {
-      setSelectedReceipts(new Set(filteredReceipts.map(r => r.id)));
-      setSelectAll(true);
-    }
-  };
 
   // Bulk operations
   const handleBulkDelete = async () => {
@@ -1233,38 +1032,6 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const filteredReceipts = receipts.filter((receipt) => {
-    // Basic search
-    const matchesSearch =
-      !searchQuery ||
-      receipt.vendor_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      receipt.category?.toLowerCase().includes(searchQuery.toLowerCase());
-
-    // Legacy category filter (keep for backwards compatibility)
-    const matchesCategory = !filterCategory || receipt.category === filterCategory;
-
-    // Advanced filters
-    const matchesDateFrom = !advancedFilters.dateFrom ||
-      (receipt.transaction_date && receipt.transaction_date >= advancedFilters.dateFrom);
-
-    const matchesDateTo = !advancedFilters.dateTo ||
-      (receipt.transaction_date && receipt.transaction_date <= advancedFilters.dateTo);
-
-    const matchesAmountMin = !advancedFilters.amountMin ||
-      receipt.total_amount >= parseFloat(advancedFilters.amountMin);
-
-    const matchesAmountMax = !advancedFilters.amountMax ||
-      receipt.total_amount <= parseFloat(advancedFilters.amountMax);
-
-    const matchesPaymentMethod = !advancedFilters.paymentMethod ||
-      receipt.payment_method === advancedFilters.paymentMethod;
-
-    const matchesCategories = advancedFilters.categories.length === 0 ||
-      (receipt.category && advancedFilters.categories.includes(receipt.category));
-
-    return matchesSearch && matchesCategory && matchesDateFrom && matchesDateTo &&
-           matchesAmountMin && matchesAmountMax && matchesPaymentMethod && matchesCategories;
-  });
 
   if (selectedReceiptId) {
     return (
@@ -1323,94 +1090,21 @@ export function ReceiptsPage({ quickCaptureAction }: ReceiptsPageProps) {
 
   return (
     <div className="space-y-6 pb-32">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
-        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-6">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Collection</label>
-            <select
-              value={selectedCollection}
-              onChange={(e) => handleCollectionChange(e.target.value)}
-              className="w-full md:w-auto px-4 py-2 border border-slate-300 dark:border-gray-600 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            >
-              {collections.map((col) => (
-                <option key={col.id} value={col.id}>
-                  {col.businesses?.name} - {col.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              onClick={toggleSelectMode}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
-                isSelectMode
-                  ? 'bg-slate-200 dark:bg-gray-700 text-slate-700 dark:text-gray-300'
-                  : 'bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-gray-400 hover:bg-slate-200 dark:hover:bg-gray-600'
-              }`}
-            >
-              <CheckSquare size={20} />
-              <span>{isSelectMode ? 'Cancel' : 'Select'}</span>
-            </button>
-            <button
-              onClick={handleUploadClick}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-            >
-              <Upload size={20} />
-              <span>Upload</span>
-            </button>
-            <button
-              onClick={handleManualEntryClick}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition"
-            >
-              <Edit size={20} />
-              <span>Manual Entry</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-gray-500" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Search receipts..."
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          <div className="relative">
-            <Filter size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-gray-500" />
-            <select
-              value={filterCategory}
-              onChange={(e) => handleCategoryFilterChange(e.target.value)}
-              className="w-full md:w-auto pl-10 pr-8 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            >
-              <option value="">All Categories</option>
-              <option value="Meals & Entertainment">Meals & Entertainment</option>
-              <option value="Transportation">Transportation</option>
-              <option value="Office Supplies">Office Supplies</option>
-              <option value="Miscellaneous">Miscellaneous</option>
-            </select>
-          </div>
-
-          <button
-            onClick={() => setShowAdvancedFilters(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-gray-300 rounded-lg hover:bg-slate-200 dark:hover:bg-gray-600 transition"
-          >
-            <Filter size={20} />
-            <span>Advanced</span>
-            {(advancedFilters.dateFrom || advancedFilters.dateTo || advancedFilters.amountMin ||
-              advancedFilters.amountMax || advancedFilters.paymentMethod || advancedFilters.categories.length > 0) && (
-              <span className="ml-1 px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
-                Active
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
+      <ReceiptsHeader
+        collections={collections}
+        selectedCollection={selectedCollection}
+        onCollectionChange={handleCollectionChange}
+        searchQuery={searchQuery}
+        onSearchChange={handleSearchChangeWithReset}
+        filterCategory={filterCategory}
+        onCategoryChange={handleCategoryFilterChangeWithReset}
+        advancedFilters={advancedFilters}
+        onShowAdvancedFilters={() => setShowAdvancedFilters(true)}
+        isSelectMode={isSelectMode}
+        onToggleSelectMode={toggleSelectMode}
+        onUploadClick={handleUploadClick}
+        onManualEntryClick={handleManualEntryClick}
+      />
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700">
         <div className="overflow-x-auto">
