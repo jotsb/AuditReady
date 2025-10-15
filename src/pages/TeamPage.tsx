@@ -109,7 +109,16 @@ export default function TeamPage() {
 
         supabase
           .from('business_members')
-          .select('id, user_id, role, joined_at')
+          .select(`
+            id,
+            user_id,
+            role,
+            joined_at,
+            profiles!inner(
+              full_name,
+              email
+            )
+          `)
           .eq('business_id', memberData.business_id)
           .order('joined_at', { ascending: false })
           .range(membersStartIndex, membersEndIndex),
@@ -140,25 +149,7 @@ export default function TeamPage() {
         throw invitationsResult.error;
       }
 
-      const enrichedMembers = await Promise.all(
-        (membersResult.data || []).map(async (member: any) => {
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('full_name, email')
-            .eq('id', member.user_id)
-            .maybeSingle();
-
-          return {
-            ...member,
-            profiles: {
-              full_name: profileData?.full_name || 'Unknown',
-              email: profileData?.email || 'Unknown'
-            }
-          };
-        })
-      );
-
-      setMembers(enrichedMembers as TeamMember[]);
+      setMembers(membersResult.data as TeamMember[] || []);
       setInvitations(invitationsResult.data || []);
       setTotalMembers(membersCountResult.count || 0);
       setTotalInvites(invitationsCountResult.count || 0);
