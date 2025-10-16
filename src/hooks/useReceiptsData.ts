@@ -145,15 +145,34 @@ export function useReceiptsData(selectedCollection: string) {
 
       if (receiptsError) throw receiptsError;
 
-      const receiptsWithThumbnails = await Promise.all((receiptsData || []).map(async (receipt) => {
-        if (receipt.is_parent && receipt.total_pages > 1 && !receipt.thumbnail_path) {
-          const { data: firstPage } = await supabase
-            .from('receipts')
-            .select('thumbnail_path, file_path')
-            .eq('parent_receipt_id', receipt.id)
-            .eq('page_number', 1)
-            .single();
+      const parentReceiptIds = (receiptsData || [])
+        .filter(r => r.is_parent && r.total_pages > 1 && !r.thumbnail_path)
+        .map(r => r.id);
 
+      let firstPagesMap = new Map<string, { thumbnail_path: string | null; file_path: string | null }>();
+
+      if (parentReceiptIds.length > 0) {
+        const { data: firstPages } = await supabase
+          .from('receipts')
+          .select('parent_receipt_id, thumbnail_path, file_path')
+          .in('parent_receipt_id', parentReceiptIds)
+          .eq('page_number', 1);
+
+        if (firstPages) {
+          firstPages.forEach(page => {
+            if (page.parent_receipt_id) {
+              firstPagesMap.set(page.parent_receipt_id, {
+                thumbnail_path: page.thumbnail_path,
+                file_path: page.file_path
+              });
+            }
+          });
+        }
+      }
+
+      const receiptsWithThumbnails = (receiptsData || []).map(receipt => {
+        if (receipt.is_parent && receipt.total_pages > 1 && !receipt.thumbnail_path) {
+          const firstPage = firstPagesMap.get(receipt.id);
           return {
             ...receipt,
             thumbnail_path: firstPage?.thumbnail_path || null,
@@ -161,7 +180,7 @@ export function useReceiptsData(selectedCollection: string) {
           };
         }
         return receipt;
-      }));
+      });
 
       setReceipts(receiptsWithThumbnails);
       setTotalCount(count || 0);

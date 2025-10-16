@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { actionTracker } from '../lib/actionTracker';
 import { Receipt } from './useReceiptsData';
 
@@ -13,6 +13,7 @@ export interface AdvancedFilters {
 
 export function useReceiptFilters(receipts: Receipt[]) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
     dateFrom: '',
@@ -23,13 +24,21 @@ export function useReceiptFilters(receipts: Receipt[]) {
     categories: [],
   });
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const filteredReceipts = useMemo(() => {
     return receipts.filter(receipt => {
-      const matchesSearch = !searchQuery ||
-        receipt.vendor_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        receipt.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        receipt.notes?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        receipt.total_amount?.toString().includes(searchQuery);
+      const matchesSearch = !debouncedSearchQuery ||
+        receipt.vendor_name?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        receipt.category?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        receipt.notes?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        receipt.total_amount?.toString().includes(debouncedSearchQuery);
 
       const matchesCategory = !filterCategory || receipt.category === filterCategory;
 
@@ -54,14 +63,17 @@ export function useReceiptFilters(receipts: Receipt[]) {
       return matchesSearch && matchesCategory && matchesDateFrom && matchesDateTo &&
              matchesAmountMin && matchesAmountMax && matchesPaymentMethod && matchesCategories;
     });
-  }, [receipts, searchQuery, filterCategory, advancedFilters]);
+  }, [receipts, debouncedSearchQuery, filterCategory, advancedFilters]);
 
-  const handleSearchChange = (query: string) => {
+  const handleSearchChange = useCallback((query: string) => {
     setSearchQuery(query);
-    if (query.length >= 3) {
-      actionTracker.searchPerformed(query, filteredReceipts.length, { context: 'receipts' });
+  }, []);
+
+  useEffect(() => {
+    if (debouncedSearchQuery.length >= 3) {
+      actionTracker.searchPerformed(debouncedSearchQuery, filteredReceipts.length, { context: 'receipts' });
     }
-  };
+  }, [debouncedSearchQuery, filteredReceipts.length]);
 
   const handleCategoryFilterChange = (category: string) => {
     setFilterCategory(category);

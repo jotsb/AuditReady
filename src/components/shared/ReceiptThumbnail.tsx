@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import { FileText, Image as ImageIcon } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { loadThumbnailUrl } from '../../lib/thumbnailBatcher';
 
 interface ReceiptThumbnailProps {
   thumbnailPath: string | null;
@@ -10,7 +10,7 @@ interface ReceiptThumbnailProps {
   className?: string;
 }
 
-export function ReceiptThumbnail({
+function ReceiptThumbnailComponent({
   thumbnailPath,
   filePath,
   vendorName,
@@ -53,12 +53,8 @@ export function ReceiptThumbnail({
 
     async function loadImage() {
       try {
-        const { data, error } = await supabase.storage
-          .from('receipts')
-          .createSignedUrl(pathToLoad, 3600);
-
-        if (error) throw error;
-        setImageUrl(data.signedUrl);
+        const signedUrl = await loadThumbnailUrl(pathToLoad);
+        setImageUrl(signedUrl);
       } catch (error) {
         console.error('Error loading thumbnail:', error);
         setImageUrl(null);
@@ -98,3 +94,13 @@ export function ReceiptThumbnail({
     </div>
   );
 }
+
+export const ReceiptThumbnail = memo(ReceiptThumbnailComponent, (prevProps, nextProps) => {
+  return (
+    prevProps.thumbnailPath === nextProps.thumbnailPath &&
+    prevProps.filePath === nextProps.filePath &&
+    prevProps.vendorName === nextProps.vendorName &&
+    prevProps.fileType === nextProps.fileType &&
+    prevProps.className === nextProps.className
+  );
+});
