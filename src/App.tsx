@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AlertProvider } from './contexts/AlertContext';
 import { AuthPage } from './pages/AuthPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ReceiptsPage } from './pages/ReceiptsPage';
@@ -211,7 +212,9 @@ function App() {
   return (
     <ErrorBoundary name="app-root">
       <AuthProvider>
-        <AppContent />
+        <AlertProvider>
+          <AppContent />
+        </AlertProvider>
       </AuthProvider>
     </ErrorBoundary>
   );
