@@ -1,4 +1,5 @@
 import { Loader2 } from 'lucide-react';
+import { memo } from 'react';
 
 interface LoadingSpinnerProps {
   size?: 'sm' | 'md' | 'lg';
@@ -6,7 +7,7 @@ interface LoadingSpinnerProps {
   fullScreen?: boolean;
 }
 
-export function LoadingSpinner({ size = 'md', text = 'Loading...', fullScreen = false }: LoadingSpinnerProps) {
+function LoadingSpinnerComponent({ size = 'md', text = 'Loading...', fullScreen = false }: LoadingSpinnerProps) {
   const sizeClasses = {
     sm: 'w-4 h-4',
     md: 'w-8 h-8',
@@ -44,3 +45,5 @@ export function LoadingSpinner({ size = 'md', text = 'Loading...', fullScreen = 
     </div>
   );
 }
+
+export const LoadingSpinner = memo(LoadingSpinnerComponent);
