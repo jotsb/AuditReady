@@ -75,9 +75,7 @@ function ReceiptThumbnailComponent({
       style={{ width: '48px', height: '48px', minWidth: '48px' }}
     >
       {isLoading ? (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-5 h-5 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-        </div>
+        <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700 bg-[length:200%_100%]" style={{ animation: 'shimmer 1.5s infinite' }} />
       ) : imageUrl && !isPdf ? (
         <img
           src={imageUrl}

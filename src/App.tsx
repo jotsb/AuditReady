@@ -1,26 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AlertProvider } from './contexts/AlertContext';
 import { AuthPage } from './pages/AuthPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { ReceiptsPage } from './pages/ReceiptsPage';
-import { ReceiptDetailsPage } from './pages/ReceiptDetailsPage';
-import { ReportsPage } from './pages/ReportsPage';
-import { SettingsPage } from './pages/SettingsPage';
-import TeamPage from './pages/TeamPage';
-import { AdminPage } from './pages/AdminPage';
-import { EnhancedAuditLogsPage } from './pages/EnhancedAuditLogsPage';
-import { SystemLogsPage } from './pages/SystemLogsPage';
-import AcceptInvitePage from './pages/AcceptInvitePage';
 import { MainLayout } from './components/layout/MainLayout';
 import { ResetPasswordForm } from './components/auth/ResetPasswordForm';
 import ErrorBoundary from './components/shared/ErrorBoundary';
+import { LoadingSpinner } from './components/shared/LoadingSpinner';
+
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const ReceiptsPage = lazy(() => import('./pages/ReceiptsPage').then(m => ({ default: m.ReceiptsPage })));
+const ReceiptDetailsPage = lazy(() => import('./pages/ReceiptDetailsPage').then(m => ({ default: m.ReceiptDetailsPage })));
+const ReportsPage = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const TeamPage = lazy(() => import('./pages/TeamPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage').then(m => ({ default: m.AdminPage })));
+const EnhancedAuditLogsPage = lazy(() => import('./pages/EnhancedAuditLogsPage').then(m => ({ default: m.EnhancedAuditLogsPage })));
+const SystemLogsPage = lazy(() => import('./pages/SystemLogsPage').then(m => ({ default: m.SystemLogsPage })));
+const AcceptInvitePage = lazy(() => import('./pages/AcceptInvitePage'));
 
 function AppContent() {
   const { user, loading, mfaPending } = useAuth();
   const [currentView, setCurrentView] = useState(() => {
     const path = window.location.pathname;
-    const params = new URLSearchParams(window.location.search);
 
     if (path === '/reset-password') return 'reset-password';
     if (path === '/accept-invite') return 'accept-invite';
@@ -201,7 +202,9 @@ function AppContent() {
         onQuickCapture={handleQuickCapture}
       >
         <ErrorBoundary name="page-content">
-          {renderPage()}
+          <Suspense fallback={<LoadingSpinner size="lg" text="Loading page..." />}>
+            {renderPage()}
+          </Suspense>
         </ErrorBoundary>
       </MainLayout>
     </ErrorBoundary>
