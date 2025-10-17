@@ -310,14 +310,6 @@ export function SystemLogsPage() {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-gray-800 flex items-center justify-center">
-        <div className="text-slate-600 dark:text-gray-400">Loading system logs...</div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -435,7 +427,37 @@ export function SystemLogsPage() {
           </div>
 
           <div className="max-h-[600px] overflow-y-auto">
-            {filteredLogs.length === 0 ? (
+            {loading ? (
+              <div className="bg-white dark:bg-gray-800">
+                <div className="hidden lg:grid lg:grid-cols-[auto_minmax(140px,1fr)_auto_minmax(120px,1fr)_minmax(200px,2fr)_minmax(120px,1fr)_auto] gap-2 px-4 py-2 bg-slate-100 dark:bg-gray-700 border-b border-slate-300 dark:border-gray-600 text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase sticky top-0 z-10">
+                  <div className="flex items-center justify-center w-6"></div>
+                  <div className="col-span-2">Time</div>
+                  <div className="">Level</div>
+                  <div className="">Category</div>
+                  <div className="">Message</div>
+                  <div className="">User</div>
+                  <div className="">IP</div>
+                </div>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={`skeleton-${i}`} className="p-4 border-b border-slate-200 dark:border-gray-700">
+                    <div className="flex items-start gap-4">
+                      <div className="w-6 h-6 bg-slate-200 dark:bg-gray-700 rounded-full animate-pulse" />
+                      <div className="flex-1 space-y-3">
+                        <div className="flex items-center gap-4">
+                          <div className="h-4 w-32 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+                          <div className="h-5 w-20 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+                        </div>
+                        <div className="h-4 w-64 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+                        <div className="flex gap-2">
+                          <div className="h-3 w-24 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+                          <div className="h-3 w-32 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredLogs.length === 0 ? (
               <div className="px-6 py-12 text-center">
                 <Database className="mx-auto mb-3 text-slate-300" size={48} />
                 <p className="text-slate-500 dark:text-gray-400 font-medium">No system logs found</p>

@@ -203,14 +203,6 @@ export function AdminPage() {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-gray-800 flex items-center justify-center">
-        <div className="text-slate-600 dark:text-gray-400">Loading admin dashboard...</div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto py-8">
@@ -365,7 +357,11 @@ export function AdminPage() {
               <TrendingUp className="text-blue-600" size={20} />
             </div>
             <h3 className="text-slate-600 dark:text-gray-400 text-sm font-medium mb-1">Total Businesses</h3>
-            <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.totalBusinesses}</p>
+            {loading ? (
+              <div className="h-9 w-20 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+            ) : (
+              <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.totalBusinesses}</p>
+            )}
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
@@ -376,7 +372,11 @@ export function AdminPage() {
               <TrendingUp className="text-green-600" size={20} />
             </div>
             <h3 className="text-slate-600 dark:text-gray-400 text-sm font-medium mb-1">Total Users</h3>
-            <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.totalUsers}</p>
+            {loading ? (
+              <div className="h-9 w-20 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+            ) : (
+              <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.totalUsers}</p>
+            )}
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
@@ -387,7 +387,11 @@ export function AdminPage() {
               <TrendingUp className="text-purple-600" size={20} />
             </div>
             <h3 className="text-slate-600 dark:text-gray-400 text-sm font-medium mb-1">Total Receipts</h3>
-            <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.totalReceipts}</p>
+            {loading ? (
+              <div className="h-9 w-20 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+            ) : (
+              <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.totalReceipts}</p>
+            )}
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
@@ -398,7 +402,11 @@ export function AdminPage() {
               <Database className="text-orange-600" size={20} />
             </div>
             <h3 className="text-slate-600 dark:text-gray-400 text-sm font-medium mb-1">Total Storage</h3>
-            <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.totalStorageGB} GB</p>
+            {loading ? (
+              <div className="h-9 w-24 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+            ) : (
+              <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.totalStorageGB} GB</p>
+            )}
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
@@ -408,7 +416,11 @@ export function AdminPage() {
               </div>
             </div>
             <h3 className="text-slate-600 dark:text-gray-400 text-sm font-medium mb-1">System Admins</h3>
-            <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.systemAdmins}</p>
+            {loading ? (
+              <div className="h-9 w-16 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+            ) : (
+              <p className="text-3xl font-bold text-slate-800 dark:text-white">{stats.systemAdmins}</p>
+            )}
           </div>
         </div>
 
