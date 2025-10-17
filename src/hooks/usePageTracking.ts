@@ -8,17 +8,25 @@ export function usePageTracking(pageName: string, metadata?: Record<string, any>
   useEffect(() => {
     if (!hasLogged.current) {
       startTime.current = Date.now();
-      logger.pageView(pageName, metadata);
       hasLogged.current = true;
     }
 
     return () => {
       const timeSpent = Date.now() - startTime.current;
+      // Only log if page view was meaningful (>1s) and include duration in the page view log
       if (timeSpent > 1000) {
-        logger.performance(`Page view duration: ${pageName}`, timeSpent, {
+        logger.pageView(pageName, {
           ...metadata,
-          pageName,
+          duration_ms: timeSpent,
         });
+
+        // Only log performance warning if slow (>5s)
+        if (timeSpent > 5000) {
+          logger.performance(`Page view duration: ${pageName}`, timeSpent, {
+            ...metadata,
+            pageName,
+          });
+        }
       }
     };
   }, [pageName, metadata]);

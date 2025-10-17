@@ -66,13 +66,32 @@ export function useCreateCollection() {
 
   return useMutation({
     mutationFn: async (collection: { name: string; business_id: string }) => {
+      const startTime = Date.now();
       const { data, error } = await supabase
         .from('collections')
         .insert(collection)
         .select()
         .single();
 
-      if (error) throw error;
+      const executionTime = Date.now() - startTime;
+
+      if (error) {
+        logger.error('Failed to create collection', error, {
+          collectionName: collection.name,
+          businessId: collection.business_id,
+          executionTimeMs: executionTime,
+          errorCode: error.code
+        });
+        throw error;
+      }
+
+      logger.info('Collection created', {
+        collectionId: data.id,
+        collectionName: collection.name,
+        businessId: collection.business_id,
+        executionTimeMs: executionTime
+      }, 'DATABASE');
+
       return data;
     },
     onSuccess: () => {
@@ -86,12 +105,29 @@ export function useUpdateCollection() {
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Collection> }) => {
+      const startTime = Date.now();
       const { error } = await supabase
         .from('collections')
         .update(updates)
         .eq('id', id);
 
-      if (error) throw error;
+      const executionTime = Date.now() - startTime;
+
+      if (error) {
+        logger.error('Failed to update collection', error, {
+          collectionId: id,
+          updates,
+          executionTimeMs: executionTime,
+          errorCode: error.code
+        });
+        throw error;
+      }
+
+      logger.info('Collection updated', {
+        collectionId: id,
+        updates,
+        executionTimeMs: executionTime
+      }, 'DATABASE');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collections'] });
@@ -104,12 +140,27 @@ export function useDeleteCollection() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      const startTime = Date.now();
       const { error } = await supabase
         .from('collections')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      const executionTime = Date.now() - startTime;
+
+      if (error) {
+        logger.error('Failed to delete collection', error, {
+          collectionId: id,
+          executionTimeMs: executionTime,
+          errorCode: error.code
+        });
+        throw error;
+      }
+
+      logger.info('Collection deleted', {
+        collectionId: id,
+        executionTimeMs: executionTime
+      }, 'DATABASE');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collections'] });

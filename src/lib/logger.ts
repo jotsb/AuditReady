@@ -162,12 +162,8 @@ class Logger {
   }
 
   dataLoad(resourceType: string, count: number, filters?: Record<string, any>): void {
-    this.sendToServer({
-      level: 'DEBUG',
-      category: 'PAGE_VIEW',
-      message: `Data loaded: ${count} ${resourceType}`,
-      metadata: { resourceType, count, filters: filters || {} }
-    });
+    // Removed - excessive DEBUG logging of successful data loads
+    // Only log data load failures via error() method
   }
 
   database(operation: string, table: string, success: boolean, metadata?: Record<string, any>): void {
@@ -247,17 +243,28 @@ export const logger = new Logger();
 // Global error handler
 if (typeof window !== 'undefined') {
   window.addEventListener('error', (event) => {
-    logger.error('Unhandled error', event.error, {
-      message: event.message,
+    logger.error('Unhandled JavaScript error', event.error, {
+      errorMessage: event.message,
+      errorType: event.error?.name || 'Error',
       filename: event.filename,
       lineno: event.lineno,
-      colno: event.colno
+      colno: event.colno,
+      userAgent: navigator.userAgent,
+      url: window.location.href
     });
   });
 
   window.addEventListener('unhandledrejection', (event) => {
-    logger.error('Unhandled promise rejection', event.reason, {
-      promise: 'Promise rejection'
+    const reason = event.reason;
+    const errorMessage = reason?.message || String(reason);
+    const errorType = reason?.name || typeof reason;
+
+    logger.error('Unhandled promise rejection', reason instanceof Error ? reason : undefined, {
+      errorMessage,
+      errorType,
+      reason: String(reason),
+      url: window.location.href,
+      userAgent: navigator.userAgent
     });
   });
 }
