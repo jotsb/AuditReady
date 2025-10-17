@@ -213,7 +213,7 @@ export function SplunkLogEntry({ log }: LogEntryProps) {
 
           {/* User */}
           <div className="text-slate-600 dark:text-gray-400 text-xs overflow-hidden text-ellipsis whitespace-nowrap">
-            {systemLog.profiles?.full_name || 'System'}
+            {systemLog.profiles?.email || 'System'}
           </div>
 
           {/* IP Address */}
@@ -246,7 +246,7 @@ export function SplunkLogEntry({ log }: LogEntryProps) {
             {systemLog.message}
           </div>
           <div className="flex items-center justify-between text-xs text-slate-600 dark:text-gray-400">
-            <span className="truncate">{systemLog.profiles?.full_name || 'System'}</span>
+            <span className="truncate">{systemLog.profiles?.email || 'System'}</span>
             {systemLog.execution_time_ms && (
               <span className="text-slate-500 dark:text-gray-500 ml-2 flex-shrink-0">{systemLog.execution_time_ms}ms</span>
             )}
@@ -296,9 +296,9 @@ export function SplunkLogEntry({ log }: LogEntryProps) {
                 <div className="flex items-start">
                   <User size={16} className="mr-2 mt-0.5 text-slate-500 dark:text-gray-400 flex-shrink-0" />
                   <div className="min-w-0">
-                    <div className="text-xs font-medium text-slate-500 dark:text-gray-500 uppercase">User Name</div>
+                    <div className="text-xs font-medium text-slate-500 dark:text-gray-500 uppercase">User Email</div>
                     <div className="text-sm text-slate-700 dark:text-gray-300 break-all">
-                      {systemLog.profiles?.full_name || 'System'}
+                      {systemLog.profiles?.email || 'System'}
                     </div>
                   </div>
                 </div>
@@ -446,7 +446,7 @@ export function SplunkLogEntry({ log }: LogEntryProps) {
 
           {/* User */}
           <div className="text-slate-600 dark:text-gray-400 text-xs overflow-hidden text-ellipsis whitespace-nowrap">
-            {auditLog.profiles?.full_name || 'System'}
+            {auditLog.profiles?.email || 'System'}
           </div>
 
           {/* IP */}
@@ -477,7 +477,7 @@ export function SplunkLogEntry({ log }: LogEntryProps) {
           </div>
           <div className="flex items-center justify-between text-xs text-slate-600 dark:text-gray-400">
             <span className="truncate">{auditLog.resource_type}</span>
-            <span className="truncate ml-2">{auditLog.profiles?.full_name || 'System'}</span>
+            <span className="truncate ml-2">{auditLog.profiles?.email || 'System'}</span>
           </div>
         </div>
 
@@ -490,9 +490,9 @@ export function SplunkLogEntry({ log }: LogEntryProps) {
                 <div className="flex items-start">
                   <User size={16} className="mr-2 mt-0.5 text-slate-500 dark:text-gray-400 flex-shrink-0" />
                   <div className="min-w-0">
-                    <div className="text-xs font-medium text-slate-500 dark:text-gray-500 uppercase">User Name</div>
+                    <div className="text-xs font-medium text-slate-500 dark:text-gray-500 uppercase">User Email</div>
                     <div className="text-sm text-slate-700 dark:text-gray-300 break-all">
-                      {auditLog.profiles?.full_name || 'System'}
+                      {auditLog.profiles?.email || 'System'}
                     </div>
                   </div>
                 </div>
