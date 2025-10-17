@@ -177,7 +177,7 @@ export function SplunkLogEntry({ log }: LogEntryProps) {
         }`}
       >
         {/* Collapsed Row - Desktop */}
-        <div className="hidden lg:grid lg:grid-cols-[auto_minmax(140px,1fr)_auto_auto_minmax(200px,2fr)_minmax(100px,1fr)_auto] gap-2 px-4 py-2.5 items-center text-sm">
+        <div className="hidden lg:grid lg:grid-cols-[auto_minmax(140px,1fr)_auto_minmax(120px,1fr)_minmax(200px,2fr)_minmax(120px,1fr)_auto] gap-2 px-4 py-2.5 items-center text-sm">
           {/* Expand Icon */}
           <div className="flex items-center justify-center w-6">
             {isExpanded ? (
@@ -216,9 +216,9 @@ export function SplunkLogEntry({ log }: LogEntryProps) {
             {systemLog.profiles?.full_name || 'System'}
           </div>
 
-          {/* Duration */}
-          <div className="text-slate-500 dark:text-gray-500 text-xs text-right whitespace-nowrap min-w-[60px]">
-            {systemLog.execution_time_ms ? `${systemLog.execution_time_ms}ms` : '-'}
+          {/* IP Address */}
+          <div className="text-slate-500 dark:text-gray-500 text-xs font-mono whitespace-nowrap min-w-[60px]">
+            {systemLog.ip_address?.split('.').slice(0, 2).join('.') || '-'}
           </div>
         </div>
 
