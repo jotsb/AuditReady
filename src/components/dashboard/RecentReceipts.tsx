@@ -1,5 +1,6 @@
 import { Receipt, Calendar, DollarSign, Folder } from 'lucide-react';
 import { ReceiptThumbnail } from '../shared/ReceiptThumbnail';
+import { memo } from 'react';
 
 interface ReceiptItem {
   id: string;
@@ -20,9 +21,10 @@ interface ReceiptItem {
 interface RecentReceiptsProps {
   receipts: ReceiptItem[];
   onViewReceipt: (id: string) => void;
+  isLoading?: boolean;
 }
 
-export function RecentReceipts({ receipts, onViewReceipt }: RecentReceiptsProps) {
+function RecentReceiptsComponent({ receipts, onViewReceipt, isLoading }: RecentReceiptsProps) {
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'No date';
     const date = new Date(dateString);
@@ -36,8 +38,27 @@ export function RecentReceipts({ receipts, onViewReceipt }: RecentReceiptsProps)
         <Receipt size={20} className="text-slate-400 dark:text-gray-400" />
       </div>
 
-      <div className="space-y-3">
-        {receipts.map((receipt) => (
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="p-4 border border-slate-200 dark:border-gray-700 rounded-lg"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="w-12 h-12 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-5 w-32 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+                  <div className="h-4 w-24 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+                </div>
+                <div className="h-6 w-16 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {receipts.map((receipt) => (
           <button
             key={receipt.id}
             onClick={() => onViewReceipt(receipt.id)}
@@ -81,10 +102,11 @@ export function RecentReceipts({ receipts, onViewReceipt }: RecentReceiptsProps)
               </div>
             </div>
           </button>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
-      {receipts.length === 0 && (
+      {!isLoading && receipts.length === 0 && (
         <div className="text-center py-8 text-slate-500 dark:text-gray-400">
           No receipts yet. Upload your first receipt to get started!
         </div>
@@ -92,3 +114,5 @@ export function RecentReceipts({ receipts, onViewReceipt }: RecentReceiptsProps)
     </div>
   );
 }
+
+export const RecentReceipts = memo(RecentReceiptsComponent);
