@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import JSZip from "npm:jszip@3";
 import { SMTPClient } from "npm:emailjs@4.0.3";
+import { getIPAddress } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -49,6 +50,31 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({ error: "Business ID is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Rate limiting: 5 exports per hour per user
+    const { data: rateLimitResult } = await supabase.rpc('check_rate_limit', {
+      p_identifier: user.id,
+      p_action_type: 'export',
+      p_max_attempts: 5,
+      p_window_minutes: 60
+    });
+
+    if (rateLimitResult && !rateLimitResult.allowed) {
+      const minutesRemaining = Math.ceil(rateLimitResult.retryAfter / 60);
+      return new Response(
+        JSON.stringify({
+          error: `Export limit reached. You can export again in ${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''}.`
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+            'Retry-After': rateLimitResult.retryAfter.toString()
+          }
+        }
       );
     }
 

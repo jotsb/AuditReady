@@ -8,6 +8,7 @@ import {
   validateRequestBody,
   INPUT_LIMITS
 } from "../_shared/validation.ts";
+import { getIPAddress } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -76,6 +77,32 @@ Deno.serve(async (req: Request) => {
   };
 
   try {
+    // Rate limiting: 10 invitation actions per hour per IP
+    const ipAddress = getIPAddress(req);
+    const { data: rateLimitResult } = await serviceClient.rpc('check_rate_limit', {
+      p_identifier: ipAddress,
+      p_action_type: 'api_call',
+      p_max_attempts: 10,
+      p_window_minutes: 60
+    });
+
+    if (rateLimitResult && !rateLimitResult.allowed) {
+      const minutesRemaining = Math.ceil(rateLimitResult.retryAfter / 60);
+      return new Response(
+        JSON.stringify({
+          error: `Too many requests. Please try again in ${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''}.`
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+            'Retry-After': rateLimitResult.retryAfter.toString()
+          }
+        }
+      );
+    }
+
     await logToSystem('INFO', 'Accept-invitation function invoked', {
       method: req.method,
       url: req.url

@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { getIPAddress } from '../_shared/rateLimit.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -59,6 +60,30 @@ Deno.serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Rate limiting: 20 incoming emails per hour per IP (webhook protection)
+    const ipAddress = getIPAddress(req);
+    const { data: rateLimitResult } = await supabase.rpc('check_rate_limit', {
+      p_identifier: ipAddress,
+      p_action_type: 'email',
+      p_max_attempts: 20,
+      p_window_minutes: 60
+    });
+
+    if (rateLimitResult && !rateLimitResult.allowed) {
+      console.warn('⚠️ Rate limit exceeded for incoming email webhook from IP:', ipAddress);
+      return new Response(
+        JSON.stringify({ error: 'Rate limit exceeded' }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+            'Retry-After': rateLimitResult.retryAfter.toString()
+          }
+        }
+      );
+    }
 
     const businessId = await extractBusinessId(email.To, supabase);
 

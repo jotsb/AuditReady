@@ -1,6 +1,13 @@
 import { supabase } from '../lib/supabase';
 import { convertLocalDateToUTC } from '../lib/dateUtils';
 import { logger } from '../lib/logger';
+import {
+  sanitizeVendorName,
+  sanitizeVendorAddress,
+  sanitizeCategoryName,
+  sanitizeText,
+  sanitizeNotes
+} from '../lib/sanitizer';
 
 export interface ReceiptData {
   vendor_name?: string;
@@ -32,6 +39,17 @@ export async function createReceipt(
     ? convertLocalDateToUTC(data.transaction_date)
     : null;
 
+  // Sanitize all user inputs to prevent XSS
+  const sanitizedData = {
+    vendor_name: data.vendor_name ? sanitizeVendorName(data.vendor_name) : null,
+    vendor_address: data.vendor_address ? sanitizeVendorAddress(data.vendor_address) : null,
+    category: data.category ? sanitizeCategoryName(data.category) : null,
+    payment_method: data.payment_method ? sanitizeText(data.payment_method) : null,
+    customer_name: data.customer_name ? sanitizeText(data.customer_name) : null,
+    card_last_digits: data.card_last_digits ? sanitizeText(data.card_last_digits) : null,
+    notes: data.notes ? sanitizeNotes(data.notes) : null,
+  };
+
   const { error } = await supabase
     .from('receipts')
     .insert({
@@ -40,22 +58,23 @@ export async function createReceipt(
       file_path: filePath,
       thumbnail_path: thumbnailPath,
       file_type: 'image',
-      vendor_name: data.vendor_name,
-      vendor_address: data.vendor_address,
+      vendor_name: sanitizedData.vendor_name,
+      vendor_address: sanitizedData.vendor_address,
       transaction_date: transactionDateUTC,
       total_amount: parseFloat(String(data.total_amount || 0)),
       subtotal: data.subtotal ? parseFloat(String(data.subtotal)) : null,
       gst_amount: data.gst_amount ? parseFloat(String(data.gst_amount)) : null,
       pst_amount: data.pst_amount ? parseFloat(String(data.pst_amount)) : null,
-      category: data.category,
-      payment_method: data.payment_method,
+      category: sanitizedData.category,
+      payment_method: sanitizedData.payment_method,
+      notes: sanitizedData.notes,
       extraction_status: 'completed',
       extraction_data: {
         transaction_time: data.transaction_time,
         gst_percent: data.gst_percent,
         pst_percent: data.pst_percent,
-        card_last_digits: data.card_last_digits,
-        customer_name: data.customer_name,
+        card_last_digits: sanitizedData.card_last_digits,
+        customer_name: sanitizedData.customer_name,
       },
     });
 

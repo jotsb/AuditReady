@@ -7,7 +7,8 @@ import {
   validateString,
   validateRequestBody,
   INPUT_LIMITS
-} from "./_shared/validation.ts";
+} from "../_shared/validation.ts";
+import { getIPAddress } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,6 +36,32 @@ Deno.serve(async (req: Request) => {
       status: 200,
       headers: corsHeaders,
     });
+  }
+
+  // Rate limiting: 3 emails per hour per IP
+  const ipAddress = getIPAddress(req);
+  const { data: rateLimitResult } = await supabase.rpc('check_rate_limit', {
+    p_identifier: ipAddress,
+    p_action_type: 'email',
+    p_max_attempts: 3,
+    p_window_minutes: 60
+  });
+
+  if (rateLimitResult && !rateLimitResult.allowed) {
+    const minutesRemaining = Math.ceil(rateLimitResult.retryAfter / 60);
+    return new Response(
+      JSON.stringify({
+        error: `Too many invitation emails sent. Please try again in ${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''}.`
+      }),
+      {
+        status: 429,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+          'Retry-After': rateLimitResult.retryAfter.toString()
+        }
+      }
+    );
   }
 
   let payload: InvitationPayload | null = null;
