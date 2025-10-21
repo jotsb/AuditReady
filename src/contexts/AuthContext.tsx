@@ -204,12 +204,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
+    // Check if account is locked before attempting login
+    const { data: lockoutStatus } = await supabase.rpc('check_account_lockout', {
+      p_email: email
+    });
+
+    if (lockoutStatus?.locked) {
+      const minutesRemaining = Math.ceil(lockoutStatus.retryAfter / 60);
+      const lockoutError = {
+        message: `Account temporarily locked due to multiple failed login attempts. Please try again in ${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''}.`,
+        name: 'AccountLockedError',
+        status: 429
+      } as AuthError;
+
+      logger.warn('Login attempt on locked account', {
+        email,
+        lockedUntil: lockoutStatus.lockedUntil,
+        attemptsCount: lockoutStatus.attemptsCount
+      }, 'AUTH');
+
+      return { error: lockoutError };
+    }
+
     const { error, data } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
+      // Record failed login attempt
+      await supabase.rpc('record_failed_login', {
+        p_email: email,
+        p_ip_address: null, // IP will be captured server-side
+        p_user_agent: navigator.userAgent,
+        p_failure_reason: 'invalid_credentials'
+      });
+
       logger.auth('sign_in', false, { email, method: 'password', error: error?.message });
       return { error };
     }

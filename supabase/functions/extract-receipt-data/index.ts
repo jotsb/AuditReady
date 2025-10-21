@@ -9,6 +9,7 @@ import {
   INPUT_LIMITS
 } from "../_shared/validation.ts";
 import { compressImage, getImageFormat } from "../_shared/imageCompression.ts";
+import { getIPAddress } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -51,6 +52,48 @@ Deno.serve(async (req: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  // Rate limiting check - 10 uploads per hour per IP
+  const ipAddress = getIPAddress(req);
+  const authHeader = req.headers.get('authorization');
+  const token = authHeader?.replace('Bearer ', '');
+
+  // Get user ID from token if available
+  let userId: string | null = null;
+  if (token) {
+    const { data: { user } } = await supabase.auth.getUser(token);
+    userId = user?.id || null;
+  }
+
+  // Create identifier: userId if available, otherwise IP
+  const identifier = userId || ipAddress;
+
+  // Check rate limit: 10 uploads per hour
+  const { data: rateLimitResult } = await supabase.rpc('check_rate_limit', {
+    p_identifier: identifier,
+    p_action_type: 'upload',
+    p_max_attempts: 10,
+    p_window_minutes: 60
+  });
+
+  if (rateLimitResult && !rateLimitResult.allowed) {
+    const minutesRemaining = Math.ceil(rateLimitResult.retryAfter / 60);
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: `Rate limit exceeded. You can upload again in ${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''}.`,
+        retryAfter: rateLimitResult.retryAfter
+      }),
+      {
+        status: 429,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+          'Retry-After': rateLimitResult.retryAfter.toString()
+        }
+      }
+    );
+  }
 
   let requestData: ExtractRequest | null = null;
 
@@ -175,9 +218,9 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const jsonFormat = `{\n  \"vendor_name\": \"business name\",\n  \"vendor_address\": \"full address if visible\",\n  \"transaction_date\": \"YYYY-MM-DD format\",\n  \"transaction_time\": \"HH:MM format if visible\",\n  \"total_amount\": \"numeric value only\",\n  \"subtotal\": \"numeric value only\",\n  \"gst_amount\": \"GST/tax amount if visible\",\n  \"pst_amount\": \"PST amount if visible\",\n  \"gst_percent\": \"GST percentage if visible (just number)\",\n  \"pst_percent\": \"PST percentage if visible (just number)\",\n  \"card_last_digits\": \"last 4 digits of card if visible\",\n  \"customer_name\": \"customer name if visible\",\n  \"category\": \"Choose from: ${categoryList}\",\n  \"payment_method\": \"Cash, Credit Card, Debit Card, or Unknown\"\n}`;
+    const jsonFormat = `{\n  "vendor_name": "business name",\n  "vendor_address": "full address if visible",\n  "transaction_date": "YYYY-MM-DD format",\n  "transaction_time": "HH:MM format if visible",\n  "total_amount": "numeric value only",\n  "subtotal": "numeric value only",\n  "gst_amount": "GST/tax amount if visible",\n  "pst_amount": "PST amount if visible",\n  "gst_percent": "GST percentage if visible (just number)",\n  "pst_percent": "PST percentage if visible (just number)",\n  "card_last_digits": "last 4 digits of card if visible",\n  "customer_name": "customer name if visible",\n  "category": "Choose from: ${categoryList}",\n  "payment_method": "Cash, Credit Card, Debit Card, or Unknown"\n}`;
 
-    const rules = `\\nRules:\\n- Return ONLY the JSON object, no other text\\n- Use null for missing string values\\n- Use 0 for missing amounts\\n- For category: Choose the MOST APPROPRIATE category from the provided list. If none match well, use \"Miscellaneous\"\\n- Extract amounts without currency symbols or percentage signs`;
+    const rules = `\\nRules:\\n- Return ONLY the JSON object, no other text\\n- Use null for missing string values\\n- Use 0 for missing amounts\\n- For category: Choose the MOST APPROPRIATE category from the provided list. If none match well, use "Miscellaneous"\\n- Extract amounts without currency symbols or percentage signs`;
 
     const promptText = isMultiPage
       ? `Analyze this multi-page receipt (${pathsToProcess.length} pages) and extract the following information. The images are in order (page 1, 2, 3...). Consider all pages together as ONE receipt. Combine information from all pages - for example, if the vendor name is on page 1 and the total is on page 3, extract both. Return ONLY a valid JSON object with no additional text:\\n\\n${jsonFormat}${rules}`
