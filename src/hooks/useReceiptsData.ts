@@ -133,9 +133,14 @@ export function useReceiptsData(selectedCollection: string) {
       const start = (page - 1) * itemsPerPage;
       const end = start + itemsPerPage - 1;
 
+      // Use a single query with a LEFT JOIN to get both parent receipts and their first page data
+      // This eliminates the N+1 query pattern
       const { data: receiptsData, error: receiptsError, count } = await supabase
         .from('receipts')
-        .select('*', { count: 'exact' })
+        .select(`
+          *,
+          first_page:receipts!parent_receipt_id(thumbnail_path, file_path)
+        `, { count: 'exact' })
         .eq('collection_id', selectedCollection)
         .eq('extraction_status', 'completed')
         .is('deleted_at', null)
@@ -145,41 +150,19 @@ export function useReceiptsData(selectedCollection: string) {
 
       if (receiptsError) throw receiptsError;
 
-      const parentReceiptIds = (receiptsData || [])
-        .filter(r => r.is_parent && r.total_pages > 1 && !r.thumbnail_path)
-        .map(r => r.id);
-
-      let firstPagesMap = new Map<string, { thumbnail_path: string | null; file_path: string | null }>();
-
-      if (parentReceiptIds.length > 0) {
-        const { data: firstPages } = await supabase
-          .from('receipts')
-          .select('parent_receipt_id, thumbnail_path, file_path')
-          .in('parent_receipt_id', parentReceiptIds)
-          .eq('page_number', 1);
-
-        if (firstPages) {
-          firstPages.forEach(page => {
-            if (page.parent_receipt_id) {
-              firstPagesMap.set(page.parent_receipt_id, {
-                thumbnail_path: page.thumbnail_path,
-                file_path: page.file_path
-              });
-            }
-          });
-        }
-      }
-
-      const receiptsWithThumbnails = (receiptsData || []).map(receipt => {
-        if (receipt.is_parent && receipt.total_pages > 1 && !receipt.thumbnail_path) {
-          const firstPage = firstPagesMap.get(receipt.id);
+      // Map the data to include first page thumbnails for multi-page receipts
+      const receiptsWithThumbnails = (receiptsData || []).map((receipt: any) => {
+        if (receipt.is_parent && receipt.total_pages > 1 && !receipt.thumbnail_path && receipt.first_page && receipt.first_page.length > 0) {
+          const firstPage = receipt.first_page[0];
+          const { first_page, ...receiptData } = receipt;
           return {
-            ...receipt,
+            ...receiptData,
             thumbnail_path: firstPage?.thumbnail_path || null,
-            file_path: firstPage?.file_path || receipt.file_path
+            file_path: firstPage?.file_path || receiptData.file_path
           };
         }
-        return receipt;
+        const { first_page, ...receiptData } = receipt;
+        return receiptData;
       });
 
       setReceipts(receiptsWithThumbnails);

@@ -98,7 +98,7 @@ export default function TeamPage() {
 
         supabase
           .from('business_members')
-          .select('id, user_id, role, joined_at')
+          .select('id, user_id, role, joined_at, profiles:profiles!user_id(full_name, email)')
           .eq('business_id', selectedBusiness.id)
           .order('joined_at', { ascending: false })
           .range(membersStartIndex, membersEndIndex),
@@ -129,32 +129,13 @@ export default function TeamPage() {
         throw invitationsResult.error;
       }
 
-      const membersList = membersResult.data || [];
+      // The profiles are now included in the join, eliminating the N+1 query
+      const membersList = (membersResult.data || []).map((member: any) => ({
+        ...member,
+        profiles: member.profiles || { full_name: 'Unknown', email: 'Unknown' }
+      }));
 
-      if (membersList.length > 0) {
-        const userIds = membersList.map((m: any) => m.user_id);
-
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('id, full_name, email')
-          .in('id', userIds) as { data: { id: string; full_name: string; email: string }[] | null };
-
-        const profilesMap = new Map(
-          (profilesData || []).map(p => [p.id, { full_name: p.full_name, email: p.email }])
-        );
-
-        const enrichedMembers = membersList.map((member: any) => ({
-          ...member,
-          profiles: profilesMap.get(member.user_id) || {
-            full_name: 'Unknown',
-            email: 'Unknown'
-          }
-        }));
-
-        setMembers(enrichedMembers as TeamMember[]);
-      } else {
-        setMembers([]);
-      }
+      setMembers(membersList as TeamMember[]);
       setInvitations(invitationsResult.data || []);
       setTotalMembers(membersCountResult.count || 0);
       setTotalInvites(invitationsCountResult.count || 0);
