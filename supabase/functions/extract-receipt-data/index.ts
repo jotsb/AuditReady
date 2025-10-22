@@ -264,14 +264,41 @@ Deno.serve(async (req: Request) => {
     });
 
     const apiStartTime = Date.now();
-    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${openaiApiKey}`,
-      },
-      body: JSON.stringify(requestPayload),
-    });
+    let openaiResponse;
+
+    try {
+      openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openaiApiKey}`,
+        },
+        body: JSON.stringify(requestPayload),
+      });
+    } catch (fetchError) {
+      const apiExecutionTime = Date.now() - apiStartTime;
+      const fetchErrorMessage = fetchError instanceof Error ? fetchError.message : 'Unknown fetch error';
+
+      await supabase.rpc('log_system_event', {
+        p_level: 'ERROR',
+        p_category: 'EXTERNAL_API',
+        p_message: 'Failed to fetch from OpenAI API',
+        p_metadata: {
+          filePath,
+          collectionId,
+          error: fetchErrorMessage,
+          errorType: 'NetworkError'
+        },
+        p_user_id: null,
+        p_session_id: null,
+        p_ip_address: null,
+        p_user_agent: req.headers.get('user-agent'),
+        p_stack_trace: fetchError instanceof Error ? fetchError.stack : null,
+        p_execution_time_ms: apiExecutionTime
+      });
+
+      throw new Error(`Failed to reach OpenAI API: ${fetchErrorMessage}`);
+    }
 
     const apiExecutionTime = Date.now() - apiStartTime;
 
@@ -296,7 +323,7 @@ Deno.serve(async (req: Request) => {
         p_execution_time_ms: apiExecutionTime
       });
 
-      throw new Error(`OpenAI API error: ${errorText}`);
+      throw new Error(`OpenAI API error (${openaiResponse.status}): ${errorText}`);
     }
 
     const openaiData = await openaiResponse.json();
