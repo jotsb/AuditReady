@@ -1,1403 +1,1487 @@
-# Audit Proof - Unraid Docker Migration Guide
+# Audit Proof - Complete Unraid Self-Hosting Guide
 
-**Document Version:** 1.0
-**Last Updated:** 2025-10-22
-**Target Environment:** Unraid Server with Docker
-**Estimated Migration Time:** 8-16 hours (first-time setup)
+**Document Version:** 2.0
+**Last Updated:** 2025-10-24
+**Target:** Unraid 7.1.4+ with SWAG Reverse Proxy
+**Migration Approach:** Fresh Installation (No data migration from Bolt.new)
+**Estimated Time:** 12-20 hours (first-time setup)
 
 ---
 
 ## Table of Contents
 
-1. [Executive Summary](#executive-summary)
-2. [Current Architecture (Bolt.new)](#current-architecture-boltnew)
-3. [Target Architecture (Unraid)](#target-architecture-unraid)
-4. [Migration Approach Options](#migration-approach-options)
-5. [Recommended Approach: Self-Hosted Supabase](#recommended-approach-self-hosted-supabase)
-6. [Prerequisites & Planning](#prerequisites--planning)
-7. [Step-by-Step Migration Process](#step-by-step-migration-process)
-8. [Docker Compose Configuration](#docker-compose-configuration)
-9. [Your Responsibilities](#your-responsibilities)
-10. [Maintenance & Operations](#maintenance--operations)
-11. [Backup & Disaster Recovery](#backup--disaster-recovery)
-12. [Security Considerations](#security-considerations)
-13. [Cost Comparison](#cost-comparison)
+1. [Overview & Architecture](#overview--architecture)
+2. [Application Analysis](#application-analysis)
+3. [Prerequisites](#prerequisites)
+4. [Phase 1: Unraid Network Setup](#phase-1-unraid-network-setup)
+5. [Phase 2: Install Supabase Stack](#phase-2-install-supabase-stack)
+6. [Phase 3: Database Initialization](#phase-3-database-initialization)
+7. [Phase 4: Deploy Frontend](#phase-4-deploy-frontend)
+8. [Phase 5: Configure SWAG Reverse Proxy](#phase-5-configure-swag-reverse-proxy)
+9. [Phase 6: Create Admin Account](#phase-6-create-admin-account)
+10. [Phase 7: Setup Monitoring](#phase-7-setup-monitoring)
+11. [Phase 8: Setup Backups](#phase-8-setup-backups)
+12. [Testing & Verification](#testing--verification)
+13. [Ongoing Maintenance](#ongoing-maintenance)
 14. [Troubleshooting](#troubleshooting)
 
 ---
 
-## Executive Summary
+## Overview & Architecture
 
-### What This Guide Covers
+### What You're Building
 
-This document provides a **complete migration plan** for moving Audit Proof from Bolt.new hosting to your Unraid server using Docker containers. It covers:
+A **completely self-hosted** Audit Proof installation on your Unraid server with:
+- **Zero cloud dependencies** (except OpenAI API for receipt extraction)
+- **Full data ownership** - everything stored on your Unraid array
+- **Professional setup** with SSL, monitoring, and automated backups
+- **Fresh database** - no migration from Bolt.new needed
 
-- Analysis of all application components
-- Two migration approaches (quick vs. complete rewrite)
-- Detailed step-by-step instructions
-- Docker Compose configurations
-- Your responsibilities as the system administrator
-- Ongoing maintenance requirements
+### Final Architecture Diagram
 
-### Current State
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      UNRAID SERVER (192.168.1.246)              │
+│                                                                 │
+│  ┌───────────────────────────────────────────────────────────┐ │
+│  │  SWAG Reverse Proxy (br0: 192.168.1.65)                  │ │
+│  │  - SSL/TLS termination (Let's Encrypt)                    │ │
+│  │  - Domain: auditproof.yourdomain.com                      │ │
+│  │  - Ports: 80 → 443 (external)                             │ │
+│  └──────────────────┬────────────────────────────────────────┘ │
+│                     │                                           │
+│  ┌──────────────────▼────────────────────────────────────────┐ │
+│  │  Audit Proof Frontend (Custom Network)                    │ │
+│  │  - Nginx serving React app                                │ │
+│  │  - Port: 8080                                             │ │
+│  │  - Volume: /mnt/user/appdata/auditproof/dist             │ │
+│  └──────────────────┬────────────────────────────────────────┘ │
+│                     │                                           │
+│  ┌──────────────────▼────────────────────────────────────────┐ │
+│  │  Supabase Kong Gateway (Custom Network)                   │ │
+│  │  - API Gateway & routing                                  │ │
+│  │  - Ports: 8000 (API), 8001 (Admin)                       │ │
+│  └──────────────────┬────────────────────────────────────────┘ │
+│                     │                                           │
+│  ┌──────────────────┴────────────────────────────────────────┐ │
+│  │                 Supabase Services                          │ │
+│  │  ┌──────────────────────────────────────────────────────┐ │ │
+│  │  │  PostgreSQL 15 (database)                            │ │ │
+│  │  │  Volume: /mnt/user/appdata/auditproof/postgres       │ │ │
+│  │  └──────────────────────────────────────────────────────┘ │ │
+│  │  ┌──────────────────────────────────────────────────────┐ │ │
+│  │  │  GoTrue (authentication service)                     │ │ │
+│  │  └──────────────────────────────────────────────────────┘ │ │
+│  │  ┌──────────────────────────────────────────────────────┐ │ │
+│  │  │  PostgREST (auto REST API)                           │ │ │
+│  │  └──────────────────────────────────────────────────────┘ │ │
+│  │  ┌──────────────────────────────────────────────────────┐ │ │
+│  │  │  Storage API                                          │ │ │
+│  │  │  Volume: /mnt/user/appdata/auditproof/storage        │ │ │
+│  │  └──────────────────────────────────────────────────────┘ │ │
+│  │  ┌──────────────────────────────────────────────────────┐ │ │
+│  │  │  Edge Functions (Deno runtime)                       │ │ │
+│  │  │  - 6 functions for business logic                    │ │ │
+│  │  └──────────────────────────────────────────────────────┘ │ │
+│  │  ┌──────────────────────────────────────────────────────┐ │ │
+│  │  │  Studio (admin UI)                                   │ │ │
+│  │  │  Port: 3000                                          │ │ │
+│  │  └──────────────────────────────────────────────────────┘ │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│                                                                 │
+│  ┌───────────────────────────────────────────────────────────┐ │
+│  │  Uptime Kuma (monitoring - br0: 192.168.1.x)             │ │
+│  │  Port: 3001                                               │ │
+│  └───────────────────────────────────────────────────────────┘ │
+│                                                                 │
+│  ┌───────────────────────────────────────────────────────────┐ │
+│  │  Duplicacy (backup service)                               │ │
+│  │  - Daily automated backups                                │ │
+│  │  - Retention: 30 days                                     │ │
+│  └───────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-**Hosting:** Bolt.new (temporary development environment)
-**Database:** Supabase Cloud (managed PostgreSQL)
-**Storage:** Supabase Storage (S3-compatible, cloud)
-**Authentication:** Supabase Auth (cloud-based)
-**Edge Functions:** Supabase Edge Functions (6 functions, Deno runtime)
-**Frontend:** React SPA (static files)
+### Network Strategy
 
-### Target State
-
-**Hosting:** Unraid Docker containers
-**Database:** Self-hosted PostgreSQL (or managed Supabase Cloud)
-**Storage:** Unraid volumes (local storage)
-**Authentication:** Self-hosted (GoTrue or custom)
-**API:** Self-hosted Node.js/Express backend
-**Frontend:** Nginx serving static files
-
-### Key Decision Point
-
-You have **two viable approaches**:
-
-1. **Option A (Recommended):** Self-hosted Supabase stack (~8-12 hours, minimal code changes)
-2. **Option B:** Complete rewrite to custom Node.js + MongoDB stack (~120-175 hours)
-
-This guide focuses on **Option A** as it's the most practical for self-hosting while maintaining all functionality.
+Since you currently use **bridge**, **br0**, and **host** networks via Unraid GUI, we'll:
+1. Create a **custom bridge network** for Supabase services (internal communication)
+2. Use **br0** for SWAG and monitoring (external access)
+3. Keep it manageable through Unraid Docker GUI
 
 ---
 
-## Current Architecture (Bolt.new)
+## Application Analysis
 
-### Component Inventory
+### Complete Component Inventory
 
-#### 1. Frontend Application
+#### Frontend Application
 - **Technology:** React 18.3.1 + TypeScript + Vite
-- **Size:** ~2.5 MB (bundled and gzipped)
-- **Files:** HTML, JavaScript bundles, CSS, images
-- **Environment Variables:**
-  ```
-  VITE_SUPABASE_URL=https://mnmfwqfbksughmthfutg.supabase.co
-  VITE_SUPABASE_ANON_KEY=eyJhbGc...
-  ```
+- **Build Output:** ~2.5 MB (gzipped)
+- **Dependencies:**
+  - Supabase client (@supabase/supabase-js)
+  - React Query for data fetching
+  - PDF generation (jsPDF)
+  - Image compression
+- **Configuration:** Requires 2 environment variables only
+  - `VITE_SUPABASE_URL`
+  - `VITE_SUPABASE_ANON_KEY`
 
-#### 2. Supabase Backend (Cloud)
-**Database Tables (15 total):**
-- `profiles` - User profiles
-- `businesses` - Business/organization accounts
-- `business_members` - Team membership
-- `collections` - Receipt collections/folders
-- `collection_members` - Shared collection access
-- `receipts` - Receipt metadata and extracted data
-- `expense_categories` - Custom expense categories
-- `invitations` - Team invitation system
-- `audit_logs` - Comprehensive audit trail
-- `system_logs` - System event logging
-- `saved_filters` - User-saved filter preferences
-- `saved_log_filters` - Saved audit log filters
-- `mfa_recovery_codes` - MFA backup codes
-- `export_jobs` - Async export job queue
-- `email_receipts_inbox` - Email forwarding inbox
-- `rate_limit_tracking` - Rate limiting system
-- `dashboard_analytics` - Dashboard metrics cache
-- `system_config` - System-wide configuration
+#### Database Schema (18 Tables)
+1. **profiles** - User accounts and settings
+2. **businesses** - Organizations/companies
+3. **business_members** - Team membership with roles
+4. **collections** - Receipt folders/categories
+5. **collection_members** - Shared collection access
+6. **receipts** - Receipt metadata and OCR data
+7. **expense_categories** - Custom expense categories
+8. **invitations** - Team invitation system
+9. **audit_logs** - Comprehensive audit trail (84 total migrations)
+10. **system_logs** - System events and errors
+11. **saved_filters** - User-saved search filters
+12. **saved_log_filters** - Audit log filters
+13. **mfa_recovery_codes** - MFA backup codes
+14. **export_jobs** - Async export queue
+15. **email_receipts_inbox** - Email forwarding
+16. **rate_limit_tracking** - Rate limiting
+17. **dashboard_analytics** - Cached metrics
+18. **system_config** - System settings
 
-**Storage Buckets:**
-- `receipts` - Receipt images and PDFs (~50 MB max per file)
+#### Edge Functions (6 Total)
+1. **extract-receipt-data** - AI OCR using OpenAI GPT-4 Vision
+2. **send-invitation-email** - Team invitations via SMTP
+3. **receive-email-receipt** - Email forwarding webhook
+4. **accept-invitation** - Invitation acceptance
+5. **process-export-job** - Async CSV/PDF/ZIP generation
+6. **admin-user-management** - Admin operations
 
-**Edge Functions (6):**
-1. `extract-receipt-data` - AI-powered OCR using OpenAI GPT-4 Vision
-2. `send-invitation-email` - Team invitation emails via SMTP
-3. `receive-email-receipt` - Email forwarding integration (Postmark webhook)
-4. `accept-invitation` - Team invitation acceptance
-5. `process-export-job` - Async export generation (CSV/PDF/ZIP)
-6. `admin-user-management` - Admin operations
+#### External Dependencies
+- **OpenAI API** (Required) - Receipt data extraction
+  - Model: GPT-4 Vision
+  - Cost: ~$0.01 per receipt
+  - Secrets needed: `OPENAI_API_KEY`
+- **SMTP Server** (Required for email features)
+  - Your current: mail.privateemail.com:465
+  - Secrets needed: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`
+- **Postmark** (Optional) - Email receipt forwarding
+  - Can be skipped if you don't need email-to-receipt feature
 
-**Authentication:**
-- Email/password authentication
-- JWT token-based sessions
-- MFA support with recovery codes
-- Password reset flow
+#### Security Features
+- **Row Level Security (RLS)** - All database tables protected
+- **JWT Authentication** - Token-based sessions
+- **MFA Support** - TOTP authenticator app
+- **Rate Limiting** - Prevents abuse
+- **Audit Logging** - Every action tracked
+- **IP Address Tracking** - Security monitoring
 
-#### 3. External Dependencies
-- **OpenAI API:** Receipt data extraction (GPT-4 Vision)
-- **SMTP Server:** Email delivery (mail.privateemail.com)
-- **Postmark:** Email receipt forwarding (optional)
+### Secrets Currently in Bolt.new
 
-### Data Flow Example
-```
-User uploads receipt (camera/file)
-  ↓
-Frontend: Optimize image (compression)
-  ↓
-Upload to Supabase Storage
-  ↓
-Call extract-receipt-data Edge Function
-  ↓
-Edge Function: Download image, call OpenAI API
-  ↓
-Return extracted data (merchant, amount, date, etc.)
-  ↓
-User verifies data in modal
-  ↓
-Insert receipt record in database (with RLS security)
-  ↓
-Receipt appears in dashboard
-```
+**Good News:** You don't need to retrieve secrets from Bolt.new because:
+1. **Database is fresh** - No migration needed
+2. **JWT secrets are generated** - We'll create new ones
+3. **API keys are yours** - You have them:
+   - OpenAI API key (check your OpenAI account)
+   - SMTP credentials (you already use: contact@auditproof.ca)
+4. **Supabase keys are auto-generated** - Created during setup
 
----
-
-## Target Architecture (Unraid)
-
-### Docker Container Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        UNRAID SERVER                         │
-│                                                              │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │  Container: nginx-frontend                             │ │
-│  │  - Serves React app static files                       │ │
-│  │  - Port: 8080 → 80                                     │ │
-│  │  - Volume: /mnt/user/appdata/auditproof/dist          │ │
-│  └──────────────────┬─────────────────────────────────────┘ │
-│                     │                                        │
-│  ┌──────────────────▼─────────────────────────────────────┐ │
-│  │  Container: api-backend                                │ │
-│  │  - Node.js/Express API server                          │ │
-│  │  - Port: 3000 (internal)                               │ │
-│  │  - Handles: Auth, file uploads, business logic        │ │
-│  └──────────────────┬─────────────────────────────────────┘ │
-│                     │                                        │
-│  ┌──────────────────▼─────────────────────────────────────┐ │
-│  │  Container: postgres                                   │ │
-│  │  - PostgreSQL 15 database                              │ │
-│  │  - Port: 5432 (internal)                               │ │
-│  │  - Volume: /mnt/user/appdata/auditproof/postgres      │ │
-│  └────────────────────────────────────────────────────────┘ │
-│                                                              │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │  Container: minio (S3-compatible storage)              │ │
-│  │  - Object storage for receipt files                    │ │
-│  │  - Port: 9000 (API), 9001 (Console)                   │ │
-│  │  - Volume: /mnt/user/appdata/auditproof/storage       │ │
-│  └────────────────────────────────────────────────────────┘ │
-│                                                              │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │  Container: redis (optional)                           │ │
-│  │  - Session storage and caching                         │ │
-│  │  - Port: 6379 (internal)                               │ │
-│  │  - Volume: /mnt/user/appdata/auditproof/redis         │ │
-│  └────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────┘
-```
-
-### Network Configuration
-- **Custom Docker Network:** `auditproof-network` (bridge mode)
-- **Internal Communication:** Containers communicate via service names
-- **External Access:** Only frontend (port 8080) and optionally Minio console (9001)
-- **Reverse Proxy:** Recommended to use Nginx Proxy Manager or Traefik
+**Action Required:** Get these from YOUR accounts:
+- OpenAI API key: https://platform.openai.com/api-keys
+- SMTP password: Your email provider (PrivateEmail)
 
 ---
 
-## Migration Approach Options
+## Prerequisites
 
-### Option A: Self-Hosted Supabase (RECOMMENDED)
+### Unraid Requirements
 
-**What It Is:**
-Use Supabase's open-source self-hosted version. This includes all components:
-- PostgreSQL with extensions
-- GoTrue (authentication service)
-- PostgREST (auto-generated REST API)
-- Storage API (file management)
-- Realtime (websocket subscriptions)
-- Kong (API gateway)
-- Studio (admin dashboard)
+✅ **Your Current Setup:**
+- Unraid OS: 7.1.4 ✓
+- Unraid API: 4.25.0 ✓
+- SWAG reverse proxy: Installed ✓
+- Multiple containers running on bridge/br0 ✓
 
-**Pros:**
-✅ **Minimal code changes** - Application works as-is
-✅ **Fast migration** - 8-12 hours
-✅ **All features preserved** - Keep MFA, RLS, Edge Functions
-✅ **Active community** - Well documented, good support
-✅ **Future flexibility** - Can switch back to cloud if needed
-✅ **Admin UI included** - Supabase Studio for database management
+✅ **What You Need:**
+- **Free Storage:** 100 GB minimum (200 GB recommended)
+- **Free RAM:** 6 GB minimum (8 GB recommended)
+- **Free CPU:** 20-30% average headroom
+- **Static IP:** Your Unraid server should have static IP
+- **Domain Name:** For SSL (auditproof.yourdomain.com)
 
-**Cons:**
-❌ **Multiple containers** - 8-10 containers (more complex)
-❌ **Higher resource usage** - ~4-6 GB RAM minimum
-❌ **Update maintenance** - Need to manually update Supabase versions
-❌ **Edge Functions** - Deno runtime required (included but resource-intensive)
+### Skills Required
 
-**Estimated Resource Usage:**
-- CPU: 2-4 cores (burst)
-- RAM: 4-6 GB
-- Storage: 50-200 GB (depends on receipt volume)
-- Network: Minimal (local only)
+**You Need to Be Comfortable With:**
+- ✅ Creating Docker containers in Unraid GUI (you already do this)
+- ✅ Editing text files via terminal (SSH)
+- ✅ Copy/pasting commands
+- ✅ Basic Docker concepts (volumes, ports, networks)
 
-**Estimated Time:**
-- Initial setup: 4-6 hours
-- Data migration: 2-4 hours
-- Testing: 2-4 hours
-- **Total: 8-14 hours**
+**You DON'T Need:**
+- ❌ Programming knowledge
+- ❌ Database expertise
+- ❌ Docker Compose (we'll use GUI + manual docker commands)
+- ❌ Kubernetes or complex orchestration
 
----
+### Install Required Unraid Apps
 
-### Option B: Custom Node.js + MongoDB Stack
+Open **Apps** tab in Unraid, search and install:
 
-**What It Is:**
-Complete rewrite of backend using traditional stack:
-- MongoDB for database
-- Express/Fastify for API
-- Passport.js for authentication
-- Minio for file storage
-- Custom implementation of all features
+1. **Uptime Kuma** - For monitoring
+   - Author: louislam
+   - Category: Tools
+   - Click Install
 
-**Pros:**
-✅ **Full control** - Every line of code is yours
-✅ **Simpler stack** - Fewer containers (4-5)
-✅ **Lower resource usage** - ~2-3 GB RAM
-✅ **Learning opportunity** - Deep understanding of every component
-✅ **MongoDB flexibility** - Document-based data model
+2. **Duplicacy** - For backups
+   - Author: saspus (Duplicacy Web Edition)
+   - Category: Backup
+   - Click Install
 
-**Cons:**
-❌ **Massive time investment** - 120-175 hours (3-4 weeks full-time)
-❌ **Feature rewrite** - All 6 Edge Functions need conversion
-❌ **Auth system rebuild** - JWT, MFA, sessions from scratch
-❌ **RLS reimplementation** - Security logic in application code
-❌ **No admin UI** - Need to build or use MongoDB Compass
-❌ **Testing burden** - All security features need re-testing
-❌ **Maintenance complexity** - More code to maintain
+### Tools You'll Need on Your Workstation
 
-**What Needs Rewriting:**
-1. **Database Queries** - ~100+ queries across 40+ files
-2. **Authentication System** - Registration, login, sessions, MFA
-3. **Authorization** - Row-level security logic in application code
-4. **File Storage** - Upload/download/delete operations
-5. **Edge Functions** - Convert 6 Deno functions to Node.js
-6. **Real-time Features** - Websocket implementation if needed
+**For building the frontend:**
+- Node.js 18+ (download from nodejs.org)
+- Git (download from git-scm.com)
 
-**Estimated Time Breakdown:**
-- Database schema conversion: 20 hours
-- Query rewrite: 40 hours
-- Auth system: 25 hours
-- File storage integration: 15 hours
-- Edge Function conversion: 30 hours
-- Testing and debugging: 30 hours
-- **Total: 160 hours (4 weeks full-time)**
-
----
-
-## Recommended Approach: Self-Hosted Supabase
-
-Based on your requirements and the application's current state, **Option A (Self-Hosted Supabase)** is strongly recommended because:
-
-1. **Time-efficient** - Get running in a weekend vs. a month
-2. **Lower risk** - Proven, tested stack
-3. **Feature complete** - No loss of functionality
-4. **Easier maintenance** - Community support and updates
-5. **Future flexibility** - Can migrate to cloud or custom later
-
-The rest of this guide focuses on **Option A**.
-
----
-
-## Prerequisites & Planning
-
-### Unraid Server Requirements
-
-**Minimum Specifications:**
-- **CPU:** 4 cores (Intel/AMD with virtualization support)
-- **RAM:** 8 GB available (16 GB total recommended)
-- **Storage:** 100 GB free space on array or cache drive
-- **Network:** Static IP address on local network
-- **Unraid Version:** 6.10.0 or newer
-
-**Recommended Specifications:**
-- **CPU:** 6+ cores
-- **RAM:** 16 GB available (32 GB total recommended)
-- **Storage:** 500 GB SSD cache drive (for database and hot storage)
-- **Network:** Gigabit ethernet
-
-### Required Unraid Apps
-
-Install these from Community Applications:
-
-1. **Docker Compose Manager** (if not using manual docker commands)
-2. **Nginx Proxy Manager** (for SSL and reverse proxy)
-3. **Uptime Kuma** (optional, for monitoring)
-4. **Duplicacy or Duplicati** (for backups)
-
-### Skills & Knowledge Required
-
-**Your Responsibilities Will Include:**
-
-✅ **System Administration:**
-- Docker container management
-- Volume and network configuration
-- Port mapping and firewall rules
-- Log monitoring and troubleshooting
-
-✅ **Database Management:**
-- PostgreSQL backups (daily recommended)
-- Database performance monitoring
-- Occasional query optimization
-- Schema updates (via migrations)
-
-✅ **Security:**
-- SSL certificate management (Let's Encrypt)
-- Password and secret management
-- Security updates (container images)
-- Access control and firewall rules
-
-✅ **Monitoring & Maintenance:**
-- Container health checks
-- Disk space monitoring
-- Log rotation
-- Update scheduling
-
-❌ **What You WON'T Need:**
-- Application code development
-- Deep PostgreSQL expertise (basics sufficient)
-- DevOps/Kubernetes knowledge
-- Complex networking (just port forwarding)
+**For SSH access:**
+- Terminal app:
+  - Windows: PuTTY or Windows Terminal
+  - Mac/Linux: Built-in Terminal
 
 ### Pre-Migration Checklist
 
-**Data Preparation:**
-- [ ] Export all data from Supabase Cloud (using `pg_dump`)
-- [ ] Download all receipts from Storage (backup)
-- [ ] Document current environment variables
-- [ ] List all active Edge Function secrets
-- [ ] Export user list and roles
-
-**Unraid Setup:**
-- [ ] Free up 100+ GB storage space
-- [ ] Reserve 8+ GB RAM for containers
-- [ ] Set static IP for Unraid server
-- [ ] Enable Docker service
-- [ ] Create appdata share if not exists
-
-**Network Planning:**
-- [ ] Choose internal port mappings
-- [ ] Plan domain name (e.g., auditproof.local)
-- [ ] Configure DNS or /etc/hosts
-- [ ] Open firewall ports if accessing remotely
+Before starting, verify:
+- [ ] Unraid array is started
+- [ ] Docker service is enabled (Settings → Docker)
+- [ ] You can SSH into Unraid: `ssh root@192.168.1.246`
+- [ ] SWAG container is running
+- [ ] You have 100+ GB free space: Check Main tab
+- [ ] You have OpenAI API key
+- [ ] You have SMTP password
+- [ ] Your domain DNS is pointed to your public IP
 
 ---
 
-## Step-by-Step Migration Process
+## Phase 1: Unraid Network Setup
 
-### Phase 1: Backup Current System (1-2 hours)
+### Understanding Docker Networks in Unraid
 
-#### Step 1.1: Export Database
+**Current Networks (What You're Using):**
+1. **bridge** - Default Docker network (172.17.0.x)
+   - Containers can't communicate by name
+   - Need to use IP addresses
 
-```bash
-# Install Supabase CLI on your workstation (not Unraid)
-# macOS:
-brew install supabase/tap/supabase
+2. **br0** - Unraid's custom bridge (gets LAN IPs like 192.168.1.x)
+   - Containers appear as separate devices on your LAN
+   - Good for services you access from other devices
 
-# Windows (PowerShell):
-scoop install supabase
+3. **host** - Shares Unraid's network stack
+   - No isolation
+   - Ports directly on Unraid IP
 
-# Linux:
-curl -fsSL https://cli.supabase.com/install.sh | sh
+**What We'll Create:**
+4. **auditproof-network** - Custom bridge for Supabase
+   - Containers communicate by service name
+   - Isolated from other containers
+   - Only specific ports exposed to host
 
-# Login
-supabase login
+**Why Custom Network:**
+- Supabase services need to talk to each other (postgres, auth, storage, etc.)
+- Using names like `db`, `auth`, `storage` is cleaner than IPs
+- Security: Internal services not exposed to LAN
 
-# Link to your project
-supabase link --project-ref mnmfwqfbksughmthfutg
-
-# Export database schema and data
-supabase db dump -f backup-schema.sql --data-only=false
-supabase db dump -f backup-data.sql --data-only=true
-
-# Save these files - you'll need them later
-```
-
-#### Step 1.2: Backup Storage Files
-
-Option A: Use Supabase CLI
-```bash
-# List all files
-supabase storage list receipts
-
-# Download all files (may need custom script)
-# Create a simple script or use rclone
-```
-
-Option B: Use rclone (Recommended)
-```bash
-# Install rclone
-brew install rclone  # macOS
-# or download from rclone.org
-
-# Configure rclone for Supabase Storage
-rclone config
-
-# Name: supabase
-# Type: s3
-# Provider: Other
-# Access Key: [Your Supabase Service Role Key]
-# Secret Key: [Your Supabase Service Role Key]
-# Endpoint: https://mnmfwqfbksughmthfutg.supabase.co/storage/v1/s3
-# Region: (leave blank)
-
-# Download all files
-rclone sync supabase:receipts ./backup-storage/receipts/ -P
-```
-
-#### Step 1.3: Document Configuration
-
-Create a file `migration-notes.md`:
-```markdown
-# Current Configuration
-
-## Supabase
-- Project ID: mnmfwqfbksughmthfutg
-- URL: https://mnmfwqfbksughmthfutg.supabase.co
-- Anon Key: eyJhbGc... (public, safe to store)
-- Service Role Key: [SECURE - store in password manager]
-
-## Edge Function Secrets
-- OPENAI_API_KEY: sk-...
-- SMTP_HOST: mail.privateemail.com
-- SMTP_PORT: 465
-- SMTP_USER: contact@auditproof.ca
-- SMTP_PASSWORD: [SECURE]
-
-## External Services
-- Email: Postmark (optional)
-  - Inbound webhook: receive-email-receipt
-  - Server API Token: [if configured]
-```
-
----
-
-### Phase 2: Setup Unraid Environment (2-3 hours)
-
-#### Step 2.1: Create Directory Structure
-
-SSH into your Unraid server:
-```bash
-ssh root@unraid-ip
-
-# Create application directories
-mkdir -p /mnt/user/appdata/auditproof/{postgres,storage,redis,config,backups,logs}
-
-# Set permissions
-chmod -R 755 /mnt/user/appdata/auditproof
-```
-
-#### Step 2.2: Create Docker Network
+### Step 1.1: SSH Into Unraid
 
 ```bash
-docker network create auditproof-network
+# From your workstation
+ssh root@192.168.1.246
 ```
 
-#### Step 2.3: Generate Secrets
+Enter your Unraid root password when prompted.
+
+### Step 1.2: Create Custom Docker Network
 
 ```bash
-# Generate JWT secret (64 characters)
-openssl rand -base64 48
+# Create the network
+docker network create \
+  --driver bridge \
+  --subnet=172.20.0.0/16 \
+  --gateway=172.20.0.1 \
+  auditproof-network
 
-# Generate API keys
-openssl rand -hex 32
+# Verify it was created
+docker network ls | grep auditproof
+```
 
-# Save these in a secure location
+**Expected Output:**
+```
+2a3b4c5d6e7f   auditproof-network   bridge    local
+```
+
+**What This Does:**
+- Creates isolated network for Supabase containers
+- IP range: 172.20.0.0/16 (65,000 addresses)
+- Doesn't conflict with bridge (172.17.x) or your LAN (192.168.1.x)
+
+### Step 1.3: Create Directory Structure
+
+```bash
+# Create main application directory
+mkdir -p /mnt/user/appdata/auditproof
+
+# Create subdirectories for each service
+mkdir -p /mnt/user/appdata/auditproof/{postgres,storage,kong,auth,rest,realtime,studio,edge-functions,config,logs,backups,dist}
+
+# Set ownership and permissions
+chown -R nobody:users /mnt/user/appdata/auditproof
+chmod -R 775 /mnt/user/appdata/auditproof
+
+# Verify structure
+ls -la /mnt/user/appdata/auditproof/
+```
+
+**Expected Output:**
+```
+drwxrwxr-x  14 nobody users  14 Oct 24 10:00 .
+drwxrwxrwx  50 nobody users  50 Oct 24 09:55 ..
+drwxrwxr-x   2 nobody users   2 Oct 24 10:00 auth
+drwxrwxr-x   2 nobody users   2 Oct 24 10:00 backups
+drwxrwxr-x   2 nobody users   2 Oct 24 10:00 config
+drwxrwxr-x   2 nobody users   2 Oct 24 10:00 dist
+drwxrwxr-x   2 nobody users   2 Oct 24 10:00 edge-functions
+drwxrwxr-x   2 nobody users   2 Oct 24 10:00 kong
+drwxrwxr-x   2 nobody users   2 Oct 24 10:00 logs
+drwxrwxr-x   2 nobody users   2 Oct 24 10:00 postgres
+drwxrwxr-x   2 nobody users   2 Oct 24 10:00 realtime
+drwxrwxr-x   2 nobody users   2 Oct 24 10:00 rest
+drwxrwxr-x   2 nobody users   2 Oct 24 10:00 storage
+drwxrwxr-x   2 nobody users   2 Oct 24 10:00 studio
 ```
 
 ---
 
-### Phase 3: Deploy Self-Hosted Supabase (3-5 hours)
+## Phase 2: Install Supabase Stack
 
-#### Step 3.1: Clone Supabase Repository
+Since Unraid doesn't have Docker Compose Manager by default, we'll use the official Supabase Docker setup and adapt it for Unraid.
+
+### Step 2.1: Download Supabase Docker Setup
 
 ```bash
+# Navigate to appdata
 cd /mnt/user/appdata/auditproof
 
-# Clone official self-hosted setup
-git clone --depth 1 https://github.com/supabase/supabase
-cd supabase/docker
+# Clone Supabase repository
+git clone --depth 1 https://github.com/supabase/supabase.git supabase-src
 
-# Copy example environment file
-cp .env.example .env
+# Navigate to Docker directory
+cd supabase-src/docker
 ```
 
-#### Step 3.2: Configure Environment Variables
+### Step 2.2: Generate Secrets
 
-Edit `/mnt/user/appdata/auditproof/supabase/docker/.env`:
+```bash
+# Generate strong JWT secret (32+ characters)
+JWT_SECRET=$(openssl rand -base64 48)
+echo "JWT_SECRET=$JWT_SECRET"
+
+# Generate PostgreSQL password
+POSTGRES_PASSWORD=$(openssl rand -base64 32)
+echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD"
+
+# Generate Supabase dashboard password
+DASHBOARD_PASSWORD=$(openssl rand -base64 16)
+echo "DASHBOARD_PASSWORD=$DASHBOARD_PASSWORD"
+
+# Save these! You'll need them later
+echo "JWT_SECRET=$JWT_SECRET" > /mnt/user/appdata/auditproof/config/secrets.txt
+echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> /mnt/user/appdata/auditproof/config/secrets.txt
+echo "DASHBOARD_PASSWORD=$DASHBOARD_PASSWORD" >> /mnt/user/appdata/auditproof/config/secrets.txt
+
+# Secure the file
+chmod 600 /mnt/user/appdata/auditproof/config/secrets.txt
+```
+
+### Step 2.3: Generate JWT Keys (Anon & Service Role)
+
+We need to generate proper JWT tokens for API access.
+
+```bash
+# Install JWT tool (temporary)
+cd /tmp
+wget https://github.com/mike-engel/jwt-cli/releases/download/6.0.0/jwt-linux.tar.gz
+tar -xzf jwt-linux.tar.gz
+chmod +x jwt
+
+# Generate ANON key (public, used by frontend)
+ANON_KEY=$(./jwt encode \
+  --secret "$JWT_SECRET" \
+  --alg HS256 \
+  --exp '+10y' \
+  '{"role":"anon","iss":"supabase"}')
+echo "ANON_KEY=$ANON_KEY"
+
+# Generate SERVICE_ROLE key (admin, used by Edge Functions)
+SERVICE_ROLE_KEY=$(./jwt encode \
+  --secret "$JWT_SECRET" \
+  --alg HS256 \
+  --exp '+10y' \
+  '{"role":"service_role","iss":"supabase"}')
+echo "SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+
+# Save them
+echo "ANON_KEY=$ANON_KEY" >> /mnt/user/appdata/auditproof/config/secrets.txt
+echo "SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> /mnt/user/appdata/auditproof/config/secrets.txt
+
+# Clean up
+rm jwt jwt-linux.tar.gz
+```
+
+**IMPORTANT:** Save the output! You'll need `ANON_KEY` for the frontend.
+
+### Step 2.4: Create Environment File
+
+```bash
+cd /mnt/user/appdata/auditproof/supabase-src/docker
+
+# Copy example env
+cp .env.example .env
+
+# Edit the file
+nano .env
+```
+
+**Replace/Update these values in `.env`:**
 
 ```bash
 ############
-# Secrets
+# Secrets - Use the values you generated above
 ############
+POSTGRES_PASSWORD=YOUR_POSTGRES_PASSWORD_HERE
+JWT_SECRET=YOUR_JWT_SECRET_HERE
+ANON_KEY=YOUR_ANON_KEY_HERE
+SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY_HERE
 
-# Generate these with: openssl rand -base64 32
-POSTGRES_PASSWORD=your-super-secure-postgres-password
-JWT_SECRET=your-super-secure-jwt-secret-at-least-32-characters-long
-ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
-SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
+# Dashboard credentials
 DASHBOARD_USERNAME=admin
-DASHBOARD_PASSWORD=your-admin-password
+DASHBOARD_PASSWORD=YOUR_DASHBOARD_PASSWORD_HERE
 
 ############
-# URLs
+# URLs - Use your Unraid IP
 ############
-
-SITE_URL=http://your-unraid-ip:8080
-API_EXTERNAL_URL=http://your-unraid-ip:8000
-
-############
-# Ports
-############
-
-KONG_HTTP_PORT=8000
-KONG_HTTPS_PORT=8443
-POSTGRES_PORT=5432
-STUDIO_PORT=3000
+# Replace 192.168.1.246 with your actual Unraid IP
+SITE_URL=http://192.168.1.246:8080
+API_EXTERNAL_URL=http://192.168.1.246:8000
+SUPABASE_PUBLIC_URL=http://192.168.1.246:8000
 
 ############
 # Database
 ############
-
 POSTGRES_HOST=db
 POSTGRES_DB=postgres
+POSTGRES_PORT=5432
 
 ############
-# Auth
+# Kong Gateway
 ############
+KONG_HTTP_PORT=8000
+KONG_HTTPS_PORT=8443
 
-GOTRUE_SITE_URL=http://your-unraid-ip:8080
+############
+# Studio (Admin UI)
+############
+STUDIO_PORT=3000
+
+############
+# Auth (GoTrue)
+############
+GOTRUE_SITE_URL=http://192.168.1.246:8080
 GOTRUE_JWT_SECRET=${JWT_SECRET}
+GOTRUE_JWT_EXP=3600
+GOTRUE_DISABLE_SIGNUP=false  # Allow user registration
+GOTRUE_EXTERNAL_EMAIL_ENABLED=true
+GOTRUE_MAILER_AUTOCONFIRM=true  # Auto-confirm emails (no verification)
+
+# SMTP Settings (for password reset, invitations)
 GOTRUE_SMTP_HOST=mail.privateemail.com
 GOTRUE_SMTP_PORT=465
 GOTRUE_SMTP_USER=contact@auditproof.ca
-GOTRUE_SMTP_PASS=your-smtp-password
+GOTRUE_SMTP_PASS=YOUR_EMAIL_PASSWORD_HERE
 GOTRUE_SMTP_ADMIN_EMAIL=contact@auditproof.ca
+GOTRUE_SMTP_SENDER_NAME=Audit Proof
 
 ############
 # Storage
 ############
-
-STORAGE_FILE_SIZE_LIMIT=52428800  # 50MB in bytes
+STORAGE_FILE_SIZE_LIMIT=52428800  # 50MB
 
 ############
 # Edge Functions
 ############
-
-FUNCTIONS_VERIFY_JWT=false  # Set to true in production
+FUNCTIONS_VERIFY_JWT=false  # Set true after initial setup
 ```
 
-**Important Notes:**
-- Replace `your-unraid-ip` with your actual Unraid server IP
-- Generate new JWT_SECRET (don't use the example)
-- Use strong passwords for POSTGRES_PASSWORD and DASHBOARD_PASSWORD
-- The ANON_KEY and SERVICE_ROLE_KEY shown are examples, generate new ones using [JWT.io](https://jwt.io) with your JWT_SECRET
+**Save and exit:** Ctrl+X, Y, Enter
 
-#### Step 3.3: Customize Docker Compose
+### Step 2.5: Modify Docker Compose for Unraid
 
-Edit `/mnt/user/appdata/auditproof/supabase/docker/docker-compose.yml`:
+Edit the docker-compose.yml to use our custom paths:
 
-**Modify volume paths to use Unraid:**
+```bash
+nano docker-compose.yml
+```
+
+**Find and replace ALL volume paths:**
+- Change `./volumes/db/data` → `/mnt/user/appdata/auditproof/postgres`
+- Change `./volumes/storage` → `/mnt/user/appdata/auditproof/storage`
+- Change `./volumes/functions` → `/mnt/user/appdata/auditproof/edge-functions`
+
+**Also add restart policies to all services:**
 ```yaml
-services:
-  db:
-    volumes:
-      - /mnt/user/appdata/auditproof/postgres:/var/lib/postgresql/data
-
-  storage:
-    volumes:
-      - /mnt/user/appdata/auditproof/storage:/var/lib/storage
-
-  # ... other services
+restart: unless-stopped
 ```
 
-**Add restart policies:**
+**Example for db service:**
 ```yaml
-services:
-  db:
-    restart: unless-stopped
-
-  # Add to all services
+db:
+  container_name: supabase-db
+  image: supabase/postgres:15.1.0.147
+  restart: unless-stopped  # ADD THIS
+  healthcheck:
+    test: pg_isready -U postgres -h localhost
+    interval: 5s
+    timeout: 5s
+    retries: 10
+  command:
+    - postgres
+    - -c
+    - config_file=/etc/postgresql/postgresql.conf
+    - -c
+    - log_min_messages=fatal
+  environment:
+    POSTGRES_HOST: /var/run/postgresql
+    PGPORT: ${POSTGRES_PORT}
+    POSTGRES_PORT: ${POSTGRES_PORT}
+    PGPASSWORD: ${POSTGRES_PASSWORD}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    POSTGRES_DB: ${POSTGRES_DB}
+  volumes:
+    - /mnt/user/appdata/auditproof/postgres:/var/lib/postgresql/data  # CHANGE THIS
+    - ./volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/98-roles.sql:Z
+    - ./volumes/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:Z
+    - ./volumes/db/logs.sql:/docker-entrypoint-initdb.d/init-scripts/logs.sql:Z
+  networks:
+    - default
 ```
 
-#### Step 3.4: Start Supabase Stack
+**Repeat for storage, kong, and other services with volume mounts.**
+
+**Save and exit:** Ctrl+X, Y, Enter
+
+### Step 2.6: Configure Network in Docker Compose
+
+Edit the networks section at the bottom of docker-compose.yml:
 
 ```bash
-cd /mnt/user/appdata/auditproof/supabase/docker
-
-# Pull all images (this will take 10-20 minutes)
-docker compose pull
-
-# Start services
-docker compose up -d
-
-# Check status
-docker compose ps
-
-# View logs
-docker compose logs -f
+nano docker-compose.yml
 ```
 
-**Expected Containers (8 total):**
-1. `supabase-db` - PostgreSQL database
-2. `supabase-auth` - GoTrue authentication service
-3. `supabase-rest` - PostgREST API
-4. `supabase-storage` - Storage API
-5. `supabase-imgproxy` - Image optimization
-6. `supabase-kong` - API Gateway
-7. `supabase-realtime` - Realtime subscriptions
-8. `supabase-studio` - Admin dashboard
-
-**Verify Services:**
-- Supabase Studio: `http://unraid-ip:3000`
-- API Gateway: `http://unraid-ip:8000`
-- PostgreSQL: `postgresql://postgres:your-password@unraid-ip:5432/postgres`
-
----
-
-### Phase 4: Restore Data (1-2 hours)
-
-#### Step 4.1: Import Database Schema
-
-```bash
-# Copy your backup files to Unraid
-scp backup-schema.sql root@unraid-ip:/mnt/user/appdata/auditproof/backups/
-
-# SSH into Unraid
-ssh root@unraid-ip
-
-# Restore schema
-docker exec -i supabase-db psql -U postgres -d postgres < /mnt/user/appdata/auditproof/backups/backup-schema.sql
-
-# Verify tables
-docker exec -it supabase-db psql -U postgres -d postgres -c "\dt"
-```
-
-#### Step 4.2: Import Data
-
-```bash
-# Restore data
-docker exec -i supabase-db psql -U postgres -d postgres < /mnt/user/appdata/auditproof/backups/backup-data.sql
-
-# Verify data
-docker exec -it supabase-db psql -U postgres -d postgres -c "SELECT COUNT(*) FROM receipts;"
-```
-
-#### Step 4.3: Restore Storage Files
-
-```bash
-# Copy storage files to Unraid
-scp -r backup-storage/receipts root@unraid-ip:/mnt/user/appdata/auditproof/storage/
-
-# Fix permissions
-chmod -R 755 /mnt/user/appdata/auditproof/storage/receipts
-```
-
----
-
-### Phase 5: Deploy Frontend (1 hour)
-
-#### Step 5.1: Build Frontend with New Config
-
-On your workstation:
-```bash
-cd /path/to/auditproof
-
-# Update .env file
-cat > .env << EOF
-VITE_SUPABASE_URL=http://unraid-ip:8000
-VITE_SUPABASE_ANON_KEY=eyJhbG...  # Use the ANON_KEY from your .env
-EOF
-
-# Build
-npm run build
-
-# Package for transfer
-tar -czf dist.tar.gz dist/
-```
-
-#### Step 5.2: Deploy to Nginx Container
-
-```bash
-# Transfer to Unraid
-scp dist.tar.gz root@unraid-ip:/mnt/user/appdata/auditproof/
-
-# SSH into Unraid
-ssh root@unraid-ip
-cd /mnt/user/appdata/auditproof
-
-# Extract
-tar -xzf dist.tar.gz
-
-# Create Nginx container
-docker run -d \
-  --name auditproof-frontend \
-  --network auditproof-network \
-  -p 8080:80 \
-  -v /mnt/user/appdata/auditproof/dist:/usr/share/nginx/html:ro \
-  -v /mnt/user/appdata/auditproof/config/nginx.conf:/etc/nginx/nginx.conf:ro \
-  --restart unless-stopped \
-  nginx:alpine
-```
-
-#### Step 5.3: Create Nginx Configuration
-
-Create `/mnt/user/appdata/auditproof/config/nginx.conf`:
-```nginx
-events {
-  worker_connections 1024;
-}
-
-http {
-  include /etc/nginx/mime.types;
-  default_type application/octet-stream;
-
-  server {
-    listen 80;
-    server_name _;
-
-    root /usr/share/nginx/html;
-    index index.html;
-
-    # Enable gzip compression
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
-
-    # SPA routing - always serve index.html
-    location / {
-      try_files $uri $uri/ /index.html;
-    }
-
-    # Security headers
-    add_header X-Frame-Options "DENY" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-
-    # Cache static assets
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-      expires 1y;
-      add_header Cache-Control "public, immutable";
-    }
-  }
-}
-```
-
-Restart Nginx:
-```bash
-docker restart auditproof-frontend
-```
-
----
-
-### Phase 6: Deploy Edge Functions (1-2 hours)
-
-#### Step 6.1: Prepare Function Deployments
-
-On your workstation:
-```bash
-cd /path/to/auditproof
-
-# Install Supabase CLI if not already done
-# ... (see Phase 1)
-
-# Link to local Supabase
-supabase link --project-ref http://unraid-ip:8000
-
-# Set secrets
-supabase secrets set OPENAI_API_KEY=sk-... --project-ref http://unraid-ip:8000
-supabase secrets set SMTP_HOST=mail.privateemail.com --project-ref http://unraid-ip:8000
-supabase secrets set SMTP_PORT=465 --project-ref http://unraid-ip:8000
-supabase secrets set SMTP_USER=contact@auditproof.ca --project-ref http://unraid-ip:8000
-supabase secrets set SMTP_PASSWORD=your-smtp-password --project-ref http://unraid-ip:8000
-
-# Deploy all functions
-supabase functions deploy
-```
-
-#### Step 6.2: Test Edge Functions
-
-```bash
-# Test extract-receipt-data
-curl -X POST http://unraid-ip:8000/functions/v1/extract-receipt-data \
-  -H "Authorization: Bearer YOUR_ANON_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"receipt_path": "test.jpg"}'
-
-# Expected: 200 OK with receipt data or error message
-```
-
----
-
-### Phase 7: Testing & Validation (2-3 hours)
-
-#### Step 7.1: Access Application
-
-Open browser: `http://unraid-ip:8080`
-
-#### Step 7.2: Test Core Functionality
-
-**Authentication:**
-- [ ] Register new account
-- [ ] Login with existing credentials
-- [ ] Logout
-- [ ] Password reset flow
-
-**Receipt Management:**
-- [ ] Upload receipt (camera)
-- [ ] Upload receipt (file)
-- [ ] AI extraction working
-- [ ] Manual receipt entry
-- [ ] Edit receipt
-- [ ] Delete receipt
-- [ ] Multi-page receipt
-
-**Collections:**
-- [ ] Create collection
-- [ ] Add receipts to collection
-- [ ] Share collection
-- [ ] Delete collection
-
-**Team Features:**
-- [ ] Invite team member
-- [ ] Accept invitation
-- [ ] View team members
-- [ ] Remove team member
-
-**Export:**
-- [ ] CSV export
-- [ ] PDF export
-- [ ] ZIP export
-
-**Admin (if system admin):**
-- [ ] View system logs
-- [ ] View audit logs
-- [ ] Manage users
-- [ ] System configuration
-
-#### Step 7.3: Performance Testing
-
-```bash
-# Check container resource usage
-docker stats
-
-# Expected:
-# - Total CPU: 10-30%
-# - Total RAM: 2-4 GB (idle), 4-6 GB (active)
-# - Network: Minimal
-
-# Check database connections
-docker exec supabase-db psql -U postgres -d postgres -c "SELECT count(*) FROM pg_stat_activity;"
-
-# Check storage usage
-du -sh /mnt/user/appdata/auditproof/*
-```
-
----
-
-## Docker Compose Configuration
-
-### Complete Docker Compose File
-
-For easier management, you can create a custom `docker-compose.yml` that includes Nginx:
-
-Create `/mnt/user/appdata/auditproof/docker-compose.override.yml`:
-
+**Find the networks section (at the very end) and replace with:**
 ```yaml
-version: '3.8'
-
-services:
-  # Frontend
-  frontend:
-    image: nginx:alpine
-    container_name: auditproof-frontend
-    networks:
-      - default
-    ports:
-      - "8080:80"
-    volumes:
-      - /mnt/user/appdata/auditproof/dist:/usr/share/nginx/html:ro
-      - /mnt/user/appdata/auditproof/config/nginx.conf:/etc/nginx/nginx.conf:ro
-    restart: unless-stopped
-    depends_on:
-      - kong
-
-  # Add custom backup service
-  backup:
-    image: postgres:15-alpine
-    container_name: auditproof-backup
-    networks:
-      - default
-    volumes:
-      - /mnt/user/appdata/auditproof/backups:/backups
-      - /mnt/user/appdata/auditproof/scripts:/scripts:ro
-    environment:
-      POSTGRES_HOST: db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    entrypoint: ["/scripts/backup.sh"]
-    restart: "no"  # Run manually or via cron
-
 networks:
   default:
     external: true
     name: auditproof-network
 ```
 
-### Backup Script
+This tells Docker Compose to use the custom network we created.
 
-Create `/mnt/user/appdata/auditproof/scripts/backup.sh`:
+**Save and exit:** Ctrl+X, Y, Enter
 
-```bash
-#!/bin/bash
-set -e
+### Step 2.7: Start Supabase Stack
 
-BACKUP_DIR="/backups"
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-BACKUP_FILE="$BACKUP_DIR/backup_$TIMESTAMP.sql"
-
-echo "Starting backup at $TIMESTAMP..."
-
-# Backup database
-pg_dump -h $POSTGRES_HOST -U $POSTGRES_USER -d postgres -F c -f "$BACKUP_FILE"
-
-# Compress
-gzip "$BACKUP_FILE"
-
-echo "Backup completed: $BACKUP_FILE.gz"
-
-# Keep only last 7 days
-find $BACKUP_DIR -name "backup_*.sql.gz" -mtime +7 -delete
-
-echo "Old backups cleaned up"
-```
-
-Make executable:
-```bash
-chmod +x /mnt/user/appdata/auditproof/scripts/backup.sh
-```
-
----
-
-## Your Responsibilities
-
-### Daily Tasks (5-10 minutes)
-
-**Monitoring:**
-- [ ] Check container health: `docker compose ps`
-- [ ] Review logs for errors: `docker compose logs --tail=100`
-- [ ] Check disk space: `df -h /mnt/user/appdata/auditproof`
-- [ ] Monitor CPU/RAM usage: `docker stats`
-
-**What to Look For:**
-- Containers showing "unhealthy" status
-- Repeated errors in logs
-- Disk usage above 80%
-- High CPU or RAM usage
-
-### Weekly Tasks (15-30 minutes)
-
-**Backups:**
-- [ ] Run manual backup script
-- [ ] Verify backup file created
-- [ ] Test backup restoration (monthly)
-- [ ] Copy backups offsite
+**IMPORTANT:** This will download ~5GB of Docker images. It may take 20-30 minutes depending on your internet speed.
 
 ```bash
-# Run backup
-docker exec auditproof-backup /scripts/backup.sh
+cd /mnt/user/appdata/auditproof/supabase-src/docker
 
-# Verify backup
-ls -lh /mnt/user/appdata/auditproof/backups/
-```
+# Pull all images first (so you can see progress)
+docker compose pull
 
-**Updates:**
-- [ ] Check for Supabase updates
-- [ ] Review changelogs
-- [ ] Plan update window
-
-### Monthly Tasks (1-2 hours)
-
-**Security:**
-- [ ] Review audit logs for suspicious activity
-- [ ] Check for security vulnerabilities: `docker scout cves`
-- [ ] Update container images
-- [ ] Rotate API keys if needed
-
-**Performance:**
-- [ ] Review database size: `SELECT pg_size_pretty(pg_database_size('postgres'));`
-- [ ] Check slow queries
-- [ ] Optimize indexes if needed
-- [ ] Clean up old logs
-
-**Disaster Recovery:**
-- [ ] Test backup restoration
-- [ ] Verify all services start correctly
-- [ ] Update documentation
-
-### Quarterly Tasks (2-4 hours)
-
-**Major Updates:**
-- [ ] Upgrade Supabase version
-- [ ] Test in staging environment first
-- [ ] Update application dependencies
-- [ ] Review and update security policies
-
-**Capacity Planning:**
-- [ ] Analyze growth trends
-- [ ] Plan storage expansion if needed
-- [ ] Evaluate performance bottlenecks
-- [ ] Consider hardware upgrades
-
----
-
-## Maintenance & Operations
-
-### Starting/Stopping Services
-
-```bash
-# Stop all services
-cd /mnt/user/appdata/auditproof/supabase/docker
-docker compose down
-
-# Start all services
+# Start services
 docker compose up -d
 
-# Restart single service
-docker compose restart db
+# Wait 30 seconds for services to initialize
+sleep 30
 
-# View logs
-docker compose logs -f [service-name]
+# Check status
+docker compose ps
 ```
 
-### Database Maintenance
+**Expected Output (All should show "Up" or "Up (healthy)"):**
+```
+NAME                    STATUS
+supabase-db             Up (healthy)
+supabase-auth           Up (healthy)
+supabase-rest           Up (healthy)
+supabase-storage        Up (healthy)
+supabase-realtime       Up (healthy)
+supabase-studio         Up (healthy)
+supabase-kong           Up (healthy)
+supabase-edge-runtime   Up (healthy)
+supabase-analytics      Up
+```
 
-**Weekly Vacuum:**
+**If any container shows "Restarting" or "Exit":**
 ```bash
-docker exec supabase-db psql -U postgres -d postgres -c "VACUUM ANALYZE;"
+# View logs for that container
+docker logs supabase-db  # Replace with container name
+
+# Common issues:
+# - Port already in use: Change port in .env
+# - Volume permission: Check ownership of /mnt/user/appdata/auditproof
+# - Memory limit: Check Unraid has enough free RAM
 ```
 
-**Check Database Size:**
+### Step 2.8: Verify Services Are Running
+
+**Test API Gateway:**
 ```bash
-docker exec supabase-db psql -U postgres -d postgres -c "
-SELECT
-  pg_size_pretty(pg_database_size('postgres')) as db_size,
-  pg_size_pretty(pg_total_relation_size('receipts')) as receipts_size,
-  pg_size_pretty(pg_total_relation_size('audit_logs')) as audit_logs_size;
-"
+curl http://192.168.1.246:8000/
 ```
+**Expected:** JSON response with Supabase version
 
-**Backup Database:**
+**Test Studio (Admin UI):**
+Open browser: `http://192.168.1.246:3000`
+- Username: `admin`
+- Password: (your DASHBOARD_PASSWORD from .env)
+
+**If Studio loads**, you're good! You should see the Supabase dashboard.
+
+---
+
+## Phase 3: Database Initialization
+
+Now we'll apply all 84 database migrations to create the complete schema.
+
+### Step 3.1: Install Supabase CLI on Unraid
+
 ```bash
-docker exec supabase-db pg_dump -U postgres -d postgres -F c > backup_$(date +%Y%m%d).dump
+# Download Supabase CLI binary
+cd /tmp
+wget https://github.com/supabase/cli/releases/latest/download/supabase_linux_amd64.tar.gz
+tar -xzf supabase_linux_amd64.tar.gz
+mv supabase /usr/local/bin/
+chmod +x /usr/local/bin/supabase
+
+# Verify installation
+supabase --version
 ```
 
-**Restore Database:**
+### Step 3.2: Copy Migrations from Project
+
+**On your workstation (not Unraid):**
+
 ```bash
-docker exec -i supabase-db pg_restore -U postgres -d postgres -c < backup_20251022.dump
+# Navigate to your project
+cd /path/to/auditproof
+
+# Create tar of migrations
+tar -czf migrations.tar.gz supabase/migrations/
+
+# Copy to Unraid
+scp migrations.tar.gz root@192.168.1.246:/mnt/user/appdata/auditproof/
 ```
 
-### Storage Management
+**Back on Unraid SSH:**
 
-**Check Storage Usage:**
 ```bash
-du -sh /mnt/user/appdata/auditproof/storage/*
+cd /mnt/user/appdata/auditproof
+
+# Extract migrations
+tar -xzf migrations.tar.gz
+
+# Verify
+ls -la supabase/migrations/ | head -20
 ```
 
-**Clean Up Old Backups:**
+You should see 84 SQL migration files.
+
+### Step 3.3: Initialize Supabase Project Link
+
 ```bash
-find /mnt/user/appdata/auditproof/backups/ -name "*.dump" -mtime +30 -delete
+cd /mnt/user/appdata/auditproof
+
+# Initialize Supabase config
+supabase init
+
+# Link to local instance
+supabase link --project-ref http://192.168.1.246:8000
+
+# When prompted for password, enter your POSTGRES_PASSWORD
 ```
 
-### Log Management
+### Step 3.4: Apply All Migrations
 
-**View Real-time Logs:**
 ```bash
-# All services
-docker compose logs -f
+# Apply migrations to database
+supabase db push
 
-# Specific service
-docker compose logs -f db
-
-# Last 100 lines
-docker compose logs --tail=100
+# This will:
+# 1. Read all files in supabase/migrations/
+# 2. Apply them in order to PostgreSQL
+# 3. Create all 18 tables with RLS policies
+# 4. Set up functions and triggers
 ```
 
-**Log Rotation:**
-Edit `/etc/logrotate.d/docker-containers`:
+**Expected Output:**
 ```
-/var/lib/docker/containers/*/*.log {
-  rotate 7
-  daily
-  compress
-  missingok
-  delaycompress
-  copytruncate
+Applying migration 20251006010328_create_auditready_schema.sql...
+Applying migration 20251006011419_fix_business_rls_policy.sql...
+Applying migration 20251006011649_fix_all_circular_rls_policies.sql...
+...
+Applying migration 20251022141212_add_missing_performance_indexes.sql...
+
+Finished supabase db push
+```
+
+### Step 3.5: Verify Database Schema
+
+```bash
+# Connect to PostgreSQL
+docker exec -it supabase-db psql -U postgres -d postgres
+
+# List all tables
+\dt
+
+# Should see 18 tables:
+# profiles, businesses, business_members, collections,
+# collection_members, receipts, expense_categories, invitations,
+# audit_logs, system_logs, saved_filters, saved_log_filters,
+# mfa_recovery_codes, export_jobs, email_receipts_inbox,
+# rate_limit_tracking, dashboard_analytics, system_config
+
+# Exit psql
+\q
+```
+
+### Step 3.6: Seed Default Data
+
+**Create seed script:**
+
+```bash
+cat > /mnt/user/appdata/auditproof/config/seed.sql << 'EOF'
+-- Insert default expense categories
+INSERT INTO expense_categories (name, description, icon, color, sort_order) VALUES
+('Office Supplies', 'Pens, paper, printer supplies', 'Package', '#3B82F6', 1),
+('Meals & Entertainment', 'Client dinners, team lunches', 'Utensils', '#10B981', 2),
+('Travel', 'Hotels, flights, mileage', 'Plane', '#F59E0B', 3),
+('Professional Services', 'Legal, accounting, consulting', 'Briefcase', '#8B5CF6', 4),
+('Marketing & Advertising', 'Ads, promotional materials', 'Megaphone', '#EC4899', 5),
+('Rent & Utilities', 'Office rent, internet, phone', 'Home', '#6366F1', 6),
+('Equipment', 'Computers, furniture, tools', 'Monitor', '#14B8A6', 7),
+('Subscriptions', 'Software, memberships', 'CreditCard', '#F97316', 8),
+('Fuel', 'Gas, vehicle expenses', 'Fuel', '#EF4444', 9),
+('Other', 'Miscellaneous expenses', 'Tag', '#6B7280', 10)
+ON CONFLICT DO NOTHING;
+
+-- Insert system configuration
+INSERT INTO system_config (key, value, description) VALUES
+('app_name', 'Audit Proof', 'Application name'),
+('app_version', '1.0.0', 'Current version'),
+('max_file_size', '52428800', 'Max upload size in bytes (50MB)'),
+('retention_days', '2555', 'Data retention period (7 years)'),
+('enable_email_receipts', 'false', 'Email forwarding feature'),
+('enable_ai_extraction', 'true', 'OpenAI receipt extraction')
+ON CONFLICT (key) DO NOTHING;
+EOF
+
+# Apply seed data
+docker exec -i supabase-db psql -U postgres -d postgres < /mnt/user/appdata/auditproof/config/seed.sql
+```
+
+**Verify:**
+```bash
+docker exec -it supabase-db psql -U postgres -d postgres -c "SELECT COUNT(*) FROM expense_categories;"
+```
+**Expected:** `10`
+
+---
+
+## Phase 4: Deploy Frontend
+
+### Step 4.1: Build Frontend on Your Workstation
+
+**On your workstation (Windows/Mac):**
+
+```bash
+# Navigate to project
+cd /path/to/auditproof
+
+# Create production environment file
+cat > .env.production << EOF
+VITE_SUPABASE_URL=http://192.168.1.246:8000
+VITE_SUPABASE_ANON_KEY=YOUR_ANON_KEY_HERE
+EOF
+
+# Replace YOUR_ANON_KEY_HERE with the actual ANON_KEY from Phase 2.3
+
+# Install dependencies (if not already done)
+npm install
+
+# Build for production
+npm run build
+
+# Package build output
+cd dist
+tar -czf audit-proof-frontend.tar.gz *
+cd ..
+```
+
+### Step 4.2: Deploy to Unraid
+
+```bash
+# Copy to Unraid
+scp dist/audit-proof-frontend.tar.gz root@192.168.1.246:/mnt/user/appdata/auditproof/
+```
+
+**On Unraid SSH:**
+
+```bash
+cd /mnt/user/appdata/auditproof/dist
+
+# Extract frontend files
+tar -xzf ../audit-proof-frontend.tar.gz
+
+# Verify files exist
+ls -la
+# Should see: index.html, assets/, etc.
+
+# Set permissions
+chown -R nobody:users /mnt/user/appdata/auditproof/dist
+chmod -R 755 /mnt/user/appdata/auditproof/dist
+```
+
+### Step 4.3: Create Nginx Configuration
+
+```bash
+cat > /mnt/user/appdata/auditproof/config/nginx.conf << 'EOF'
+user nginx;
+worker_processes auto;
+pid /var/run/nginx.pid;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    # Logging
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log warn;
+
+    # Performance
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    types_hash_max_size 2048;
+
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_types
+        text/plain
+        text/css
+        text/xml
+        text/javascript
+        application/json
+        application/javascript
+        application/xml+rss
+        application/rss+xml
+        font/truetype
+        font/opentype
+        application/vnd.ms-fontobject
+        image/svg+xml;
+
+    server {
+        listen 80;
+        server_name _;
+
+        root /usr/share/nginx/html;
+        index index.html;
+
+        # Security headers
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+        # SPA routing - always serve index.html
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        # Cache static assets
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+
+        # Health check endpoint
+        location /health {
+            access_log off;
+            return 200 "OK";
+            add_header Content-Type text/plain;
+        }
+    }
+}
+EOF
+```
+
+### Step 4.4: Create Frontend Container via Unraid GUI
+
+**Open Unraid Web UI:**
+1. Go to **Docker** tab
+2. Click **Add Container** at the bottom
+
+**Fill in the form:**
+
+| Field | Value |
+|-------|-------|
+| **Name** | `auditproof-frontend` |
+| **Repository** | `nginx:alpine` |
+| **Network Type** | `Custom: auditproof-network` |
+| **Port Mappings** | Add one: `8080` → `80` (TCP) |
+| **Path 1** | Container: `/usr/share/nginx/html` → Host: `/mnt/user/appdata/auditproof/dist` (Read Only) |
+| **Path 2** | Container: `/etc/nginx/nginx.conf` → Host: `/mnt/user/appdata/auditproof/config/nginx.conf` (Read Only) |
+| **Path 3** | Container: `/var/log/nginx` → Host: `/mnt/user/appdata/auditproof/logs` |
+| **Auto Start** | Yes |
+| **Extra Parameters** | `--restart unless-stopped` |
+
+**Click Apply**
+
+The container should start. Check status in Docker tab.
+
+### Step 4.5: Test Frontend
+
+**Open browser:** `http://192.168.1.246:8080`
+
+You should see the Audit Proof login page!
+
+**If you see errors:**
+- Check browser console (F12 → Console)
+- Verify ANON_KEY is correct in the built files
+- Check nginx logs: `tail -f /mnt/user/appdata/auditproof/logs/error.log`
+
+---
+
+## Phase 5: Configure SWAG Reverse Proxy
+
+You already have SWAG running on **br0: 192.168.1.65**. Now we'll configure it to proxy requests to Audit Proof.
+
+### Step 5.1: Create Proxy Configuration
+
+**SSH into Unraid and edit SWAG config:**
+
+```bash
+# Navigate to SWAG config directory
+# (Adjust path if your SWAG is in a different location)
+cd /mnt/user/appdata/swag/nginx/proxy-confs
+
+# Create Audit Proof proxy config
+nano auditproof.subdomain.conf
+```
+
+**Paste this configuration:**
+
+```nginx
+# Audit Proof proxy configuration
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+
+    server_name auditproof.*;
+
+    include /config/nginx/ssl.conf;
+
+    client_max_body_size 50M;
+
+    # Proxy to frontend
+    location / {
+        include /config/nginx/proxy.conf;
+        resolver 127.0.0.11 valid=30s;
+        proxy_pass http://192.168.1.246:8080;
+    }
+
+    # Proxy API requests to Kong Gateway
+    location /functions/ {
+        include /config/nginx/proxy.conf;
+        resolver 127.0.0.11 valid=30s;
+        proxy_pass http://192.168.1.246:8000;
+    }
+
+    location /auth/ {
+        include /config/nginx/proxy.conf;
+        resolver 127.0.0.11 valid=30s;
+        proxy_pass http://192.168.1.246:8000;
+    }
+
+    location /rest/ {
+        include /config/nginx/proxy.conf;
+        resolver 127.0.0.11 valid=30s;
+        proxy_pass http://192.168.1.246:8000;
+    }
+
+    location /storage/ {
+        include /config/nginx/proxy.conf;
+        resolver 127.0.0.11 valid=30s;
+        proxy_pass http://192.168.1.246:8000;
+        client_max_body_size 50M;
+    }
 }
 ```
 
-### Updating Services
+**Save and exit:** Ctrl+X, Y, Enter
+
+### Step 5.2: Restart SWAG
+
+**In Unraid Docker tab:**
+1. Find **swag-reverse-proxy** container
+2. Click **Restart**
+
+**Or via command line:**
+```bash
+docker restart swag-reverse-proxy
+```
+
+### Step 5.3: Configure DNS
+
+**In your domain registrar (Cloudflare, GoDaddy, etc.):**
+
+1. Add A record or CNAME:
+   - **Type:** A (or CNAME)
+   - **Name:** `auditproof`
+   - **Value:** Your public IP (or domain if CNAME)
+   - **TTL:** Auto or 3600
+
+2. Wait for DNS propagation (5-30 minutes)
+
+3. Test: `nslookup auditproof.yourdomain.com`
+
+### Step 5.4: Test HTTPS Access
+
+**Open browser:** `https://auditproof.yourdomain.com`
+
+You should see:
+- ✅ Green padlock (SSL working)
+- ✅ Audit Proof login page
+- ✅ No certificate errors
+
+**If SSL doesn't work:**
+- Check SWAG logs: `docker logs swag-reverse-proxy`
+- Verify DNS is propagated
+- Make sure ports 80 and 443 are forwarded to 192.168.1.65
+
+---
+
+## Phase 6: Create Admin Account
+
+Now let's create your first user account and grant it system admin privileges.
+
+### Step 6.1: Register First User via UI
+
+**Open app:** `https://auditproof.yourdomain.com`
+
+1. Click **Register** (or **Sign Up**)
+2. Fill in:
+   - **Full Name:** Your name
+   - **Email:** your-email@example.com
+   - **Password:** Strong password (12+ characters)
+3. Click **Create Account**
+
+You should be logged in and see the dashboard (empty, no receipts yet).
+
+### Step 6.2: Get Your User ID
+
+**In the app:**
+1. Click your profile icon (top right)
+2. Go to **Settings**
+3. Your User ID is shown at the top (UUID format)
+
+**Copy this UUID**, we'll need it next.
+
+**Or via database:**
+```bash
+docker exec -it supabase-db psql -U postgres -d postgres -c "SELECT id, email FROM auth.users;"
+```
+
+### Step 6.3: Create Business for Admin
+
+**In the app:**
+1. You should see a prompt to create a business
+2. Enter:
+   - **Business Name:** My Business (or your company name)
+   - **Currency:** CAD (or USD)
+3. Click **Create Business**
+
+### Step 6.4: Grant System Admin Role
+
+**SSH into Unraid:**
 
 ```bash
+# Connect to database
+docker exec -it supabase-db psql -U postgres -d postgres
+
+# Grant system admin role
+-- Replace YOUR_USER_ID with the UUID from step 6.2
+UPDATE profiles
+SET system_role = 'system_admin'
+WHERE id = 'YOUR_USER_ID';
+
+# Verify
+SELECT id, email, full_name, system_role FROM profiles;
+
+# Exit
+\q
+```
+
+**Refresh the app** - You should now see **Admin** menu in the sidebar.
+
+### Step 6.5: Explore Admin Features
+
+**In Admin section:**
+- **User Management** - Manage users, reset passwords
+- **Business Management** - View all businesses
+- **System Logs** - View system events
+- **Audit Logs** - Track all actions
+- **System Configuration** - Configure app settings
+
+---
+
+## Phase 7: Setup Monitoring (Uptime Kuma)
+
+### Step 7.1: Configure Uptime Kuma Container
+
+You already installed Uptime Kuma from Community Apps. Now configure it:
+
+**In Unraid Docker tab:**
+1. Find **Uptime-Kuma** container
+2. Click **Edit**
+
+**Configure:**
+| Field | Value |
+|-------|-------|
+| **Network Type** | `br0` |
+| **Port** | `3001` → `3001` |
+| **Volume** | Container: `/app/data` → Host: `/mnt/user/appdata/uptime-kuma` |
+
+**Apply and start**
+
+### Step 7.2: Access Uptime Kuma
+
+**Open browser:** `http://192.168.1.246:3001`
+
+**First time setup:**
+1. Create admin account
+2. Set username and password
+
+### Step 7.3: Add Monitors
+
+**Add monitors for:**
+
+1. **Audit Proof Frontend**
+   - Type: HTTP(s)
+   - URL: `https://auditproof.yourdomain.com`
+   - Interval: 60 seconds
+   - Retries: 3
+
+2. **Supabase API**
+   - Type: HTTP(s)
+   - URL: `http://192.168.1.246:8000`
+   - Interval: 60 seconds
+
+3. **PostgreSQL**
+   - Type: Port
+   - Hostname: 192.168.1.246
+   - Port: 5432
+   - Interval: 60 seconds
+
+4. **Supabase Studio**
+   - Type: HTTP(s)
+   - URL: `http://192.168.1.246:3000`
+   - Interval: 300 seconds
+
+**Configure notifications:**
+- Email, Discord, Slack, etc.
+- Get alerted when services go down
+
+---
+
+## Phase 8: Setup Backups (Duplicacy)
+
+### Step 8.1: Configure Duplicacy Container
+
+**In Unraid Docker tab:**
+1. Find **Duplicacy** container
+2. Click **Edit**
+
+**Configure:**
+| Field | Value |
+|-------|-------|
+| **Network Type** | `bridge` |
+| **Port** | `3875` → `3875` |
+| **Volume 1** | Container: `/config` → Host: `/mnt/user/appdata/duplicacy` |
+| **Volume 2** | Container: `/cache` → Host: `/mnt/user/appdata/duplicacy/cache` |
+| **Volume 3** | Container: `/logs` → Host: `/mnt/user/appdata/duplicacy/logs` |
+| **Volume 4** | Container: `/backups` → Host: `/mnt/user/backups` |
+| **Volume 5 (BACKUP SOURCE)** | Container: `/source` → Host: `/mnt/user/appdata/auditproof` (Read Only) |
+
+**Apply and start**
+
+### Step 8.2: Access Duplicacy Web UI
+
+**Open browser:** `http://192.168.1.246:3875`
+
+**First time setup:**
+1. Create admin password
+2. Set hostname
+
+### Step 8.3: Configure Backup Job
+
+**Create new backup:**
+1. Click **Add Storage**
+   - Name: `AuditProof-Local`
+   - Type: **Local Disk**
+   - Path: `/backups/auditproof`
+2. Click **Add Repository**
+   - Source: `/source`
+   - Storage: `AuditProof-Local`
+   - Encryption: Yes (set strong password)
+3. Click **Add Schedule**
+   - Name: `Daily Backup`
+   - Command: **Backup**
+   - Time: 3:00 AM daily
+   - Options:
+     - Threads: 2
+     - Storage: `AuditProof-Local`
+
+**Add filters to exclude:**
+- `/source/logs/*` (don't backup logs)
+- `/source/supabase-src/*` (don't backup source code)
+
+### Step 8.4: Test Backup
+
+**Click "Backup Now"**
+
+Monitor progress. First backup will take 10-20 minutes.
+
+**Verify:**
+```bash
+ls -lh /mnt/user/backups/auditproof/
+```
+
+You should see backup chunks.
+
+### Step 8.5: Configure Retention
+
+**In Duplicacy schedule:**
+- Keep all backups for 7 days
+- Keep 1 backup per week for 4 weeks
+- Keep 1 backup per month for 12 months
+
+This gives you:
+- Daily restore for 1 week
+- Weekly restore for 1 month
+- Monthly restore for 1 year
+
+---
+
+## Testing & Verification
+
+### Complete Test Checklist
+
+#### 1. Frontend Access
+- [ ] HTTP access works: `http://192.168.1.246:8080`
+- [ ] HTTPS access works: `https://auditproof.yourdomain.com`
+- [ ] SSL certificate is valid (green padlock)
+- [ ] Page loads without errors (check browser console)
+
+#### 2. Authentication
+- [ ] Register new user works
+- [ ] Login with email/password works
+- [ ] Logout works
+- [ ] Password reset email sent (check email)
+- [ ] MFA setup works (Settings → Security)
+
+#### 3. Receipt Management
+- [ ] Upload receipt via file works
+- [ ] Upload receipt via camera works
+- [ ] AI extraction shows data (if OpenAI key configured)
+- [ ] Edit receipt works
+- [ ] Delete receipt works
+- [ ] View receipt image/PDF works
+
+#### 4. Collections
+- [ ] Create collection works
+- [ ] Add receipt to collection works
+- [ ] Rename collection works
+- [ ] Delete collection works (with receipts moved)
+
+#### 5. Team Features
+- [ ] Invite team member works (email sent)
+- [ ] Accept invitation works (use different email)
+- [ ] View team members list
+- [ ] Remove team member works
+
+#### 6. Reports & Export
+- [ ] CSV export generates file
+- [ ] PDF export generates file
+- [ ] ZIP export includes receipts
+
+#### 7. Admin Functions (System Admin only)
+- [ ] View all users works
+- [ ] View all businesses works
+- [ ] System logs show events
+- [ ] Audit logs track actions
+- [ ] User search works
+
+#### 8. Performance
+- [ ] Page load < 3 seconds
+- [ ] Receipt upload < 10 seconds
+- [ ] Export < 2 minutes
+- [ ] No memory leaks (check after 1 hour use)
+
+#### 9. Monitoring
+- [ ] Uptime Kuma shows all services UP
+- [ ] Email notification received when service down (test by stopping container)
+
+#### 10. Backups
+- [ ] Backup job completes successfully
+- [ ] Restore test works (restore one file)
+
+---
+
+## Ongoing Maintenance
+
+### Daily (5 minutes)
+
+**Via Uptime Kuma Dashboard:**
+- [ ] All services show green (UP)
+
+**If any service is down:**
+```bash
+# Check container status
+docker ps -a | grep auditproof
+
+# Restart if needed
+docker restart [container-name]
+
+# Check logs
+docker logs [container-name] --tail=50
+```
+
+### Weekly (15 minutes)
+
+**1. Check Backups:**
+```bash
+# Verify latest backup exists
+ls -lt /mnt/user/backups/auditproof/ | head -5
+
+# Check Duplicacy logs
+tail -100 /mnt/user/appdata/duplicacy/logs/duplicacy_web.log
+```
+
+**2. Review Logs:**
+```bash
+# System errors
+docker exec -it supabase-db psql -U postgres -d postgres -c "SELECT * FROM system_logs WHERE severity = 'error' ORDER BY created_at DESC LIMIT 20;"
+
+# High-value audit events
+docker exec -it supabase-db psql -U postgres -d postgres -c "SELECT * FROM audit_logs WHERE action IN ('user_deleted', 'receipt_deleted', 'mfa_disabled') ORDER BY created_at DESC LIMIT 10;"
+```
+
+**3. Check Storage Usage:**
+```bash
+# Check database size
+docker exec -it supabase-db psql -U postgres -d postgres -c "SELECT pg_size_pretty(pg_database_size('postgres')) as size;"
+
+# Check file storage
+du -sh /mnt/user/appdata/auditproof/storage/
+
+# Check total appdata usage
+du -sh /mnt/user/appdata/auditproof/
+```
+
+### Monthly (1-2 hours)
+
+**1. Update Container Images:**
+```bash
+# Navigate to Supabase directory
+cd /mnt/user/appdata/auditproof/supabase-src/docker
+
 # Pull latest images
-cd /mnt/user/appdata/auditproof/supabase/docker
 docker compose pull
 
-# Backup before updating
-./scripts/backup.sh
-
-# Update and restart
+# Restart services (this applies updates)
+docker compose down
 docker compose up -d
 
-# Check health
+# Verify all services healthy
 docker compose ps
-docker compose logs
 ```
 
----
-
-## Backup & Disaster Recovery
-
-### Backup Strategy
-
-**3-2-1 Backup Rule:**
-- **3** copies of data
-- **2** different storage media
-- **1** offsite copy
-
-### Automated Backup Script
-
-Create `/mnt/user/appdata/auditproof/scripts/full-backup.sh`:
-
+**2. Database Maintenance:**
 ```bash
-#!/bin/bash
-set -e
+# Vacuum database (reclaim space)
+docker exec -it supabase-db psql -U postgres -d postgres -c "VACUUM ANALYZE;"
 
-BACKUP_DIR="/mnt/user/backups/auditproof"
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-BACKUP_PATH="$BACKUP_DIR/$TIMESTAMP"
-
-mkdir -p "$BACKUP_PATH"
-
-echo "=== Starting Full Backup at $TIMESTAMP ==="
-
-# 1. Backup Database
-echo "Backing up database..."
-docker exec supabase-db pg_dump -U postgres -d postgres -F c -f /tmp/db.dump
-docker cp supabase-db:/tmp/db.dump "$BACKUP_PATH/database.dump"
-gzip "$BACKUP_PATH/database.dump"
-
-# 2. Backup Storage Files
-echo "Backing up storage files..."
-tar -czf "$BACKUP_PATH/storage.tar.gz" -C /mnt/user/appdata/auditproof storage/
-
-# 3. Backup Configuration
-echo "Backing up configuration..."
-cp /mnt/user/appdata/auditproof/supabase/docker/.env "$BACKUP_PATH/config.env"
-tar -czf "$BACKUP_PATH/config.tar.gz" -C /mnt/user/appdata/auditproof config/
-
-# 4. Create manifest
-cat > "$BACKUP_PATH/manifest.txt" << EOF
-Backup Created: $TIMESTAMP
-Database Size: $(du -sh $BACKUP_PATH/database.dump.gz | cut -f1)
-Storage Size: $(du -sh $BACKUP_PATH/storage.tar.gz | cut -f1)
-Config Size: $(du -sh $BACKUP_PATH/config.tar.gz | cut -f1)
-EOF
-
-echo "=== Backup Complete ==="
-echo "Location: $BACKUP_PATH"
-du -sh "$BACKUP_PATH"
-
-# 5. Clean up old backups (keep last 14 days)
-find "$BACKUP_DIR" -maxdepth 1 -mtime +14 -type d -exec rm -rf {} \;
-
-# 6. Copy to offsite (optional)
-# rsync -avz "$BACKUP_PATH" user@remote-server:/backups/auditproof/
+# Reindex (improve query performance)
+docker exec -it supabase-db psql -U postgres -d postgres -c "REINDEX DATABASE postgres;"
 ```
 
-Make executable:
+**3. Review Security:**
 ```bash
-chmod +x /mnt/user/appdata/auditproof/scripts/full-backup.sh
+# Check failed login attempts
+docker exec -it supabase-db psql -U postgres -d postgres -c "SELECT COUNT(*) FROM audit_logs WHERE action = 'login_failed' AND created_at > NOW() - INTERVAL '30 days';"
+
+# Check MFA status for admins
+docker exec -it supabase-db psql -U postgres -d postgres -c "SELECT email, mfa_enabled FROM profiles WHERE system_role = 'system_admin';"
 ```
 
-### Schedule Backups
-
-Add to Unraid's User Scripts plugin or create cron job:
-
+**4. Test Restore:**
 ```bash
-# Edit crontab
-crontab -e
+# Create test restore directory
+mkdir -p /tmp/restore-test
 
-# Add daily backup at 3 AM
-0 3 * * * /mnt/user/appdata/auditproof/scripts/full-backup.sh >> /var/log/auditproof-backup.log 2>&1
+# Restore one file from backup (via Duplicacy UI)
+# Verify file integrity
 ```
 
-### Disaster Recovery Procedure
+### Quarterly (2-4 hours)
 
-**Full System Restoration:**
+**1. Review Capacity:**
+- Database size trend
+- Storage usage trend
+- Plan for expansion if needed
 
-1. **Restore Supabase Stack:**
-```bash
-cd /mnt/user/appdata/auditproof/supabase/docker
-docker compose up -d db  # Start database first
-sleep 10
-```
+**2. Security Audit:**
+- Review all system admin accounts
+- Check for inactive users (90+ days)
+- Review RLS policies (if schema changed)
+- Rotate passwords
 
-2. **Restore Database:**
-```bash
-# Copy backup file
-BACKUP_DATE=20251022_030000
-gunzip /mnt/user/backups/auditproof/$BACKUP_DATE/database.dump.gz
+**3. Performance Optimization:**
+- Identify slow queries
+- Add missing indexes
+- Review and clean up old audit logs (>1 year)
 
-# Restore
-docker exec -i supabase-db pg_restore -U postgres -d postgres -c < /mnt/user/backups/auditproof/$BACKUP_DATE/database.dump
-```
-
-3. **Restore Storage:**
-```bash
-tar -xzf /mnt/user/backups/auditproof/$BACKUP_DATE/storage.tar.gz -C /mnt/user/appdata/auditproof/
-```
-
-4. **Restore Configuration:**
-```bash
-tar -xzf /mnt/user/backups/auditproof/$BACKUP_DATE/config.tar.gz -C /mnt/user/appdata/auditproof/
-cp /mnt/user/backups/auditproof/$BACKUP_DATE/config.env /mnt/user/appdata/auditproof/supabase/docker/.env
-```
-
-5. **Start All Services:**
-```bash
-docker compose up -d
-```
-
-6. **Verify:**
-```bash
-docker compose ps
-curl http://localhost:8080
-```
-
-**Estimated Recovery Time:** 30-60 minutes
-
----
-
-## Security Considerations
-
-### Network Security
-
-**Firewall Rules:**
-```bash
-# Allow only necessary ports
-iptables -A INPUT -p tcp --dport 8080 -j ACCEPT  # Frontend
-iptables -A INPUT -p tcp --dport 8000 -j ACCEPT  # API Gateway
-iptables -A INPUT -p tcp --dport 3000 -j DROP    # Studio (internal only)
-iptables -A INPUT -p tcp --dport 5432 -j DROP    # PostgreSQL (internal only)
-```
-
-**Reverse Proxy (Recommended):**
-Use Nginx Proxy Manager to:
-- Add SSL certificates (Let's Encrypt)
-- Configure custom domain
-- Add rate limiting
-- Enable fail2ban
-
-### SSL/TLS Setup
-
-**Option A: Nginx Proxy Manager (Easiest)**
-1. Install Nginx Proxy Manager from Community Apps
-2. Add proxy host:
-   - Domain: auditproof.yourdomain.com
-   - Forward to: unraid-ip:8080
-   - Enable SSL with Let's Encrypt
-   - Force SSL
-
-**Option B: Manual SSL with Certbot**
-```bash
-# Install certbot
-docker run -it --rm --name certbot \
-  -v "/mnt/user/appdata/auditproof/certs:/etc/letsencrypt" \
-  certbot/certbot certonly --standalone \
-  -d auditproof.yourdomain.com
-
-# Update Nginx config to use SSL
-# Update frontend .env with HTTPS URL
-```
-
-### Secret Management
-
-**Never Commit:**
-- Database passwords
-- JWT secrets
-- API keys
-- Service role keys
-
-**Store Securely:**
-- Use Unraid's built-in password manager
-- Or use environment files with proper permissions:
-```bash
-chmod 600 /mnt/user/appdata/auditproof/supabase/docker/.env
-```
-
-### Access Control
-
-**PostgreSQL:**
-- Bind only to Docker network (not 0.0.0.0)
-- Use strong passwords (16+ characters)
-- Limit connections to known IPs
-
-**API Access:**
-- Enable JWT verification in production
-- Use row-level security (RLS) policies
-- Rate limit API endpoints
-
-### Security Checklist
-
-- [ ] Change all default passwords
-- [ ] Enable SSL/TLS
-- [ ] Configure firewall
-- [ ] Disable unnecessary ports
-- [ ] Enable audit logging
-- [ ] Set up intrusion detection
-- [ ] Regular security updates
-- [ ] Monitor access logs
-- [ ] Implement rate limiting
-- [ ] Use strong JWT secrets
-
----
-
-## Cost Comparison
-
-### Current (Bolt.new + Supabase Cloud)
-
-| Service | Cost | Notes |
-|---------|------|-------|
-| Bolt.new | $20-50/month | Development environment |
-| Supabase Pro | $25/month | Database, auth, storage |
-| OpenAI API | $10-50/month | Receipt extraction |
-| Email (SMTP) | $0 | Included with domain |
-| **Total** | **$55-125/month** | Depends on usage |
-
-### Self-Hosted on Unraid
-
-| Component | Initial Cost | Ongoing Cost | Notes |
-|-----------|-------------|--------------|-------|
-| Unraid Server | $0 | $0 | Already owned |
-| Electricity | $0 | ~$10/month | 100W @ $0.15/kWh |
-| OpenAI API | $0 | $10-50/month | Same as before |
-| Domain/SSL | $0 | $15/year | Optional |
-| **Total** | **$0** | **$10-50/month** | 50-80% savings |
-
-**Payback Period:** Immediate (no upfront costs)
-**Annual Savings:** $540-900
-**5-Year Savings:** $2,700-4,500
-
-### Hidden Benefits
-
-✅ **Data Sovereignty** - Your data stays on your hardware
-✅ **No Usage Limits** - No bandwidth or storage caps
-✅ **Privacy** - No third-party access to data
-✅ **Learning Experience** - Deeper system understanding
-✅ **Offline Access** - Works without internet (except OpenAI)
+**4. Update Documentation:**
+- Document any configuration changes
+- Update secrets in password manager
+- Update disaster recovery plan
 
 ---
 
@@ -1405,227 +1489,381 @@ chmod 600 /mnt/user/appdata/auditproof/supabase/docker/.env
 
 ### Container Won't Start
 
-**Symptom:** Container exits immediately after starting
+**Symptom:** Container shows "Stopped" in Docker tab
 
 **Solutions:**
 ```bash
 # Check logs
-docker logs container-name
+docker logs [container-name]
 
 # Common issues:
 # 1. Port already in use
-netstat -tulpn | grep :8000
+netstat -tulpn | grep [port]
+# Solution: Change port in container config
 
-# 2. Volume permission issues
-chmod -R 755 /mnt/user/appdata/auditproof
+# 2. Volume permission error
+ls -la /mnt/user/appdata/auditproof/[volume]
+chown -R nobody:users /mnt/user/appdata/auditproof/[volume]
 
-# 3. Missing environment variables
-docker inspect container-name | grep -i env
+# 3. Network not found
+docker network ls | grep auditproof-network
+# Solution: Recreate network (see Phase 1.2)
+
+# 4. Out of memory
+free -h
+# Solution: Stop other containers or add more RAM
+```
+
+### Can't Access Frontend
+
+**Symptom:** Browser shows "Connection refused" or timeout
+
+**Solutions:**
+```bash
+# 1. Check container is running
+docker ps | grep auditproof-frontend
+
+# 2. Check port binding
+docker port auditproof-frontend
+
+# 3. Test from Unraid itself
+curl http://localhost:8080
+
+# 4. Check firewall
+iptables -L -n | grep 8080
+
+# 5. Check SWAG proxy
+docker logs swag-reverse-proxy | grep error
 ```
 
 ### Database Connection Errors
 
-**Symptom:** "ECONNREFUSED" or "Connection refused"
+**Symptom:** App shows "Cannot connect to database"
 
 **Solutions:**
 ```bash
 # 1. Check PostgreSQL is running
-docker ps | grep postgres
+docker ps | grep supabase-db
 
-# 2. Test connection
-docker exec -it supabase-db psql -U postgres -d postgres
+# 2. Check PostgreSQL logs
+docker logs supabase-db --tail=100
 
-# 3. Check network
-docker network inspect auditproof-network
+# 3. Test connection
+docker exec -it supabase-db psql -U postgres -d postgres -c "SELECT 1;"
 
-# 4. Verify credentials
-cat /mnt/user/appdata/auditproof/supabase/docker/.env | grep POSTGRES_PASSWORD
+# 4. Check auth service
+docker logs supabase-auth --tail=100
+
+# 5. Verify JWT secrets match
+cat /mnt/user/appdata/auditproof/config/secrets.txt
+# Check ANON_KEY in frontend build
+grep -r "VITE_SUPABASE_ANON_KEY" /mnt/user/appdata/auditproof/dist/assets/*.js | head -1
 ```
 
-### Frontend Shows Blank Page
+### Upload Fails
 
-**Symptom:** White screen or "Cannot connect to server"
-
-**Solutions:**
-1. Check browser console for errors (F12)
-2. Verify API URL in .env matches Unraid IP
-3. Check CORS headers in Kong configuration
-4. Verify all containers are running
-5. Test API endpoint: `curl http://unraid-ip:8000/health`
-
-### Storage Upload Fails
-
-**Symptom:** Receipts fail to upload
+**Symptom:** Receipt upload shows error or hangs
 
 **Solutions:**
 ```bash
 # 1. Check storage container
-docker logs supabase-storage
+docker logs supabase-storage --tail=50
 
-# 2. Verify volume permissions
-ls -la /mnt/user/appdata/auditproof/storage
+# 2. Check disk space
+df -h /mnt/user/
 
-# 3. Check disk space
-df -h /mnt/user/appdata/auditproof
+# 3. Check file size limit
+docker exec -it supabase-db psql -U postgres -d postgres -c "SELECT value FROM system_config WHERE key = 'max_file_size';"
+# Should be 52428800 (50MB)
 
-# 4. Test storage API
-curl http://unraid-ip:8000/storage/v1/bucket/receipts
+# 4. Check CORS headers
+curl -I http://192.168.1.246:8000/storage/v1/bucket/receipts
+
+# 5. Check volume permissions
+ls -la /mnt/user/appdata/auditproof/storage/
+```
+
+### AI Extraction Not Working
+
+**Symptom:** Receipt upload succeeds but no data extracted
+
+**Solutions:**
+```bash
+# 1. Check OpenAI API key is set
+docker exec -it supabase-edge-runtime env | grep OPENAI
+
+# If not set:
+# Navigate to Supabase src
+cd /mnt/user/appdata/auditproof/supabase-src/docker
+
+# Stop services
+docker compose down
+
+# Edit .env, add:
+# OPENAI_API_KEY=sk-your-key-here
+
+# Restart
+docker compose up -d
+
+# 2. Test OpenAI API key
+curl https://api.openai.com/v1/models \
+  -H "Authorization: Bearer sk-your-key-here"
+# Should return list of models
+
+# 3. Check Edge Functions logs
+docker logs supabase-edge-runtime --tail=100
+
+# 4. Check rate limits
+docker exec -it supabase-db psql -U postgres -d postgres -c "SELECT * FROM rate_limit_tracking WHERE action_type = 'receipt_extraction' ORDER BY created_at DESC LIMIT 10;"
+```
+
+### Email Not Sending
+
+**Symptom:** Invitation emails or password resets not received
+
+**Solutions:**
+```bash
+# 1. Check SMTP settings in .env
+cd /mnt/user/appdata/auditproof/supabase-src/docker
+cat .env | grep GOTRUE_SMTP
+
+# 2. Test SMTP connection
+telnet mail.privateemail.com 465
+# Should connect
+
+# 3. Check GoTrue logs
+docker logs supabase-auth | grep -i smtp
+
+# 4. Check system logs
+docker exec -it supabase-db psql -U postgres -d postgres -c "SELECT * FROM system_logs WHERE category = 'EMAIL' ORDER BY created_at DESC LIMIT 20;"
+
+# 5. Verify SMTP credentials
+# Try logging into webmail with same credentials
 ```
 
 ### High Memory Usage
 
-**Symptom:** Containers using >8 GB RAM
+**Symptom:** Unraid shows high RAM usage, system slow
 
 **Solutions:**
 ```bash
-# 1. Identify culprit
-docker stats --no-stream
+# 1. Check which containers are using most memory
+docker stats --no-stream | sort -k 7 -h
 
 # 2. Restart heavy containers
 docker restart supabase-db
+docker restart supabase-edge-runtime
 
-# 3. Tune PostgreSQL
-# Edit /mnt/user/appdata/auditproof/postgres/postgresql.conf
-shared_buffers = 256MB  # Default 128MB
-work_mem = 16MB         # Default 4MB
+# 3. Tune PostgreSQL memory
+docker exec -it supabase-db psql -U postgres -d postgres -c "ALTER SYSTEM SET shared_buffers = '256MB';"
+docker exec -it supabase-db psql -U postgres -d postgres -c "ALTER SYSTEM SET work_mem = '16MB';"
+docker restart supabase-db
 
-# 4. Enable connection pooling
-# Add to docker-compose.yml
+# 4. Clear browser cache (if frontend is slow)
+
+# 5. Reduce Edge Functions concurrency
+# Edit docker-compose.yml, add to functions service:
+# environment:
+#   DENO_WORKERS: 2
+docker compose up -d
 ```
 
-### Edge Functions Not Working
+### Backup Failed
 
-**Symptom:** 500 errors when calling functions
+**Symptom:** Duplicacy shows error, backup incomplete
 
 **Solutions:**
 ```bash
-# 1. Check function logs
-docker logs supabase-functions
+# 1. Check Duplicacy logs
+tail -100 /mnt/user/appdata/duplicacy/logs/duplicacy_web.log
 
-# 2. Verify secrets are set
-supabase secrets list
+# 2. Check disk space
+df -h /mnt/user/backups/
 
-# 3. Test function locally
-supabase functions serve
+# 3. Verify permissions
+ls -la /mnt/user/appdata/auditproof/
+ls -la /mnt/user/backups/auditproof/
 
-# 4. Check OpenAI API key
-curl https://api.openai.com/v1/models \
-  -H "Authorization: Bearer $OPENAI_API_KEY"
+# 4. Test manual backup
+docker exec -it duplicacy duplicacy backup -stats
+
+# 5. Check encryption password is correct
+# Re-enter in Duplicacy Web UI
 ```
 
 ---
 
-## Next Steps
+## Summary & Next Steps
 
-### Immediate Actions (Today)
+### What You've Accomplished
 
-1. **Decision:** Confirm you want to proceed with self-hosted Supabase
-2. **Backup:** Export current data from Supabase Cloud
-3. **Prepare:** Free up space on Unraid, install prerequisites
-4. **Read:** Review this entire document, note questions
+✅ **Self-hosted Supabase** - Complete stack running on Unraid
+✅ **Fresh Database** - All 84 migrations applied, 18 tables created
+✅ **Frontend Deployed** - React app served via Nginx
+✅ **SSL Configured** - HTTPS access via SWAG
+✅ **Admin Account** - System admin user created
+✅ **Monitoring Setup** - Uptime Kuma tracking services
+✅ **Backups Configured** - Duplicacy running daily backups
+✅ **Production Ready** - Secure, monitored, backed up
 
-### This Weekend (Setup Phase)
+### Time to Production: ~14 hours
+- Phase 1-2: 4 hours (Network + Supabase install)
+- Phase 3: 2 hours (Database setup)
+- Phase 4-5: 3 hours (Frontend + SWAG)
+- Phase 6: 1 hour (Admin account)
+- Phase 7-8: 2 hours (Monitoring + Backups)
+- Testing: 2 hours
 
-1. **Day 1 (Saturday):**
-   - Morning: Deploy Supabase stack (Phase 3)
-   - Afternoon: Restore data (Phase 4)
-   - Evening: Deploy frontend (Phase 5)
+### Cost Savings
 
-2. **Day 2 (Sunday):**
-   - Morning: Deploy Edge Functions (Phase 6)
-   - Afternoon: Testing (Phase 7)
-   - Evening: SSL setup, documentation
+**Previous (Cloud):**
+- Bolt.new: $20-50/month
+- Supabase Cloud: $25/month
+- **Total: $45-75/month**
 
-### Next Week (Stabilization)
+**Now (Self-Hosted):**
+- Electricity: ~$10/month (100W server)
+- OpenAI API: $10-50/month (usage-based)
+- **Total: $20-60/month**
 
-1. **Monday-Wednesday:** Run in parallel with cloud
-2. **Thursday:** Compare functionality and performance
-3. **Friday:** Final decision and full migration
+**Annual Savings: $300-600**
+**5-Year Savings: $1,500-3,000**
 
-### Long-term (Ongoing)
+### Next Actions
 
-- **Week 2-4:** Monitor stability, optimize performance
-- **Month 2:** Set up automated backups and monitoring
-- **Month 3:** Decommission cloud services, celebrate savings!
+**Week 1:**
+- [ ] Use the app daily, familiarize yourself
+- [ ] Add test receipts, create collections
+- [ ] Invite team members (if applicable)
+- [ ] Configure MFA for your account
+- [ ] Test all features thoroughly
 
----
+**Week 2-4:**
+- [ ] Monitor performance and stability
+- [ ] Review logs for errors
+- [ ] Optimize any slow queries
+- [ ] Fine-tune backup retention
 
-## Summary
+**Month 2:**
+- [ ] Review security settings
+- [ ] Test disaster recovery (full restore)
+- [ ] Document any customizations
+- [ ] Consider adding more users
 
-### Key Takeaways
+**Ongoing:**
+- Daily: Check Uptime Kuma (2 min)
+- Weekly: Review logs and backups (15 min)
+- Monthly: Update containers, database maintenance (1-2 hours)
 
-✅ **Feasible:** Migrating to Unraid is absolutely doable
-✅ **Time:** 8-16 hours for initial setup
-✅ **Cost:** 50-80% savings ($500-900/year)
-✅ **Risk:** Low (keep cloud running during migration)
-✅ **Maintenance:** ~1-2 hours/week ongoing
-
-### Your Commitment
-
-As the system administrator, you'll be responsible for:
-- Daily health checks (5 minutes)
-- Weekly backups (15 minutes)
-- Monthly updates (1 hour)
-- Disaster recovery planning
-- Security monitoring
-
-### When to Consider Alternative
-
-**Don't self-host if:**
-- You expect >10,000 users (scaling complexity)
-- You need 99.99% uptime SLA (production business)
-- You have < 2 hours/month for maintenance
-- Your internet is unreliable (remote access needs stability)
-
-**Do self-host if:**
-- You value data privacy and control
-- You enjoy learning and tinkering
-- You want cost savings
-- You have reliable Unraid setup
-- You're comfortable with Linux/Docker
-
----
-
-## Support Resources
+### Getting Help
 
 **Official Documentation:**
 - Supabase Self-Hosting: https://supabase.com/docs/guides/self-hosting
-- Docker Compose: https://docs.docker.com/compose/
 - Unraid Forums: https://forums.unraid.net/
+- Audit Proof GitHub: (if you have repository access)
 
-**Community:**
+**Community Support:**
 - Supabase Discord: https://discord.supabase.com/
 - Unraid Discord: https://discord.com/invite/unraid
 - r/unraid: https://reddit.com/r/unraid
 
-**Need Help?**
-- Review Supabase logs first
-- Check Unraid forums for similar issues
-- Ask in Discord communities
-- Create GitHub issue for Supabase bugs
+**Troubleshooting:**
+1. Check this guide's troubleshooting section first
+2. Review container logs
+3. Search Unraid forums
+4. Ask in community Discord servers
 
 ---
 
-## Conclusion
+## Appendix: Quick Reference Commands
 
-Migrating Audit Proof to your Unraid server is a **strategic decision** that offers:
-- Significant cost savings
-- Complete data control
-- Learning opportunities
-- Scalability for your needs
+### Start/Stop Services
+```bash
+# Stop all Supabase services
+cd /mnt/user/appdata/auditproof/supabase-src/docker
+docker compose down
 
-The recommended approach (self-hosted Supabase) provides the best balance of:
-- Migration simplicity
-- Feature completeness
-- Maintenance effort
-- Long-term flexibility
+# Start all services
+docker compose up -d
 
-**You're fully capable of managing this system** with the commitment of 1-2 hours per week for routine maintenance.
+# Restart single service
+docker restart supabase-db
 
-**Ready to start?** Begin with Phase 1: Backup Current System.
+# View service logs
+docker logs supabase-db --tail=100 -f
+```
+
+### Database Operations
+```bash
+# Connect to database
+docker exec -it supabase-db psql -U postgres -d postgres
+
+# Backup database
+docker exec supabase-db pg_dump -U postgres -d postgres -F c -f /tmp/backup.dump
+docker cp supabase-db:/tmp/backup.dump /mnt/user/backups/auditproof/manual-backup-$(date +%Y%m%d).dump
+
+# Restore database
+docker cp /mnt/user/backups/auditproof/backup.dump supabase-db:/tmp/
+docker exec supabase-db pg_restore -U postgres -d postgres -c /tmp/backup.dump
+
+# Check table sizes
+docker exec -it supabase-db psql -U postgres -d postgres -c "SELECT schemaname AS schema, tablename AS table, pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size FROM pg_tables WHERE schemaname = 'public' ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;"
+```
+
+### Network Operations
+```bash
+# List networks
+docker network ls
+
+# Inspect network
+docker network inspect auditproof-network
+
+# Connect container to network
+docker network connect auditproof-network [container-name]
+
+# Disconnect container
+docker network disconnect auditproof-network [container-name]
+```
+
+### Monitoring Commands
+```bash
+# Check all container stats
+docker stats --no-stream
+
+# Check disk usage
+df -h /mnt/user/appdata/auditproof/
+
+# Check database connections
+docker exec -it supabase-db psql -U postgres -d postgres -c "SELECT count(*) FROM pg_stat_activity;"
+
+# Check recent errors
+docker exec -it supabase-db psql -U postgres -d postgres -c "SELECT * FROM system_logs WHERE severity = 'error' ORDER BY created_at DESC LIMIT 10;"
+```
+
+### Backup Commands
+```bash
+# Manual backup via Duplicacy
+docker exec -it duplicacy duplicacy backup
+
+# Check backup history
+docker exec -it duplicacy duplicacy list
+
+# Restore file
+docker exec -it duplicacy duplicacy restore -r [revision] [file-path]
+```
 
 ---
 
-**Document Prepared By:** Audit Proof Development Team
-**For Questions:** Review troubleshooting section or community resources
-**Good Luck!** 🚀
+## Document Maintenance
+
+**Last Updated:** 2025-10-24
+**Version:** 2.0
+**Tested On:** Unraid 7.1.4
+**Author:** Audit Proof Development Team
+**For Support:** Review troubleshooting section or community resources
+
+**Good luck with your self-hosted Audit Proof installation!** 🚀
+
+---
+
+**End of Guide**
