@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Building2, Users, Receipt, TrendingUp, AlertCircle, Activity, Database, BarChart3, UserCog, Search, Filter as FilterIcon, Download, FolderOpen, ChevronDown, ChevronRight, Calendar, Mail, Trash2, HardDrive, Recycle, Settings } from 'lucide-react';
+import { Building2, Users, Receipt, TrendingUp, AlertCircle, Activity, Database, BarChart3, UserCog, Search, Filter as FilterIcon, Download, FolderOpen, ChevronDown, ChevronRight, Calendar, Mail, Trash2, HardDrive, Recycle, Settings, Copy, Heart } from 'lucide-react';
 import { LogEntry } from '../components/shared/LogEntry';
 import { usePageTracking } from '../hooks/usePageTracking';
 import { UserManagement } from '../components/admin/UserManagement';
@@ -12,6 +12,10 @@ import { StorageManagement } from '../components/admin/StorageManagement';
 import { DataCleanupOperations } from '../components/admin/DataCleanupOperations';
 import { LogLevelConfiguration } from '../components/admin/LogLevelConfiguration';
 import { SystemConfiguration } from '../components/admin/SystemConfiguration';
+import SystemHealthMonitor from '../components/admin/SystemHealthMonitor';
+import DatabaseQueryBrowser from '../components/admin/DatabaseQueryBrowser';
+import DuplicateDetectionManager from '../components/admin/DuplicateDetectionManager';
+import EnhancedErrorLogViewer from '../components/admin/EnhancedErrorLogViewer';
 
 interface AdminStats {
   totalUsers: number;
@@ -60,7 +64,7 @@ export function AdminPage() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'businesses' | 'logs' | 'analytics' | 'bulk-ops' | 'deleted-receipts' | 'storage' | 'cleanup' | 'log-config' | 'system-config'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'businesses' | 'logs' | 'analytics' | 'bulk-ops' | 'deleted-receipts' | 'storage' | 'cleanup' | 'log-config' | 'system-config' | 'health' | 'database' | 'duplicates' | 'errors'>('overview');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalBusinesses, setTotalBusinesses] = useState(0);
   const itemsPerPage = 20;
@@ -335,6 +339,50 @@ export function AdminPage() {
                 <Database className="inline mr-2" size={18} />
                 System Config
               </button>
+              <button
+                onClick={() => setActiveTab('health')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap ${
+                  activeTab === 'health'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300'
+                }`}
+              >
+                <Heart className="inline mr-2" size={18} />
+                System Health
+              </button>
+              <button
+                onClick={() => setActiveTab('database')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap ${
+                  activeTab === 'database'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300'
+                }`}
+              >
+                <Database className="inline mr-2" size={18} />
+                Database
+              </button>
+              <button
+                onClick={() => setActiveTab('duplicates')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap ${
+                  activeTab === 'duplicates'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300'
+                }`}
+              >
+                <Copy className="inline mr-2" size={18} />
+                Duplicates
+              </button>
+              <button
+                onClick={() => setActiveTab('errors')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap ${
+                  activeTab === 'errors'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:border-slate-300'
+                }`}
+              >
+                <AlertCircle className="inline mr-2" size={18} />
+                Error Logs
+              </button>
             </nav>
           </div>
         </div>
@@ -581,6 +629,18 @@ export function AdminPage() {
         )}
         {activeTab === 'system-config' && (
           <SystemConfiguration />
+        )}
+        {activeTab === 'health' && (
+          <SystemHealthMonitor />
+        )}
+        {activeTab === 'database' && (
+          <DatabaseQueryBrowser />
+        )}
+        {activeTab === 'duplicates' && (
+          <DuplicateDetectionManager />
+        )}
+        {activeTab === 'errors' && (
+          <EnhancedErrorLogViewer />
         )}
         </div>
       </div>
