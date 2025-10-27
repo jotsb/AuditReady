@@ -1019,10 +1019,10 @@ EOF
 **Create seed script:**
 
 ```bash
-POSTGRES_CONTAINER="supabase-db"  # Your container name
+POSTGRES_CONTAINER="Bolt Database-db"  # Your actual container name
 
 cat > /mnt/user/appdata/auditproof/config/seed.sql << 'EOF'
--- Insert default expense categories
+-- Insert default expense categories (if not already exist)
 INSERT INTO expense_categories (name, description, icon, color, sort_order) VALUES
 ('Office Supplies', 'Pens, paper, printer supplies', 'Package', '#3B82F6', 1),
 ('Meals & Entertainment', 'Client dinners, team lunches', 'Utensils', '#10B981', 2),
@@ -1034,17 +1034,10 @@ INSERT INTO expense_categories (name, description, icon, color, sort_order) VALU
 ('Subscriptions', 'Software, memberships', 'CreditCard', '#F97316', 8),
 ('Fuel', 'Gas, vehicle expenses', 'Fuel', '#EF4444', 9),
 ('Other', 'Miscellaneous expenses', 'Tag', '#6B7280', 10)
-ON CONFLICT DO NOTHING;
+ON CONFLICT (name) DO NOTHING;
 
--- Insert system configuration
-INSERT INTO system_config (key, value, description) VALUES
-('app_name', 'Audit Proof', 'Application name'),
-('app_version', '1.0.0', 'Current version'),
-('max_file_size', '52428800', 'Max upload size in bytes (50MB)'),
-('retention_days', '2555', 'Data retention period (7 years)'),
-('enable_email_receipts', 'false', 'Email forwarding feature'),
-('enable_ai_extraction', 'true', 'OpenAI receipt extraction')
-ON CONFLICT (key) DO NOTHING;
+-- System configuration is auto-created by migration (no action needed)
+-- If you need to verify: SELECT * FROM system_config;
 EOF
 
 # Apply seed data
@@ -1053,10 +1046,13 @@ docker exec -i "$POSTGRES_CONTAINER" psql -U postgres -d postgres < /mnt/user/ap
 
 **Verify:**
 ```bash
-POSTGRES_CONTAINER="supabase-db"  # Your container name
-docker exec -it "$POSTGRES_CONTAINER" psql -U postgres -d postgres -c "SELECT COUNT(*) FROM expense_categories;"
+POSTGRES_CONTAINER="Bolt Database-db"  # Your container name
+docker exec -i "$POSTGRES_CONTAINER" psql -U postgres -d postgres -c "SELECT COUNT(*) FROM expense_categories;"
+docker exec -i "$POSTGRES_CONTAINER" psql -U postgres -d postgres -c "SELECT COUNT(*) FROM system_config;"
 ```
-**Expected:** `10`
+**Expected:**
+- expense_categories: `10` (or more if migration already added some)
+- system_config: `1` (single row with JSONB settings)
 
 ---
 
