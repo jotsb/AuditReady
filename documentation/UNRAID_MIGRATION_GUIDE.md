@@ -1,10 +1,10 @@
 # Audit Proof - Complete Unraid Self-Hosting Guide
 
-**Document Version:** 2.1
+**Document Version:** 2.2
 **Last Updated:** 2025-10-27
 **Target:** Unraid 7.1.4+ with SWAG Reverse Proxy
 **Migration Approach:** Fresh Installation (No data migration from Bolt.new)
-**Estimated Time:** 12-20 hours (first-time setup)
+**Estimated Time:** 15-20 hours (first-time setup)
 
 ---
 
@@ -15,7 +15,7 @@
 - **Phase 2:** Install Supabase Stack ✓
   - Step 2.1-2.7: All Supabase services running
   - Step 2.8: Studio accessible at http://192.168.1.246:3000 ✓
-  - **Note:** Edge Functions temporarily disabled (will enable in Phase 9)
+  - **Note:** Edge Functions temporarily disabled (will enable in Phase 3.5)
 
 ### 🔄 Current Status
 Your Supabase infrastructure is running with:
@@ -35,6 +35,11 @@ Your Supabase infrastructure is running with:
 - Create all 18 tables
 - Seed default data
 
+**→ Then Phase 3.5: Deploy Edge Functions**
+- Enable AI receipt extraction
+- Enable email invitations
+- Enable all application features
+
 ---
 
 ## Table of Contents
@@ -45,12 +50,12 @@ Your Supabase infrastructure is running with:
 4. [Phase 1: Unraid Network Setup](#phase-1-unraid-network-setup)
 5. [Phase 2: Install Supabase Stack](#phase-2-install-supabase-stack)
 6. [Phase 3: Database Initialization](#phase-3-database-initialization)
-7. [Phase 4: Deploy Frontend](#phase-4-deploy-frontend)
-8. [Phase 5: Configure SWAG Reverse Proxy](#phase-5-configure-swag-reverse-proxy)
-9. [Phase 6: Create Admin Account](#phase-6-create-admin-account)
-10. [Phase 7: Setup Monitoring](#phase-7-setup-monitoring)
-11. [Phase 8: Setup Backups](#phase-8-setup-backups)
-12. [Phase 9: Enable Edge Functions (Optional)](#phase-9-enable-edge-functions-optional)
+7. [Phase 3.5: Deploy Edge Functions](#phase-35-deploy-edge-functions)
+8. [Phase 4: Deploy Frontend](#phase-4-deploy-frontend)
+9. [Phase 5: Configure SWAG Reverse Proxy](#phase-5-configure-swag-reverse-proxy)
+10. [Phase 6: Create Admin Account](#phase-6-create-admin-account)
+11. [Phase 7: Setup Monitoring](#phase-7-setup-monitoring)
+12. [Phase 8: Setup Backups](#phase-8-setup-backups)
 13. [Testing & Verification](#testing--verification)
 14. [Ongoing Maintenance](#ongoing-maintenance)
 15. [Troubleshooting](#troubleshooting)
@@ -394,18 +399,12 @@ Since Unraid doesn't have Docker Compose Manager by default, we'll use the offic
 
 ### ⚠️ Important Note: Edge Functions
 
-**Edge Functions service will be temporarily disabled** during initial setup because:
+**Edge Functions service will be temporarily disabled** during initial Supabase setup because:
 - The default docker-compose.yml configuration expects a `main` function that doesn't exist
-- Your Edge Functions need to be copied to the correct location
-- The core application works without Edge Functions initially
+- Your Edge Functions need to be copied to the correct location first
+- This allows us to verify the core Supabase infrastructure is working
 
-**What this means:**
-- ✅ Authentication, database, storage, and frontend will work perfectly
-- ❌ AI receipt extraction won't work (you can manually enter receipts)
-- ❌ Email invitations won't send (use direct signup)
-- ❌ Email receipt forwarding won't work (optional feature)
-
-**We'll enable Edge Functions in Phase 9** after the core system is stable.
+**We'll enable Edge Functions in Phase 3.5** (immediately after database initialization) so the application has full functionality before frontend deployment.
 
 ### Step 2.1: Download Supabase Docker Setup
 
@@ -889,6 +888,400 @@ docker exec -i supabase-db psql -U postgres -d postgres < /mnt/user/appdata/audi
 docker exec -it supabase-db psql -U postgres -d postgres -c "SELECT COUNT(*) FROM expense_categories;"
 ```
 **Expected:** `10`
+
+---
+
+## Phase 3.5: Deploy Edge Functions
+
+Now we'll enable Edge Functions to unlock the full power of Audit Proof. This includes AI receipt extraction, email invitations, and export processing.
+
+### Why Enable Now?
+
+**Edge Functions are CRITICAL for core features:**
+- ✅ **AI Receipt Extraction** - Automatically extract data from receipt images (GPT-4 Vision)
+- ✅ **Team Invitations** - Send invitation emails to team members
+- ✅ **Export Processing** - Generate CSV/PDF/ZIP exports
+- ✅ **Email Receipt Forwarding** - Forward receipts via email (optional)
+- ✅ **Admin Operations** - Advanced user management
+
+**Without Edge Functions, users must manually enter all receipt data** - defeating the main value proposition!
+
+### Prerequisites
+
+Before continuing, ensure:
+- [ ] Phase 3 complete (database initialized with all tables)
+- [ ] All Supabase services showing "Up (healthy)" except edge-functions
+- [ ] You have your OpenAI API key ready
+
+### Step 3.5.1: Copy Edge Functions to Correct Location
+
+**Option A: Copy from Project on Unraid (if available)**
+
+```bash
+# If you already have the project files on Unraid:
+mkdir -p /mnt/user/appdata/auditproof/edge-functions
+
+# Copy all functions
+cp -r /path/to/auditproof/supabase/functions/* /mnt/user/appdata/auditproof/edge-functions/
+
+# Verify structure
+ls -la /mnt/user/appdata/auditproof/edge-functions/
+# Should see: accept-invitation/, extract-receipt-data/, receive-email-receipt/,
+#             send-invitation-email/, process-export-job/, admin-user-management/,
+#             _shared/
+```
+
+**Option B: Copy from Your Workstation**
+
+```bash
+# On your workstation (Windows/Mac):
+cd /path/to/auditproof
+
+# Create tar of Edge Functions
+tar -czf edge-functions.tar.gz supabase/functions/
+
+# Copy to Unraid
+scp edge-functions.tar.gz root@192.168.1.246:/mnt/user/appdata/auditproof/
+```
+
+**Then on Unraid:**
+
+```bash
+cd /mnt/user/appdata/auditproof
+
+# Extract functions
+mkdir -p edge-functions
+tar -xzf edge-functions.tar.gz --strip-components=2 -C edge-functions/
+
+# Verify files exist
+ls -la edge-functions/
+# Should see directories for each function plus _shared/
+```
+
+### Step 3.5.2: Configure Edge Function Environment Variables
+
+```bash
+cd /mnt/user/appdata/auditproof/supabase-src/docker
+nano .env
+```
+
+**Add these environment variables at the bottom:**
+
+```bash
+############
+# Edge Functions - OpenAI API
+############
+# Get your API key from: https://platform.openai.com/api-keys
+OPENAI_API_KEY=sk-your-openai-api-key-here
+
+############
+# SMTP Settings (should already be configured from Phase 2)
+############
+# Verify these are set correctly:
+# GOTRUE_SMTP_HOST=mail.privateemail.com
+# GOTRUE_SMTP_PORT=465
+# GOTRUE_SMTP_USER=contact@auditproof.ca
+# GOTRUE_SMTP_PASS=your-email-password-here
+
+############
+# Postmark (Optional - only for email receipt forwarding)
+############
+# Skip this unless you specifically want the email-to-receipt feature
+# POSTMARK_SERVER_TOKEN=your-postmark-token-here
+```
+
+**Save and exit:** Ctrl+X, Y, Enter
+
+**IMPORTANT: Get Your OpenAI API Key**
+1. Visit: https://platform.openai.com/api-keys
+2. Click **Create new secret key**
+3. Copy the key (starts with `sk-`)
+4. Add to `.env` file above
+
+### Step 3.5.3: Enable Edge Functions in Docker Compose
+
+```bash
+nano docker-compose.yml
+```
+
+**Find the commented `functions:` service (around line 250-300) and uncomment it:**
+
+```yaml
+functions:
+  container_name: supabase-edge-functions
+  image: supabase/edge-runtime:v1.69.14
+  restart: unless-stopped
+  depends_on:
+    analytics:
+      condition: service_healthy
+  volumes:
+    - /mnt/user/appdata/auditproof/edge-functions:/home/deno/functions:Z
+  environment:
+    JWT_SECRET: ${JWT_SECRET}
+    SUPABASE_URL: http://kong:8000
+    SUPABASE_ANON_KEY: ${ANON_KEY}
+    SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+    SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+    VERIFY_JWT: "${FUNCTIONS_VERIFY_JWT}"
+    # Pass through Edge Function environment variables
+    OPENAI_API_KEY: ${OPENAI_API_KEY}
+    SMTP_HOST: ${GOTRUE_SMTP_HOST}
+    SMTP_PORT: ${GOTRUE_SMTP_PORT}
+    SMTP_USER: ${GOTRUE_SMTP_USER}
+    SMTP_PASSWORD: ${GOTRUE_SMTP_PASS}
+  networks:
+    - default
+```
+
+**CRITICAL: Remove the `command:` section if it exists!**
+
+The default Supabase docker-compose.yml has a command that tries to start a `main` function that doesn't exist. Make sure these lines are REMOVED or commented out:
+
+```yaml
+# REMOVE THIS ENTIRE SECTION:
+# command:
+#   [
+#     "start",
+#     "--main-service",
+#     "/home/deno/functions/main"
+#   ]
+```
+
+**Save and exit:** Ctrl+X, Y, Enter
+
+### Step 3.5.4: Restart Supabase Services
+
+```bash
+cd /mnt/user/appdata/auditproof/supabase-src/docker
+
+# Stop all services
+docker compose down
+
+# Start with Edge Functions enabled
+docker compose up -d
+
+# Wait for services to initialize
+sleep 30
+
+# Check status
+docker compose ps
+```
+
+**Expected Output:**
+
+```
+NAME                       STATUS
+supabase-db                Up (healthy)
+supabase-auth              Up (healthy)
+supabase-rest              Up (healthy)
+supabase-storage           Up (healthy)
+supabase-realtime          Up (healthy)
+supabase-edge-functions    Up (healthy)    ← Should now show!
+supabase-studio            Up (healthy)
+supabase-kong              Up (healthy)
+supabase-analytics         Up
+```
+
+**If `supabase-edge-functions` shows "Restarting" or "Exit":**
+
+```bash
+# Check logs for errors
+docker logs supabase-edge-functions --tail=50
+
+# Common issues:
+# 1. Volume path wrong - check /mnt/user/appdata/auditproof/edge-functions exists
+# 2. Missing function files - verify ls /mnt/user/appdata/auditproof/edge-functions/
+# 3. Environment variable issue - check OPENAI_API_KEY is set in .env
+```
+
+### Step 3.5.5: Verify Edge Functions Are Working
+
+**Test 1: Check Functions Are Loaded**
+
+```bash
+# View Edge Functions logs
+docker logs supabase-edge-functions --tail=100
+
+# You should see lines like:
+# "Loaded function: extract-receipt-data"
+# "Loaded function: send-invitation-email"
+# "Loaded function: accept-invitation"
+# etc.
+```
+
+**Test 2: Verify Environment Variables**
+
+```bash
+# Check OpenAI key is set
+docker exec -it supabase-edge-functions env | grep OPENAI_API_KEY
+
+# Should show: OPENAI_API_KEY=sk-your-key-here (partially obscured)
+```
+
+**Test 3: Test OpenAI API Connection**
+
+```bash
+# From Unraid, test your OpenAI API key
+curl https://api.openai.com/v1/models \
+  -H "Authorization: Bearer YOUR_OPENAI_KEY_HERE"
+
+# Should return JSON list of available models
+# If you see "invalid_api_key" error, check your key
+```
+
+**Test 4: Test Edge Function Invocation**
+
+We'll test one Edge Function manually to ensure it's accessible:
+
+```bash
+# Test the accept-invitation function (health check)
+curl -X POST \
+  "http://192.168.1.246:8000/functions/v1/accept-invitation" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ANON_KEY_HERE" \
+  -d '{"token":"test"}'
+
+# Expected: Some response (even an error is OK - means function is reachable)
+# If you get "Function not found" - functions aren't loaded correctly
+```
+
+### Step 3.5.6: What Edge Functions Do
+
+**1. extract-receipt-data**
+- **Purpose:** AI-powered receipt data extraction
+- **Trigger:** Called when user uploads a receipt image
+- **Tech:** OpenAI GPT-4 Vision API
+- **Cost:** ~$0.01 per receipt
+- **Returns:** Merchant name, date, total, items, tax, etc.
+
+**2. send-invitation-email**
+- **Purpose:** Send team invitation emails
+- **Trigger:** User invites team member via UI
+- **Tech:** SMTP (PrivateEmail)
+- **Returns:** Confirmation that email was sent
+
+**3. accept-invitation**
+- **Purpose:** Process invitation acceptance
+- **Trigger:** New user clicks invitation link
+- **Tech:** Database operations
+- **Returns:** Success/failure status
+
+**4. process-export-job**
+- **Purpose:** Generate CSV/PDF/ZIP exports
+- **Trigger:** User requests data export
+- **Tech:** jsPDF, CSV generation, JSZip
+- **Returns:** Download link when complete
+
+**5. receive-email-receipt**
+- **Purpose:** Email-to-receipt forwarding (optional)
+- **Trigger:** Email sent to special address
+- **Tech:** Postmark webhook
+- **Returns:** Receipt created from email
+
+**6. admin-user-management**
+- **Purpose:** Admin operations (reset password, MFA, etc.)
+- **Trigger:** System admin actions
+- **Tech:** Supabase Admin API
+- **Returns:** Operation results
+
+### Step 3.5.7: Edge Function Security Notes
+
+**Authentication:**
+- All functions verify JWT tokens (except webhooks)
+- Use `SUPABASE_ANON_KEY` for client calls
+- Use `SUPABASE_SERVICE_ROLE_KEY` for admin operations
+
+**Rate Limiting:**
+- Database tracks function invocations
+- Prevents abuse and excessive OpenAI costs
+- Configured in `rate_limit_tracking` table
+
+**Secrets Protection:**
+- OpenAI API key only accessible inside Edge Functions
+- Never exposed to frontend
+- Logs don't contain sensitive data
+
+### Troubleshooting Edge Functions
+
+**Problem: Functions container keeps restarting**
+
+```bash
+# Check logs
+docker logs supabase-edge-functions
+
+# Common causes:
+# 1. Missing function files
+ls -la /mnt/user/appdata/auditproof/edge-functions/
+
+# 2. Bad command in docker-compose.yml
+nano docker-compose.yml
+# Make sure command: section is removed/commented
+
+# 3. Memory limit
+docker stats supabase-edge-functions
+# If high, restart: docker restart supabase-edge-functions
+```
+
+**Problem: OpenAI extraction returns errors**
+
+```bash
+# Verify API key
+docker exec -it supabase-edge-functions env | grep OPENAI
+
+# Test API key manually
+curl https://api.openai.com/v1/models \
+  -H "Authorization: Bearer sk-your-key-here"
+
+# Check function logs
+docker logs supabase-edge-functions | grep -i error
+
+# Check rate limits
+docker exec -it supabase-db psql -U postgres -d postgres -c "SELECT * FROM rate_limit_tracking WHERE action_type = 'receipt_extraction' ORDER BY created_at DESC LIMIT 10;"
+```
+
+**Problem: Email invitations not sending**
+
+```bash
+# Check SMTP settings
+cd /mnt/user/appdata/auditproof/supabase-src/docker
+cat .env | grep GOTRUE_SMTP
+
+# Test SMTP connection
+telnet mail.privateemail.com 465
+# Should connect (Ctrl+C to exit)
+
+# Check auth service logs
+docker logs supabase-auth | grep -i smtp
+
+# Check Edge Functions logs
+docker logs supabase-edge-functions | grep -i invitation
+```
+
+**Problem: Functions not accessible from frontend**
+
+```bash
+# Verify Kong is routing to functions
+curl http://192.168.1.246:8000/functions/v1/
+
+# Check Kong logs
+docker logs supabase-kong --tail=50
+
+# Verify network connectivity
+docker exec supabase-kong ping -c 3 supabase-edge-functions
+```
+
+### Success Criteria
+
+Before moving to Phase 4, verify:
+
+- [ ] Edge Functions container shows "Up (healthy)"
+- [ ] All 6 function directories exist in `/mnt/user/appdata/auditproof/edge-functions/`
+- [ ] OpenAI API key is configured
+- [ ] SMTP settings are configured
+- [ ] Function logs show "Loaded function: ..." for each function
+- [ ] Manual curl test returns a response (not "Function not found")
+
+**Once all checks pass, you're ready for Phase 4!**
 
 ---
 
@@ -1386,165 +1779,6 @@ This gives you:
 
 ---
 
-## Phase 9: Enable Edge Functions (Optional)
-
-**Prerequisites:** Complete Phases 1-8 and verify core system is stable.
-
-### Step 9.1: Copy Edge Functions to Correct Location
-
-```bash
-# Copy functions from project to appdata directory
-mkdir -p /mnt/user/appdata/auditproof/edge-functions
-
-# If you have the project files on Unraid:
-cp -r /tmp/cc-agent/58096699/project/supabase/functions/* /mnt/user/appdata/auditproof/edge-functions/
-
-# Or copy from your workstation:
-# cd /path/to/auditproof
-# tar -czf edge-functions.tar.gz supabase/functions/
-# scp edge-functions.tar.gz root@192.168.1.246:/mnt/user/appdata/auditproof/
-# Then on Unraid:
-# cd /mnt/user/appdata/auditproof
-# tar -xzf edge-functions.tar.gz --strip-components=2
-
-# Verify files copied
-ls -la /mnt/user/appdata/auditproof/edge-functions/
-# Should see: accept-invitation/, extract-receipt-data/, receive-email-receipt/,
-#             send-invitation-email/, process-export-job/, admin-user-management/
-```
-
-### Step 9.2: Configure Environment Variables
-
-```bash
-cd /mnt/user/appdata/auditproof/supabase-src/docker
-nano .env
-```
-
-Add these environment variables:
-
-```bash
-# OpenAI API (Required for receipt extraction)
-OPENAI_API_KEY=sk-your-openai-api-key-here
-
-# SMTP Settings (Already configured in Phase 2, verify they're correct)
-GOTRUE_SMTP_HOST=mail.privateemail.com
-GOTRUE_SMTP_PORT=465
-GOTRUE_SMTP_USER=contact@auditproof.ca
-GOTRUE_SMTP_PASS=your-email-password-here
-
-# Postmark (Optional - only if you want email receipt forwarding)
-POSTMARK_SERVER_TOKEN=your-postmark-token-here
-```
-
-**Save and exit:** Ctrl+X, Y, Enter
-
-### Step 9.3: Uncomment Edge Functions Service
-
-```bash
-nano docker-compose.yml
-```
-
-Find the commented out `functions:` service and uncomment it. Also **remove or comment out** the `command:` section:
-
-```yaml
-functions:
-  container_name: supabase-edge-functions
-  image: supabase/edge-runtime:v1.69.14
-  restart: unless-stopped
-  volumes:
-    - /mnt/user/appdata/auditproof/edge-functions:/home/deno/functions:Z
-  depends_on:
-    analytics:
-      condition: service_healthy
-  environment:
-    JWT_SECRET: ${JWT_SECRET}
-    SUPABASE_URL: http://kong:8000
-    SUPABASE_ANON_KEY: ${ANON_KEY}
-    SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
-    SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
-    VERIFY_JWT: "${FUNCTIONS_VERIFY_JWT}"
-    OPENAI_API_KEY: ${OPENAI_API_KEY}
-    SMTP_HOST: ${GOTRUE_SMTP_HOST}
-    SMTP_PORT: ${GOTRUE_SMTP_PORT}
-    SMTP_USER: ${GOTRUE_SMTP_USER}
-    SMTP_PASSWORD: ${GOTRUE_SMTP_PASS}
-  # REMOVE THE COMMAND SECTION - Let it use default startup
-  # command:
-  #   [
-  #     "start",
-  #     "--main-service",
-  #     "/home/deno/functions/main"
-  #   ]
-```
-
-**Save and exit:** Ctrl+X, Y, Enter
-
-### Step 9.4: Restart Services
-
-```bash
-cd /mnt/user/appdata/auditproof/supabase-src/docker
-
-# Restart to apply changes
-docker compose down
-docker compose up -d
-
-# Wait for services to start
-sleep 30
-
-# Check status
-docker compose ps
-```
-
-**Expected:** You should now see `supabase-edge-functions` with status "Up (healthy)"
-
-### Step 9.5: Verify Edge Functions Work
-
-**Test receipt extraction:**
-1. Open Audit Proof: `https://auditproof.yourdomain.com`
-2. Upload a receipt image
-3. Wait 5-10 seconds
-4. Receipt data should be extracted automatically
-
-**Check Edge Functions logs:**
-```bash
-docker logs supabase-edge-functions --tail=50 -f
-```
-
-You should see function invocations and responses.
-
-**If extraction doesn't work:**
-```bash
-# Check OpenAI API key
-docker exec -it supabase-edge-functions env | grep OPENAI
-
-# Test OpenAI API manually
-curl https://api.openai.com/v1/models \
-  -H "Authorization: Bearer sk-your-key-here"
-
-# Check function logs for errors
-docker logs supabase-edge-functions | grep -i error
-```
-
-### Step 9.6: Test Email Features (Optional)
-
-**Test invitation emails:**
-1. Go to Team Management in Audit Proof
-2. Invite a team member
-3. Check that invitation email is sent
-
-**Test password reset:**
-1. Log out
-2. Click "Forgot Password"
-3. Enter email
-4. Check that reset email is sent
-
-**Check email logs:**
-```bash
-docker logs supabase-auth | grep -i smtp
-```
-
----
-
 ## Testing & Verification
 
 ### Complete Test Checklist
@@ -1952,9 +2186,10 @@ docker exec -it duplicacy duplicacy backup -stats
 ✅ **Backups Configured** - Duplicacy running daily backups
 ✅ **Production Ready** - Secure, monitored, backed up
 
-### Time to Production: ~14 hours
+### Time to Production: ~15 hours
 - Phase 1-2: 4 hours (Network + Supabase install)
 - Phase 3: 2 hours (Database setup)
+- Phase 3.5: 1 hour (Edge Functions deployment)
 - Phase 4-5: 3 hours (Frontend + SWAG)
 - Phase 6: 1 hour (Admin account)
 - Phase 7-8: 2 hours (Monitoring + Backups)
