@@ -1,10 +1,39 @@
 # Audit Proof - Complete Unraid Self-Hosting Guide
 
-**Document Version:** 2.0
-**Last Updated:** 2025-10-24
+**Document Version:** 2.1
+**Last Updated:** 2025-10-27
 **Target:** Unraid 7.1.4+ with SWAG Reverse Proxy
 **Migration Approach:** Fresh Installation (No data migration from Bolt.new)
 **Estimated Time:** 12-20 hours (first-time setup)
+
+---
+
+## 📋 Current Progress Summary
+
+### ✅ Completed Steps
+- **Phase 1:** Unraid Network Setup ✓
+- **Phase 2:** Install Supabase Stack ✓
+  - Step 2.1-2.7: All Supabase services running
+  - Step 2.8: Studio accessible at http://192.168.1.246:3000 ✓
+  - **Note:** Edge Functions temporarily disabled (will enable in Phase 9)
+
+### 🔄 Current Status
+Your Supabase infrastructure is running with:
+- ✅ PostgreSQL database (healthy)
+- ✅ GoTrue authentication (healthy)
+- ✅ PostgREST API (healthy)
+- ✅ Storage API (healthy)
+- ✅ Realtime (healthy)
+- ✅ Kong Gateway (healthy)
+- ✅ Studio Admin UI (accessible)
+- ⏸️ Edge Functions (disabled - will enable later)
+- ⚠️ Supavisor (pooler) - May be restarting, can be disabled if needed
+
+### 📍 Next Steps
+**→ Proceed to Phase 3: Database Initialization**
+- Apply 84 database migrations
+- Create all 18 tables
+- Seed default data
 
 ---
 
@@ -21,9 +50,10 @@
 9. [Phase 6: Create Admin Account](#phase-6-create-admin-account)
 10. [Phase 7: Setup Monitoring](#phase-7-setup-monitoring)
 11. [Phase 8: Setup Backups](#phase-8-setup-backups)
-12. [Testing & Verification](#testing--verification)
-13. [Ongoing Maintenance](#ongoing-maintenance)
-14. [Troubleshooting](#troubleshooting)
+12. [Phase 9: Enable Edge Functions (Optional)](#phase-9-enable-edge-functions-optional)
+13. [Testing & Verification](#testing--verification)
+14. [Ongoing Maintenance](#ongoing-maintenance)
+15. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -362,6 +392,21 @@ drwxrwxr-x   2 nobody users   2 Oct 24 10:00 studio
 
 Since Unraid doesn't have Docker Compose Manager by default, we'll use the official Supabase Docker setup and adapt it for Unraid.
 
+### ⚠️ Important Note: Edge Functions
+
+**Edge Functions service will be temporarily disabled** during initial setup because:
+- The default docker-compose.yml configuration expects a `main` function that doesn't exist
+- Your Edge Functions need to be copied to the correct location
+- The core application works without Edge Functions initially
+
+**What this means:**
+- ✅ Authentication, database, storage, and frontend will work perfectly
+- ❌ AI receipt extraction won't work (you can manually enter receipts)
+- ❌ Email invitations won't send (use direct signup)
+- ❌ Email receipt forwarding won't work (optional feature)
+
+**We'll enable Edge Functions in Phase 9** after the core system is stable.
+
 ### Step 2.1: Download Supabase Docker Setup
 
 ```bash
@@ -528,12 +573,26 @@ Edit the docker-compose.yml to use our custom paths:
 nano docker-compose.yml
 ```
 
-**Find and replace ALL volume paths:**
+**1. Comment Out Edge Functions Service (Temporarily)**
+
+Find the `functions:` service section and comment out the ENTIRE service:
+
+```yaml
+# Edge Functions - TEMPORARILY DISABLED
+# Will enable in Phase 9 after core setup complete
+# functions:
+#   container_name: supabase-edge-functions
+#   image: supabase/edge-runtime:v1.69.14
+#   restart: unless-stopped
+#   ... (comment out the entire service block)
+```
+
+**2. Find and replace ALL volume paths:**
 - Change `./volumes/db/data` → `/mnt/user/appdata/auditproof/postgres`
 - Change `./volumes/storage` → `/mnt/user/appdata/auditproof/storage`
 - Change `./volumes/functions` → `/mnt/user/appdata/auditproof/edge-functions`
 
-**Also add restart policies to all services:**
+**3. Add restart policies to all services:**
 ```yaml
 restart: unless-stopped
 ```
@@ -625,11 +684,15 @@ supabase-storage        Up (healthy)
 supabase-realtime       Up (healthy)
 supabase-studio         Up (healthy)
 supabase-kong           Up (healthy)
-supabase-edge-runtime   Up (healthy)
 supabase-analytics      Up
+# Note: edge-functions NOT listed (we commented it out)
+# Note: supavisor (pooler) may show "Restarting" - this is optional, can be disabled
 ```
 
-**If any container shows "Restarting" or "Exit":**
+**If you see `supabase-pooler` or `supavisor` restarting:**
+This is the connection pooler service and is optional for small deployments. You can comment it out in docker-compose.yml the same way we did for Edge Functions.
+
+**If any other container shows "Restarting" or "Exit":**
 ```bash
 # View logs for that container
 docker logs supabase-db  # Replace with container name
@@ -646,14 +709,38 @@ docker logs supabase-db  # Replace with container name
 ```bash
 curl http://192.168.1.246:8000/
 ```
-**Expected:** JSON response with Supabase version
+**Expected:** `{"message":"Unauthorized"}` - This is CORRECT! It means Kong is running.
+
+**Add Studio Port Mapping:**
+
+Edit docker-compose.yml to expose Studio on your network:
+
+```bash
+nano docker-compose.yml
+```
+
+Find the `studio:` service and add the `ports:` section:
+
+```yaml
+studio:
+  container_name: supabase-studio
+  image: supabase/studio:2025.10.20-sha-5005fc6
+  restart: unless-stopped
+  # ... other settings ...
+  ports:
+    - "3000:3000"  # ADD THIS LINE
+```
+
+**Save and restart:**
+```bash
+docker compose down
+docker compose up -d
+```
 
 **Test Studio (Admin UI):**
 Open browser: `http://192.168.1.246:3000`
-- Username: `admin`
-- Password: (your DASHBOARD_PASSWORD from .env)
 
-**If Studio loads**, you're good! You should see the Supabase dashboard.
+**If Studio loads**, you're good! You should see the Supabase dashboard with "Default Project" and 0 Tables.
 
 ---
 
@@ -1296,6 +1383,165 @@ This gives you:
 - Daily restore for 1 week
 - Weekly restore for 1 month
 - Monthly restore for 1 year
+
+---
+
+## Phase 9: Enable Edge Functions (Optional)
+
+**Prerequisites:** Complete Phases 1-8 and verify core system is stable.
+
+### Step 9.1: Copy Edge Functions to Correct Location
+
+```bash
+# Copy functions from project to appdata directory
+mkdir -p /mnt/user/appdata/auditproof/edge-functions
+
+# If you have the project files on Unraid:
+cp -r /tmp/cc-agent/58096699/project/supabase/functions/* /mnt/user/appdata/auditproof/edge-functions/
+
+# Or copy from your workstation:
+# cd /path/to/auditproof
+# tar -czf edge-functions.tar.gz supabase/functions/
+# scp edge-functions.tar.gz root@192.168.1.246:/mnt/user/appdata/auditproof/
+# Then on Unraid:
+# cd /mnt/user/appdata/auditproof
+# tar -xzf edge-functions.tar.gz --strip-components=2
+
+# Verify files copied
+ls -la /mnt/user/appdata/auditproof/edge-functions/
+# Should see: accept-invitation/, extract-receipt-data/, receive-email-receipt/,
+#             send-invitation-email/, process-export-job/, admin-user-management/
+```
+
+### Step 9.2: Configure Environment Variables
+
+```bash
+cd /mnt/user/appdata/auditproof/supabase-src/docker
+nano .env
+```
+
+Add these environment variables:
+
+```bash
+# OpenAI API (Required for receipt extraction)
+OPENAI_API_KEY=sk-your-openai-api-key-here
+
+# SMTP Settings (Already configured in Phase 2, verify they're correct)
+GOTRUE_SMTP_HOST=mail.privateemail.com
+GOTRUE_SMTP_PORT=465
+GOTRUE_SMTP_USER=contact@auditproof.ca
+GOTRUE_SMTP_PASS=your-email-password-here
+
+# Postmark (Optional - only if you want email receipt forwarding)
+POSTMARK_SERVER_TOKEN=your-postmark-token-here
+```
+
+**Save and exit:** Ctrl+X, Y, Enter
+
+### Step 9.3: Uncomment Edge Functions Service
+
+```bash
+nano docker-compose.yml
+```
+
+Find the commented out `functions:` service and uncomment it. Also **remove or comment out** the `command:` section:
+
+```yaml
+functions:
+  container_name: supabase-edge-functions
+  image: supabase/edge-runtime:v1.69.14
+  restart: unless-stopped
+  volumes:
+    - /mnt/user/appdata/auditproof/edge-functions:/home/deno/functions:Z
+  depends_on:
+    analytics:
+      condition: service_healthy
+  environment:
+    JWT_SECRET: ${JWT_SECRET}
+    SUPABASE_URL: http://kong:8000
+    SUPABASE_ANON_KEY: ${ANON_KEY}
+    SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+    SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+    VERIFY_JWT: "${FUNCTIONS_VERIFY_JWT}"
+    OPENAI_API_KEY: ${OPENAI_API_KEY}
+    SMTP_HOST: ${GOTRUE_SMTP_HOST}
+    SMTP_PORT: ${GOTRUE_SMTP_PORT}
+    SMTP_USER: ${GOTRUE_SMTP_USER}
+    SMTP_PASSWORD: ${GOTRUE_SMTP_PASS}
+  # REMOVE THE COMMAND SECTION - Let it use default startup
+  # command:
+  #   [
+  #     "start",
+  #     "--main-service",
+  #     "/home/deno/functions/main"
+  #   ]
+```
+
+**Save and exit:** Ctrl+X, Y, Enter
+
+### Step 9.4: Restart Services
+
+```bash
+cd /mnt/user/appdata/auditproof/supabase-src/docker
+
+# Restart to apply changes
+docker compose down
+docker compose up -d
+
+# Wait for services to start
+sleep 30
+
+# Check status
+docker compose ps
+```
+
+**Expected:** You should now see `supabase-edge-functions` with status "Up (healthy)"
+
+### Step 9.5: Verify Edge Functions Work
+
+**Test receipt extraction:**
+1. Open Audit Proof: `https://auditproof.yourdomain.com`
+2. Upload a receipt image
+3. Wait 5-10 seconds
+4. Receipt data should be extracted automatically
+
+**Check Edge Functions logs:**
+```bash
+docker logs supabase-edge-functions --tail=50 -f
+```
+
+You should see function invocations and responses.
+
+**If extraction doesn't work:**
+```bash
+# Check OpenAI API key
+docker exec -it supabase-edge-functions env | grep OPENAI
+
+# Test OpenAI API manually
+curl https://api.openai.com/v1/models \
+  -H "Authorization: Bearer sk-your-key-here"
+
+# Check function logs for errors
+docker logs supabase-edge-functions | grep -i error
+```
+
+### Step 9.6: Test Email Features (Optional)
+
+**Test invitation emails:**
+1. Go to Team Management in Audit Proof
+2. Invite a team member
+3. Check that invitation email is sent
+
+**Test password reset:**
+1. Log out
+2. Click "Forgot Password"
+3. Enter email
+4. Check that reset email is sent
+
+**Check email logs:**
+```bash
+docker logs supabase-auth | grep -i smtp
+```
 
 ---
 
