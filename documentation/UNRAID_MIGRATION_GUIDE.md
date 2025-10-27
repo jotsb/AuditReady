@@ -845,16 +845,24 @@ ls -la supabase/
 Since we're using self-hosted Supabase, we'll apply migrations directly to PostgreSQL:
 
 ```bash
+# First, find your actual PostgreSQL container name
+docker ps | grep postgres
+
+# Look for container name (examples: supabase-db, Bolt Database-db, supabase_db, etc.)
+# Use that name in commands below - replace "supabase-db" with your actual container name
+
 # Navigate to migrations directory
 cd /mnt/user/appdata/auditproof/project/AuditReady/supabase/migrations
 
 # Get your PostgreSQL password from secrets file
 cat /mnt/user/appdata/auditproof/config/secrets.txt | grep POSTGRES_PASSWORD
 
-# Apply all migrations in order
+# Apply all migrations in order (REPLACE "supabase-db" with your actual container name)
+POSTGRES_CONTAINER="supabase-db"  # Change this to match your container name
+
 for migration in *.sql; do
   echo "Applying: $migration"
-  docker exec -i supabase-db psql -U postgres -d postgres < "$migration"
+  docker exec -i "$POSTGRES_CONTAINER" psql -U postgres -d postgres < "$migration"
   if [ $? -eq 0 ]; then
     echo "✓ Success: $migration"
   else
@@ -863,6 +871,11 @@ for migration in *.sql; do
   fi
 done
 ```
+
+**If you see "No such container" error:**
+1. Run `docker ps --format "{{.Names}}"` to list all container names
+2. Find the one with "postgres" or "db" in the name
+3. Replace `supabase-db` with that name in all commands
 
 **Alternative: Apply migrations one by one manually**
 
@@ -902,13 +915,18 @@ CREATE POLICY
 ### Step 3.5: Verify Database Schema
 
 ```bash
-# Connect to PostgreSQL
-docker exec -it supabase-db psql -U postgres -d postgres
+# First, find your PostgreSQL container name
+docker ps --format "{{.Names}}" | grep -i db
+# Example output: supabase-db, Bolt Database-db, etc.
+
+# Connect to PostgreSQL (replace container name if needed)
+POSTGRES_CONTAINER="supabase-db"  # Change to match your container
+docker exec -it "$POSTGRES_CONTAINER" psql -U postgres -d postgres
 
 # List all tables
 \dt
 
-# Should see 18 tables:
+# Should see 18+ tables:
 # profiles, businesses, business_members, collections,
 # collection_members, receipts, expense_categories, invitations,
 # audit_logs, system_logs, saved_filters, saved_log_filters,
@@ -919,11 +937,83 @@ docker exec -it supabase-db psql -U postgres -d postgres
 \q
 ```
 
-### Step 3.6: Seed Default Data
+### Step 3.6: Fix Missing Columns (Post-Migration Cleanup)
+
+Some migrations may have dependency issues causing missing columns. Run this cleanup:
+
+```bash
+# Set your container name (check with: docker ps | grep postgres)
+POSTGRES_CONTAINER="supabase-db"  # Change if different
+
+# Fix missing display_order column in expense_categories
+docker exec -it "$POSTGRES_CONTAINER" psql -U postgres -d postgres << 'EOF'
+ALTER TABLE expense_categories ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
+UPDATE expense_categories SET display_order = id WHERE display_order = 0;
+EOF
+
+# Fix cleanup_expired_recovery_codes function
+docker exec -it "$POSTGRES_CONTAINER" psql -U postgres -d postgres << 'EOF'
+DROP FUNCTION IF EXISTS cleanup_expired_recovery_codes();
+CREATE FUNCTION cleanup_expired_recovery_codes()
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  deleted_count INTEGER;
+BEGIN
+  DELETE FROM recovery_codes
+  WHERE expires_at < NOW()
+  AND used_at IS NULL;
+
+  GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  RETURN deleted_count;
+END;
+$$;
+EOF
+
+echo "✓ Post-migration cleanup complete"
+```
+
+### Step 3.7: Run Verification Check
+
+```bash
+# Run comprehensive database health check
+POSTGRES_CONTAINER="supabase-db"  # Your container name
+
+docker exec -it "$POSTGRES_CONTAINER" psql -U postgres -d postgres << 'EOF'
+-- Check table count
+SELECT COUNT(*) AS total_tables FROM information_schema.tables
+WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
+
+-- Check for critical tables
+SELECT
+  CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'profiles') THEN '✓' ELSE '✗' END AS profiles,
+  CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'businesses') THEN '✓' ELSE '✗' END AS businesses,
+  CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'receipts') THEN '✓' ELSE '✗' END AS receipts,
+  CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'collections') THEN '✓' ELSE '✗' END AS collections,
+  CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'audit_logs') THEN '✓' ELSE '✗' END AS audit_logs;
+
+-- Check RLS is enabled
+SELECT COUNT(*) AS tables_with_rls
+FROM pg_tables
+WHERE schemaname = 'public'
+AND rowsecurity = true;
+EOF
+```
+
+**Expected Results:**
+- Total tables: 25-30
+- All critical tables: ✓
+- Tables with RLS: 20+
+
+### Step 3.8: Seed Default Data
 
 **Create seed script:**
 
 ```bash
+POSTGRES_CONTAINER="supabase-db"  # Your container name
+
 cat > /mnt/user/appdata/auditproof/config/seed.sql << 'EOF'
 -- Insert default expense categories
 INSERT INTO expense_categories (name, description, icon, color, sort_order) VALUES
@@ -951,12 +1041,13 @@ ON CONFLICT (key) DO NOTHING;
 EOF
 
 # Apply seed data
-docker exec -i supabase-db psql -U postgres -d postgres < /mnt/user/appdata/auditproof/config/seed.sql
+docker exec -i "$POSTGRES_CONTAINER" psql -U postgres -d postgres < /mnt/user/appdata/auditproof/config/seed.sql
 ```
 
 **Verify:**
 ```bash
-docker exec -it supabase-db psql -U postgres -d postgres -c "SELECT COUNT(*) FROM expense_categories;"
+POSTGRES_CONTAINER="supabase-db"  # Your container name
+docker exec -it "$POSTGRES_CONTAINER" psql -U postgres -d postgres -c "SELECT COUNT(*) FROM expense_categories;"
 ```
 **Expected:** `10`
 
