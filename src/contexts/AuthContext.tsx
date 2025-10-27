@@ -175,14 +175,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (async () => {
         // Check if we're in an MFA pending state - if so, don't update user yet
         const mfaPendingEmail = sessionStorage.getItem('mfa_pending_email');
-        logger.debug('onAuthStateChange fired', { event: _event, mfaPendingEmail, hasSession: !!session?.user }, 'AUTH');
+        // Only log auth state changes that are errors or significant events
         if (mfaPendingEmail && session?.user) {
           // User just signed in but needs MFA verification - don't treat as fully authenticated
-          logger.debug('Blocking user state update due to MFA pending', {}, 'AUTH');
           return;
         }
 
-        logger.debug('Updating user state', { hasUser: !!session?.user }, 'AUTH');
+        // Removed excessive DEBUG logs for normal auth state changes
         setUser(session?.user ?? null);
         if (session?.user) {
           await checkAdminStatus(session.user.id);
@@ -205,12 +204,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
+    // Check if account is locked before attempting login
+    const { data: lockoutStatus } = await supabase.rpc('check_account_lockout', {
+      p_email: email
+    });
+
+    if (lockoutStatus?.locked) {
+      const minutesRemaining = Math.ceil(lockoutStatus.retryAfter / 60);
+      const lockoutError = {
+        message: `Account temporarily locked due to multiple failed login attempts. Please try again in ${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''}.`,
+        name: 'AccountLockedError',
+        status: 429
+      } as AuthError;
+
+      logger.warn('Login attempt on locked account', {
+        email,
+        lockedUntil: lockoutStatus.lockedUntil,
+        attemptsCount: lockoutStatus.attemptsCount
+      }, 'AUTH');
+
+      return { error: lockoutError };
+    }
+
     const { error, data } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
+      // Record failed login attempt
+      await supabase.rpc('record_failed_login', {
+        p_email: email,
+        p_ip_address: null, // IP will be captured server-side
+        p_user_agent: navigator.userAgent,
+        p_failure_reason: 'invalid_credentials'
+      });
+
       logger.auth('sign_in', false, { email, method: 'password', error: error?.message });
       return { error };
     }
@@ -244,10 +273,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!mfaError && hasVerifiedMFA) {
           // User has MFA enabled and verified factors - require MFA challenge
           // Store MFA state SYNCHRONOUSLY before any async operations
-          logger.debug('Setting mfaPending to TRUE', { email }, 'AUTH');
           sessionStorage.setItem('mfa_pending_email', email);
           sessionStorage.setItem('mfa_user_id', data.user.id);
-          logger.debug('Stored mfa_pending_email in sessionStorage', {}, 'AUTH');
 
           setMfaPending(true);
           logger.auth('mfa_challenge_required', true, { email, method: 'password', mfa_enabled: true });

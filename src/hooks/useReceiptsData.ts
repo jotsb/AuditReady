@@ -133,9 +133,14 @@ export function useReceiptsData(selectedCollection: string) {
       const start = (page - 1) * itemsPerPage;
       const end = start + itemsPerPage - 1;
 
+      // Use a single query with a LEFT JOIN to get both parent receipts and their first page data
+      // This eliminates the N+1 query pattern
       const { data: receiptsData, error: receiptsError, count } = await supabase
         .from('receipts')
-        .select('*', { count: 'exact' })
+        .select(`
+          *,
+          first_page:receipts!parent_receipt_id(thumbnail_path, file_path)
+        `, { count: 'exact' })
         .eq('collection_id', selectedCollection)
         .eq('extraction_status', 'completed')
         .is('deleted_at', null)
@@ -145,23 +150,20 @@ export function useReceiptsData(selectedCollection: string) {
 
       if (receiptsError) throw receiptsError;
 
-      const receiptsWithThumbnails = await Promise.all((receiptsData || []).map(async (receipt) => {
-        if (receipt.is_parent && receipt.total_pages > 1 && !receipt.thumbnail_path) {
-          const { data: firstPage } = await supabase
-            .from('receipts')
-            .select('thumbnail_path, file_path')
-            .eq('parent_receipt_id', receipt.id)
-            .eq('page_number', 1)
-            .single();
-
+      // Map the data to include first page thumbnails for multi-page receipts
+      const receiptsWithThumbnails = (receiptsData || []).map((receipt: any) => {
+        if (receipt.is_parent && receipt.total_pages > 1 && !receipt.thumbnail_path && receipt.first_page && receipt.first_page.length > 0) {
+          const firstPage = receipt.first_page[0];
+          const { first_page, ...receiptData } = receipt;
           return {
-            ...receipt,
+            ...receiptData,
             thumbnail_path: firstPage?.thumbnail_path || null,
-            file_path: firstPage?.file_path || receipt.file_path
+            file_path: firstPage?.file_path || receiptData.file_path
           };
         }
-        return receipt;
-      }));
+        const { first_page, ...receiptData } = receipt;
+        return receiptData;
+      });
 
       setReceipts(receiptsWithThumbnails);
       setTotalCount(count || 0);

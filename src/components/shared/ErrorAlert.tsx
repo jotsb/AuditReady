@@ -1,4 +1,5 @@
 import { AlertCircle, X } from 'lucide-react';
+import { memo } from 'react';
 
 interface ErrorAlertProps {
   message: string | null;
@@ -6,7 +7,7 @@ interface ErrorAlertProps {
   className?: string;
 }
 
-export function ErrorAlert({ message, onDismiss, className = '' }: ErrorAlertProps) {
+function ErrorAlertComponent({ message, onDismiss, className = '' }: ErrorAlertProps) {
   if (!message) return null;
 
   return (
@@ -30,3 +31,5 @@ export function ErrorAlert({ message, onDismiss, className = '' }: ErrorAlertPro
     </div>
   );
 }
+
+export const ErrorAlert = memo(ErrorAlertComponent);

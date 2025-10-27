@@ -482,6 +482,8 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
                   src={imageUrl || ''}
                   alt={`Receipt Page ${currentPageIndex + 1}`}
                   className="w-full h-auto"
+                  loading="lazy"
+                  decoding="async"
                 />
               </div>
 
@@ -529,6 +531,8 @@ export function ReceiptDetailsPage({ receiptId, onBack }: ReceiptDetailsPageProp
                 src={imageUrl}
                 alt="Receipt"
                 className="w-full h-auto"
+                loading="lazy"
+                decoding="async"
               />
             </div>
           ) : (

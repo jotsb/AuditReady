@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react';
-import { ButtonHTMLAttributes, ReactNode } from 'react';
+import { ButtonHTMLAttributes, ReactNode, memo } from 'react';
 
 interface SubmitButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean;
@@ -9,7 +9,7 @@ interface SubmitButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   fullWidth?: boolean;
 }
 
-export function SubmitButton({
+function SubmitButtonComponent({
   loading = false,
   children,
   loadingText = 'Loading...',
@@ -41,3 +41,5 @@ export function SubmitButton({
     </button>
   );
 }
+
+export const SubmitButton = memo(SubmitButtonComponent);

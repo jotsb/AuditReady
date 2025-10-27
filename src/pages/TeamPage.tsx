@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Mail, UserPlus, Shield, Trash2, X, Link2, Copy, RefreshCw } from 'lucide-react';
+import { Users, Mail, UserPlus, Shield, Trash2, Copy, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { usePageTracking } from '../hooks/usePageTracking';
@@ -28,7 +28,7 @@ interface Invitation {
 }
 
 export default function TeamPage() {
-  const { user } = useAuth();
+  const { user, selectedBusiness, userRole: contextUserRole } = useAuth();
 
   usePageTracking('Team', { section: 'team' });
 
@@ -51,46 +51,35 @@ export default function TeamPage() {
 
   useEffect(() => {
     loadTeamData();
-  }, [user]);
+  }, [user, selectedBusiness]);
 
   useEffect(() => {
-    if (user) {
+    if (user && selectedBusiness) {
       loadTeamData();
     }
   }, [currentMembersPage, currentInvitesPage]);
 
   const loadTeamData = async () => {
-    if (!user) return;
+    if (!user || !selectedBusiness) {
+      setLoading(false);
+      return;
+    }
 
     const startTime = performance.now();
-    logger.info('Loading team data', { userId: user.id, membersPage: currentMembersPage, invitesPage: currentInvitesPage }, 'DATABASE');
+    logger.info('Loading team data', { userId: user.id, businessId: selectedBusiness.id, membersPage: currentMembersPage, invitesPage: currentInvitesPage }, 'DATABASE');
 
     try {
       setLoading(true);
       setError('');
 
-      const { data: memberData, error: memberError } = await supabase
-        .from('business_members')
-        .select('business_id, role')
-        .eq('user_id', user.id)
-        .single();
-
-      if (memberError) {
-        logger.error('Failed to fetch user business membership', memberError, { userId: user.id });
-        logger.database('select', 'business_members', false, { userId: user.id, error: memberError.message });
-        throw memberError;
-      }
-
-      logger.debug('User business membership loaded', { businessId: memberData.business_id, role: memberData.role }, 'DATABASE');
-      logger.database('select', 'business_members', true, { userId: user.id, businessId: memberData.business_id });
-      setBusinessId(memberData.business_id);
-      setUserRole(memberData.role);
+      setBusinessId(selectedBusiness.id);
+      setUserRole(contextUserRole);
 
       const { data: businessData } = await supabase
         .from('businesses')
         .select('owner_id')
-        .eq('id', memberData.business_id)
-        .single();
+        .eq('id', selectedBusiness.id)
+        .maybeSingle<{ owner_id: string }>();
 
       if (businessData) {
         setBusinessOwnerId(businessData.owner_id);
@@ -105,50 +94,51 @@ export default function TeamPage() {
         supabase
           .from('business_members')
           .select('*', { count: 'exact', head: true })
-          .eq('business_id', memberData.business_id),
+          .eq('business_id', selectedBusiness.id),
 
         supabase
           .from('business_members')
           .select('id, user_id, role, joined_at')
-          .eq('business_id', memberData.business_id)
+          .eq('business_id', selectedBusiness.id)
           .order('joined_at', { ascending: false })
           .range(membersStartIndex, membersEndIndex),
 
         supabase
           .from('invitations')
           .select('id', { count: 'exact', head: true })
-          .eq('business_id', memberData.business_id)
+          .eq('business_id', selectedBusiness.id)
           .eq('status', 'pending'),
 
         supabase
           .from('invitations')
           .select('id, email, role, status, expires_at, created_at, token')
-          .eq('business_id', memberData.business_id)
+          .eq('business_id', selectedBusiness.id)
           .eq('status', 'pending')
           .order('created_at', { ascending: false })
           .range(invitesStartIndex, invitesEndIndex)
       ]);
 
       if (membersResult.error) {
-        logger.error('Failed to fetch team members', membersResult.error, { businessId: memberData.business_id });
-        logger.database('select', 'business_members', false, { businessId: memberData.business_id, error: membersResult.error.message });
+        logger.error('Failed to fetch team members', membersResult.error, { businessId: selectedBusiness.id });
+        logger.database('select', 'business_members', false, { businessId: selectedBusiness.id, error: membersResult.error.message });
         throw membersResult.error;
       }
       if (invitationsResult.error) {
-        logger.error('Failed to fetch invitations', invitationsResult.error, { businessId: memberData.business_id });
-        logger.database('select', 'invitations', false, { businessId: memberData.business_id, error: invitationsResult.error.message });
+        logger.error('Failed to fetch invitations', invitationsResult.error, { businessId: selectedBusiness.id });
+        logger.database('select', 'invitations', false, { businessId: selectedBusiness.id, error: invitationsResult.error.message });
         throw invitationsResult.error;
       }
 
       const membersList = membersResult.data || [];
 
+      // Batch fetch all profiles in a single query instead of one-by-one
       if (membersList.length > 0) {
         const userIds = membersList.map((m: any) => m.user_id);
 
         const { data: profilesData } = await supabase
           .from('profiles')
           .select('id, full_name, email')
-          .in('id', userIds);
+          .in('id', userIds) as { data: { id: string; full_name: string; email: string }[] | null };
 
         const profilesMap = new Map(
           (profilesData || []).map(p => [p.id, { full_name: p.full_name, email: p.email }])
@@ -223,13 +213,13 @@ export default function TeamPage() {
           role: inviteRole,
           invited_by: user.id
         })
-        .select()
-        .single();
+        .select<'*, id, email, role, token'>()
+        .single() as { data: { id: string; email: string; role: string; token: string } | null; error: any };
 
-      if (inviteError) {
+      if (inviteError || !invitationData) {
         logger.error('Failed to create invitation', inviteError, { email: inviteEmail, role: inviteRole, businessId });
-        logger.database('insert', 'invitations', false, { email: inviteEmail, error: inviteError.message });
-        throw inviteError;
+        logger.database('insert', 'invitations', false, { email: inviteEmail, error: inviteError?.message });
+        throw inviteError || new Error('Failed to create invitation');
       }
 
       logger.info('Invitation record created', { email: inviteEmail, role: inviteRole, invitationId: invitationData.id }, 'DATABASE');
@@ -239,13 +229,13 @@ export default function TeamPage() {
         .from('profiles')
         .select('full_name')
         .eq('id', user.id)
-        .maybeSingle();
+        .maybeSingle<{ full_name: string }>();
 
       const { data: businessData } = await supabase
         .from('businesses')
         .select('name')
         .eq('id', businessId)
-        .maybeSingle();
+        .maybeSingle<{ name: string }>();
 
       try {
         logger.info('Calling send-invitation-email edge function', { email: inviteEmail }, 'EDGE_FUNCTION');
@@ -402,12 +392,18 @@ export default function TeamPage() {
         .from('invitations')
         .select('email, role, token')
         .eq('id', invitationId)
-        .single();
+        .maybeSingle<{ email: string; role: string; token: string }>();
 
       if (fetchError) {
         logger.error('Failed to fetch invitation for resend', fetchError, { invitationId });
         logger.database('select', 'invitations', false, { invitationId, error: fetchError.message });
         throw fetchError;
+      }
+
+      if (!invitation) {
+        const error = new Error('Invitation not found');
+        logger.error('Invitation not found for resend', error, { invitationId });
+        throw error;
       }
 
       const { error: updateError } = await supabase
@@ -428,13 +424,13 @@ export default function TeamPage() {
         .from('profiles')
         .select('full_name')
         .eq('id', user.id)
-        .maybeSingle();
+        .maybeSingle<{ full_name: string }>();
 
       const { data: businessData } = await supabase
         .from('businesses')
         .select('name')
         .eq('id', businessId)
-        .maybeSingle();
+        .maybeSingle<{ name: string }>();
 
       try {
         logger.info('Calling send-invitation-email edge function for resend', { email: invitation.email }, 'EDGE_FUNCTION');

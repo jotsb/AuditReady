@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import JSZip from "npm:jszip@3";
 import { SMTPClient } from "npm:emailjs@4.0.3";
+import { getIPAddress } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -49,6 +50,31 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({ error: "Business ID is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Rate limiting: 5 exports per hour per user
+    const { data: rateLimitResult } = await supabase.rpc('check_rate_limit', {
+      p_identifier: user.id,
+      p_action_type: 'export',
+      p_max_attempts: 5,
+      p_window_minutes: 60
+    });
+
+    if (rateLimitResult && !rateLimitResult.allowed) {
+      const minutesRemaining = Math.ceil(rateLimitResult.retryAfter / 60);
+      return new Response(
+        JSON.stringify({
+          error: `Export limit reached. You can export again in ${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''}.`
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+            'Retry-After': rateLimitResult.retryAfter.toString()
+          }
+        }
       );
     }
 
@@ -282,6 +308,27 @@ async function processExport(supabase: any, jobId: string, businessId: string) {
       })
       .eq("id", jobId);
 
+    // Log successful export
+    await supabase.rpc('log_system_event', {
+      p_level: 'INFO',
+      p_category: 'DATABASE',
+      p_message: 'Business export completed successfully',
+      p_metadata: {
+        jobId,
+        businessId,
+        receipts_count: receipts.length,
+        images_downloaded: downloadedCount,
+        collections_count: collections?.length || 0,
+        file_size_mb: (zipBlob.length / 1024 / 1024).toFixed(2),
+      },
+      p_user_id: null,
+      p_session_id: null,
+      p_ip_address: null,
+      p_user_agent: null,
+      p_stack_trace: null,
+      p_execution_time_ms: null
+    });
+
     // Get user email for notification
     const { data: jobData, error: jobDataError } = await supabase
       .from("export_jobs")
@@ -453,7 +500,27 @@ The export includes:
     console.log("Export completed successfully:", jobId);
   } catch (error: any) {
     console.error("Export processing failed:", error);
-    
+
+    // Log export failure with detailed context
+    await supabase.rpc('log_system_event', {
+      p_level: 'ERROR',
+      p_category: 'DATABASE',
+      p_message: 'Business export failed',
+      p_metadata: {
+        jobId,
+        businessId,
+        error: error.message,
+        errorType: error.name || 'UnknownError',
+        errorStack: error.stack ? error.stack.substring(0, 500) : null,
+      },
+      p_user_id: null,
+      p_session_id: null,
+      p_ip_address: null,
+      p_user_agent: null,
+      p_stack_trace: error.stack || null,
+      p_execution_time_ms: null
+    });
+
     // Mark job as failed
     await supabase
       .from("export_jobs")

@@ -1247,15 +1247,7 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
     );
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-slate-600 dark:text-gray-400">Loading receipts...</div>
-      </div>
-    );
-  }
-
-  if (collections.length === 0) {
+  if (collections.length === 0 && !loading) {
     const hasBusiness = businesses.length > 0;
 
     return (
@@ -1351,7 +1343,46 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-gray-700">
-              {filteredReceipts.map((receipt) => (
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={`skeleton-${i}`} className="dark:bg-gray-800">
+                    {isSelectMode && (
+                      <td className="px-4 py-4">
+                        <div className="w-5 h-5 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+                      </td>
+                    )}
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+                        <div className="space-y-2">
+                          <div className="h-4 w-32 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+                          <div className="h-3 w-24 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="h-4 w-24 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="h-6 w-20 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="h-4 w-16 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="h-4 w-20 bg-slate-200 dark:bg-gray-700 rounded animate-pulse ml-auto" />
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <div className="w-8 h-8 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+                        <div className="w-8 h-8 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+                        <div className="w-8 h-8 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                filteredReceipts.map((receipt) => (
                 <tr
                   key={receipt.id}
                   className={`hover:bg-slate-50 dark:hover:bg-gray-700 dark:bg-gray-800 transition ${
@@ -1475,12 +1506,13 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
                     </div>
                   </td>
                 </tr>
-              ))}
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
-        {filteredReceipts.length === 0 && (
+        {!loading && filteredReceipts.length === 0 && (
           <div className="text-center py-12 text-slate-500 dark:text-gray-400">
             {receipts.length === 0 ? 'No receipts yet. Upload your first receipt!' : 'No receipts match your filters.'}
           </div>

@@ -706,3 +706,233 @@ export async function resetUserMFA(
     reason
   }, 'WARN');
 }
+
+// ============================================================================
+// DUPLICATE DETECTION
+// ============================================================================
+
+export interface PotentialDuplicate {
+  id: string;
+  receipt_id: string;
+  duplicate_of_receipt_id: string;
+  confidence_score: number;
+  match_reason: string;
+  status: 'pending' | 'confirmed' | 'dismissed' | 'merged';
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+}
+
+export async function detectDuplicateReceipts(adminUserId: string): Promise<number> {
+  await ensureSystemAdmin(adminUserId);
+
+  const { data, error } = await supabase.rpc('detect_duplicate_receipts');
+
+  if (error) {
+    throw new Error(`Failed to detect duplicates: ${error.message}`);
+  }
+
+  logger.userAction('admin_detect_duplicates', 'detect_duplicates', {
+    duplicates_found: data,
+    page: 'admin',
+  });
+
+  return data as number;
+}
+
+export async function getPotentialDuplicates(
+  adminUserId: string,
+  status?: string
+): Promise<PotentialDuplicate[]> {
+  await ensureSystemAdmin(adminUserId);
+
+  let query = supabase
+    .from('potential_duplicates')
+    .select('*')
+    .order('confidence_score', { ascending: false });
+
+  if (status) {
+    query = query.eq('status', status);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(`Failed to get duplicates: ${error.message}`);
+  }
+
+  return data || [];
+}
+
+export async function updateDuplicateStatus(
+  duplicateId: string,
+  status: 'confirmed' | 'dismissed' | 'merged',
+  adminUserId: string
+): Promise<void> {
+  await ensureSystemAdmin(adminUserId);
+
+  const { error } = await supabase
+    .from('potential_duplicates')
+    .update({
+      status,
+      reviewed_by: adminUserId,
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq('id', duplicateId);
+
+  if (error) {
+    throw new Error(`Failed to update duplicate status: ${error.message}`);
+  }
+
+  logger.userAction('admin_update_duplicate_status', 'update_duplicate', {
+    duplicate_id: duplicateId,
+    status,
+    page: 'admin',
+  });
+}
+
+export async function mergeDuplicateReceipts(
+  keepReceiptId: string,
+  deleteReceiptId: string,
+  adminUserId: string
+): Promise<void> {
+  await ensureSystemAdmin(adminUserId);
+
+  // Soft delete the duplicate receipt
+  const { error: deleteError } = await supabase
+    .from('receipts')
+    .update({
+      deleted_at: new Date().toISOString(),
+    })
+    .eq('id', deleteReceiptId);
+
+  if (deleteError) {
+    throw new Error(`Failed to delete duplicate receipt: ${deleteError.message}`);
+  }
+
+  // Mark as merged in duplicates table
+  const { error: updateError } = await supabase
+    .from('potential_duplicates')
+    .update({
+      status: 'merged',
+      reviewed_by: adminUserId,
+      reviewed_at: new Date().toISOString(),
+    })
+    .or(`receipt_id.eq.${deleteReceiptId},duplicate_of_receipt_id.eq.${deleteReceiptId}`);
+
+  if (updateError) {
+    logger.error('Failed to update duplicate status after merge', updateError as Error, {
+      keepReceiptId,
+      deleteReceiptId,
+    });
+  }
+
+  logger.userAction('admin_merge_duplicate_receipts', 'merge_receipts', {
+    kept_receipt_id: keepReceiptId,
+    deleted_receipt_id: deleteReceiptId,
+    page: 'admin',
+  });
+}
+
+// ============================================================================
+// SYSTEM HEALTH MONITORING
+// ============================================================================
+
+export interface SystemHealth {
+  timestamp: string;
+  database: {
+    size_bytes: number;
+    size_mb: number;
+    size_gb: number;
+  };
+  users: {
+    total: number;
+    active_24h: number;
+    suspended: number;
+  };
+  businesses: {
+    total: number;
+    suspended: number;
+  };
+  receipts: {
+    total: number;
+    pending_extraction: number;
+    failed_extraction: number;
+  };
+  storage: {
+    total_bytes: number;
+    total_mb: number;
+    total_gb: number;
+  };
+  system: {
+    error_rate_24h_percent: number;
+    total_logs_24h: number;
+    critical_errors_24h: number;
+  };
+}
+
+export async function getSystemHealthSnapshot(adminUserId: string): Promise<SystemHealth> {
+  await ensureSystemAdmin(adminUserId);
+
+  const { data, error } = await supabase.rpc('get_system_health_snapshot');
+
+  if (error) {
+    throw new Error(`Failed to get system health: ${error.message}`);
+  }
+
+  return data as SystemHealth;
+}
+
+// ============================================================================
+// DATABASE QUERY BROWSER
+// ============================================================================
+
+export interface QueryResult {
+  success: boolean;
+  rows?: any[];
+  row_count?: number;
+  execution_time_ms?: number;
+  error?: string;
+}
+
+export async function executeAdminQuery(
+  queryText: string,
+  adminUserId: string
+): Promise<QueryResult> {
+  await ensureSystemAdmin(adminUserId);
+
+  const { data, error } = await supabase.rpc('execute_admin_query', {
+    query_text: queryText,
+  });
+
+  if (error) {
+    throw new Error(`Failed to execute query: ${error.message}`);
+  }
+
+  logger.userAction('admin_execute_query', 'execute_query', {
+    query_length: queryText.length,
+    success: (data as QueryResult).success,
+    page: 'admin',
+  });
+
+  return data as QueryResult;
+}
+
+export async function getQueryHistory(
+  adminUserId: string,
+  limit: number = 50
+): Promise<any[]> {
+  await ensureSystemAdmin(adminUserId);
+
+  const { data, error } = await supabase
+    .from('database_queries_log')
+    .select('*')
+    .order('executed_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(`Failed to get query history: ${error.message}`);
+  }
+
+  return data || [];
+}

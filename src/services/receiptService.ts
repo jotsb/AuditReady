@@ -1,5 +1,13 @@
 import { supabase } from '../lib/supabase';
 import { convertLocalDateToUTC } from '../lib/dateUtils';
+import { logger } from '../lib/logger';
+import {
+  sanitizeVendorName,
+  sanitizeVendorAddress,
+  sanitizeCategoryName,
+  sanitizeText,
+  sanitizeNotes
+} from '../lib/sanitizer';
 
 export interface ReceiptData {
   vendor_name?: string;
@@ -26,9 +34,21 @@ export async function createReceipt(
   thumbnailPath: string,
   data: ReceiptData
 ) {
+  const startTime = Date.now();
   const transactionDateUTC = data.transaction_date
     ? convertLocalDateToUTC(data.transaction_date)
     : null;
+
+  // Sanitize all user inputs to prevent XSS
+  const sanitizedData = {
+    vendor_name: data.vendor_name ? sanitizeVendorName(data.vendor_name) : null,
+    vendor_address: data.vendor_address ? sanitizeVendorAddress(data.vendor_address) : null,
+    category: data.category ? sanitizeCategoryName(data.category) : null,
+    payment_method: data.payment_method ? sanitizeText(data.payment_method) : null,
+    customer_name: data.customer_name ? sanitizeText(data.customer_name) : null,
+    card_last_digits: data.card_last_digits ? sanitizeText(data.card_last_digits) : null,
+    notes: data.notes ? sanitizeNotes(data.notes) : null,
+  };
 
   const { error } = await supabase
     .from('receipts')
@@ -38,29 +58,53 @@ export async function createReceipt(
       file_path: filePath,
       thumbnail_path: thumbnailPath,
       file_type: 'image',
-      vendor_name: data.vendor_name,
-      vendor_address: data.vendor_address,
+      vendor_name: sanitizedData.vendor_name,
+      vendor_address: sanitizedData.vendor_address,
       transaction_date: transactionDateUTC,
       total_amount: parseFloat(String(data.total_amount || 0)),
       subtotal: data.subtotal ? parseFloat(String(data.subtotal)) : null,
       gst_amount: data.gst_amount ? parseFloat(String(data.gst_amount)) : null,
       pst_amount: data.pst_amount ? parseFloat(String(data.pst_amount)) : null,
-      category: data.category,
-      payment_method: data.payment_method,
+      category: sanitizedData.category,
+      payment_method: sanitizedData.payment_method,
+      notes: sanitizedData.notes,
       extraction_status: 'completed',
       extraction_data: {
         transaction_time: data.transaction_time,
         gst_percent: data.gst_percent,
         pst_percent: data.pst_percent,
-        card_last_digits: data.card_last_digits,
-        customer_name: data.customer_name,
+        card_last_digits: sanitizedData.card_last_digits,
+        customer_name: sanitizedData.customer_name,
       },
     });
 
-  if (error) throw error;
+  const executionTime = Date.now() - startTime;
+
+  if (error) {
+    logger.error('Failed to create receipt', error, {
+      collectionId,
+      userId,
+      vendor: data.vendor_name,
+      amount: data.total_amount,
+      executionTimeMs: executionTime,
+      errorCode: error.code,
+      errorDetails: error.details
+    });
+    throw error;
+  }
+
+  logger.info('Receipt created successfully', {
+    collectionId,
+    userId,
+    vendor: data.vendor_name,
+    amount: data.total_amount,
+    category: data.category,
+    executionTimeMs: executionTime
+  }, 'DATABASE');
 }
 
 export async function deleteReceipt(receiptId: string, userId: string) {
+  const startTime = Date.now();
   const { error } = await supabase
     .from('receipts')
     .update({
@@ -69,10 +113,27 @@ export async function deleteReceipt(receiptId: string, userId: string) {
     })
     .eq('id', receiptId);
 
-  if (error) throw error;
+  const executionTime = Date.now() - startTime;
+
+  if (error) {
+    logger.error('Failed to delete receipt', error, {
+      receiptId,
+      userId,
+      executionTimeMs: executionTime,
+      errorCode: error.code
+    });
+    throw error;
+  }
+
+  logger.info('Receipt deleted (soft delete)', {
+    receiptId,
+    userId,
+    executionTimeMs: executionTime
+  }, 'DATABASE');
 }
 
 export async function bulkDeleteReceipts(receiptIds: string[], userId: string) {
+  const startTime = Date.now();
   const { error } = await supabase
     .from('receipts')
     .update({
@@ -81,25 +142,75 @@ export async function bulkDeleteReceipts(receiptIds: string[], userId: string) {
     })
     .in('id', receiptIds);
 
-  if (error) throw error;
+  const executionTime = Date.now() - startTime;
+
+  if (error) {
+    logger.error('Failed to bulk delete receipts', error, {
+      count: receiptIds.length,
+      userId,
+      executionTimeMs: executionTime,
+      errorCode: error.code
+    });
+    throw error;
+  }
+
+  logger.info('Receipts bulk deleted', {
+    count: receiptIds.length,
+    userId,
+    executionTimeMs: executionTime
+  }, 'DATABASE');
 }
 
 export async function bulkCategorizeReceipts(receiptIds: string[], category: string) {
+  const startTime = Date.now();
   const { error } = await supabase
     .from('receipts')
     .update({ category })
     .in('id', receiptIds);
 
-  if (error) throw error;
+  const executionTime = Date.now() - startTime;
+
+  if (error) {
+    logger.error('Failed to bulk categorize receipts', error, {
+      count: receiptIds.length,
+      category,
+      executionTimeMs: executionTime,
+      errorCode: error.code
+    });
+    throw error;
+  }
+
+  logger.info('Receipts categorized', {
+    count: receiptIds.length,
+    category,
+    executionTimeMs: executionTime
+  }, 'USER_ACTION');
 }
 
 export async function bulkMoveReceipts(receiptIds: string[], targetCollectionId: string) {
+  const startTime = Date.now();
   const { error } = await supabase
     .from('receipts')
     .update({ collection_id: targetCollectionId })
     .in('id', receiptIds);
 
-  if (error) throw error;
+  const executionTime = Date.now() - startTime;
+
+  if (error) {
+    logger.error('Failed to bulk move receipts', error, {
+      count: receiptIds.length,
+      targetCollectionId,
+      executionTimeMs: executionTime,
+      errorCode: error.code
+    });
+    throw error;
+  }
+
+  logger.info('Receipts moved to collection', {
+    count: receiptIds.length,
+    targetCollectionId,
+    executionTimeMs: executionTime
+  }, 'USER_ACTION');
 }
 
 export async function deleteStorageFile(filePath: string) {

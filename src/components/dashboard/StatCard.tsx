@@ -1,4 +1,5 @@
 import { Video as LucideIcon } from 'lucide-react';
+import { memo } from 'react';
 
 interface StatCardProps {
   title: string;
@@ -6,9 +7,10 @@ interface StatCardProps {
   icon: LucideIcon;
   trend?: string;
   trendUp?: boolean;
+  isLoading?: boolean;
 }
 
-export function StatCard({ title, value, icon: Icon, trend, trendUp }: StatCardProps) {
+function StatCardComponent({ title, value, icon: Icon, trend, trendUp, isLoading }: StatCardProps) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6 hover:shadow-md transition">
       <div className="flex items-center justify-between mb-4">
@@ -26,7 +28,13 @@ export function StatCard({ title, value, icon: Icon, trend, trendUp }: StatCardP
         )}
       </div>
       <h3 className="text-slate-600 dark:text-gray-400 text-sm font-medium mb-1">{title}</h3>
-      <p className="text-3xl font-bold text-slate-800 dark:text-white">{value}</p>
+      {isLoading ? (
+        <div className="h-9 w-32 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+      ) : (
+        <p className="text-3xl font-bold text-slate-800 dark:text-white">{value}</p>
+      )}
     </div>
   );
 }
+
+export const StatCard = memo(StatCardComponent);
