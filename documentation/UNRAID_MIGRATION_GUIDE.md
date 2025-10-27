@@ -11,6 +11,9 @@
 ## 📋 Current Progress Summary
 
 ### ✅ Completed Steps
+- **Phase 0:** Project cloned to Unraid ✓
+  - Location: `/mnt/user/appdata/auditproof/project/AuditReady`
+  - All source files, migrations, and Edge Functions available locally
 - **Phase 1:** Unraid Network Setup ✓
 - **Phase 2:** Install Supabase Stack ✓
   - Step 2.1-2.7: All Supabase services running
@@ -47,18 +50,19 @@ Your Supabase infrastructure is running with:
 1. [Overview & Architecture](#overview--architecture)
 2. [Application Analysis](#application-analysis)
 3. [Prerequisites](#prerequisites)
-4. [Phase 1: Unraid Network Setup](#phase-1-unraid-network-setup)
-5. [Phase 2: Install Supabase Stack](#phase-2-install-supabase-stack)
-6. [Phase 3: Database Initialization](#phase-3-database-initialization)
-7. [Phase 3.5: Deploy Edge Functions](#phase-35-deploy-edge-functions)
-8. [Phase 4: Deploy Frontend](#phase-4-deploy-frontend)
-9. [Phase 5: Configure SWAG Reverse Proxy](#phase-5-configure-swag-reverse-proxy)
-10. [Phase 6: Create Admin Account](#phase-6-create-admin-account)
-11. [Phase 7: Setup Monitoring](#phase-7-setup-monitoring)
-12. [Phase 8: Setup Backups](#phase-8-setup-backups)
-13. [Testing & Verification](#testing--verification)
-14. [Ongoing Maintenance](#ongoing-maintenance)
-15. [Troubleshooting](#troubleshooting)
+4. [Phase 0: Project Setup](#phase-0-project-setup-already-complete)
+5. [Phase 1: Unraid Network Setup](#phase-1-unraid-network-setup)
+6. [Phase 2: Install Supabase Stack](#phase-2-install-supabase-stack)
+7. [Phase 3: Database Initialization](#phase-3-database-initialization)
+8. [Phase 3.5: Deploy Edge Functions](#phase-35-deploy-edge-functions)
+9. [Phase 4: Deploy Frontend](#phase-4-deploy-frontend)
+10. [Phase 5: Configure SWAG Reverse Proxy](#phase-5-configure-swag-reverse-proxy)
+11. [Phase 6: Create Admin Account](#phase-6-create-admin-account)
+12. [Phase 7: Setup Monitoring](#phase-7-setup-monitoring)
+13. [Phase 8: Setup Backups](#phase-8-setup-backups)
+14. [Testing & Verification](#testing--verification)
+15. [Ongoing Maintenance](#ongoing-maintenance)
+16. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -292,6 +296,46 @@ Before starting, verify:
 - [ ] You have OpenAI API key
 - [ ] You have SMTP password
 - [ ] Your domain DNS is pointed to your public IP
+
+---
+
+## Phase 0: Project Setup (Already Complete)
+
+### Your Current Setup
+
+You've already cloned the Audit Proof project to Unraid at:
+```
+/mnt/user/appdata/auditproof/project/AuditReady
+```
+
+**What this includes:**
+- ✅ All source code (`src/`, `public/`)
+- ✅ 84 database migration files (`supabase/migrations/`)
+- ✅ 6 Edge Functions + shared utilities (`supabase/functions/`)
+- ✅ Configuration files (`package.json`, `tsconfig.json`, etc.)
+- ✅ Documentation (`documentation/`, `analysis/`)
+
+**Directory structure:**
+```
+/mnt/user/appdata/auditproof/project/AuditReady/
+├── src/                    # React frontend source code
+├── public/                 # Static assets (images, icons)
+├── supabase/
+│   ├── migrations/        # 84 SQL migration files
+│   └── functions/         # 6 Edge Functions + _shared/
+├── documentation/         # Implementation guides
+├── package.json           # Node.js dependencies
+├── vite.config.ts        # Build configuration
+└── ...
+```
+
+**This means:**
+- ✅ No need to copy files from a workstation
+- ✅ All migrations are ready to apply
+- ✅ Edge Functions are ready to deploy
+- ✅ Frontend can be built directly on Unraid (if Node.js is installed)
+
+**Proceed directly to Phase 1** to set up networking and Supabase infrastructure.
 
 ---
 
@@ -761,47 +805,35 @@ chmod +x /usr/local/bin/supabase
 supabase --version
 ```
 
-### Step 3.2: Copy Migrations from Project
+### Step 3.2: Locate Project Files
 
-**On your workstation (not Unraid):**
-
-```bash
-# Navigate to your project
-cd /path/to/auditproof
-
-# Create tar of migrations
-tar -czf migrations.tar.gz supabase/migrations/
-
-# Copy to Unraid
-scp migrations.tar.gz root@192.168.1.246:/mnt/user/appdata/auditproof/
-```
-
-**Back on Unraid SSH:**
+**Since you've already cloned the project to Unraid:**
 
 ```bash
-cd /mnt/user/appdata/auditproof
+# Navigate to your cloned project
+cd /mnt/user/appdata/auditproof/project/AuditReady
 
-# Extract migrations
-tar -xzf migrations.tar.gz
-
-# Verify
+# Verify migrations exist
 ls -la supabase/migrations/ | head -20
 ```
 
 You should see 84 SQL migration files.
 
+**Note:** The project is already on your Unraid server at `/mnt/user/appdata/auditproof/project/AuditReady`, so no need to copy files from a workstation.
+
 ### Step 3.3: Initialize Supabase Project Link
 
 ```bash
-cd /mnt/user/appdata/auditproof
+# Navigate to project directory
+cd /mnt/user/appdata/auditproof/project/AuditReady
 
-# Initialize Supabase config
+# Initialize Supabase config (creates .supabase directory)
 supabase init
 
 # Link to local instance
 supabase link --project-ref http://192.168.1.246:8000
 
-# When prompted for password, enter your POSTGRES_PASSWORD
+# When prompted for password, enter your POSTGRES_PASSWORD from Phase 2
 ```
 
 ### Step 3.4: Apply All Migrations
@@ -915,47 +947,24 @@ Before continuing, ensure:
 
 ### Step 3.5.1: Copy Edge Functions to Correct Location
 
-**Option A: Copy from Project on Unraid (if available)**
+**Since your project is already cloned on Unraid:**
 
 ```bash
-# If you already have the project files on Unraid:
+# Create edge-functions directory
 mkdir -p /mnt/user/appdata/auditproof/edge-functions
 
-# Copy all functions
-cp -r /path/to/auditproof/supabase/functions/* /mnt/user/appdata/auditproof/edge-functions/
+# Copy all functions from your cloned project
+cp -r /mnt/user/appdata/auditproof/project/AuditReady/supabase/functions/* /mnt/user/appdata/auditproof/edge-functions/
 
 # Verify structure
 ls -la /mnt/user/appdata/auditproof/edge-functions/
 # Should see: accept-invitation/, extract-receipt-data/, receive-email-receipt/,
 #             send-invitation-email/, process-export-job/, admin-user-management/,
 #             _shared/
-```
 
-**Option B: Copy from Your Workstation**
-
-```bash
-# On your workstation (Windows/Mac):
-cd /path/to/auditproof
-
-# Create tar of Edge Functions
-tar -czf edge-functions.tar.gz supabase/functions/
-
-# Copy to Unraid
-scp edge-functions.tar.gz root@192.168.1.246:/mnt/user/appdata/auditproof/
-```
-
-**Then on Unraid:**
-
-```bash
-cd /mnt/user/appdata/auditproof
-
-# Extract functions
-mkdir -p edge-functions
-tar -xzf edge-functions.tar.gz --strip-components=2 -C edge-functions/
-
-# Verify files exist
-ls -la edge-functions/
-# Should see directories for each function plus _shared/
+# Verify all 6 functions + shared utilities are present
+ls -la /mnt/user/appdata/auditproof/edge-functions/ | grep "^d" | wc -l
+# Should show: 7 (6 functions + _shared)
 ```
 
 ### Step 3.5.2: Configure Edge Function Environment Variables
@@ -1287,13 +1296,13 @@ Before moving to Phase 4, verify:
 
 ## Phase 4: Deploy Frontend
 
-### Step 4.1: Build Frontend on Your Workstation
+### Step 4.1: Build Frontend on Unraid
 
-**On your workstation (Windows/Mac):**
+**Since your project is already on Unraid, we'll build it directly there:**
 
 ```bash
-# Navigate to project
-cd /path/to/auditproof
+# Navigate to project directory
+cd /mnt/user/appdata/auditproof/project/AuditReady
 
 # Create production environment file
 cat > .env.production << EOF
@@ -1302,41 +1311,61 @@ VITE_SUPABASE_ANON_KEY=YOUR_ANON_KEY_HERE
 EOF
 
 # Replace YOUR_ANON_KEY_HERE with the actual ANON_KEY from Phase 2.3
+# You can find it in: /mnt/user/appdata/auditproof/config/secrets.txt
 
-# Install dependencies (if not already done)
+# Install Node.js if not already installed
+# Check if node is available
+which node
+
+# If node is not found, install it:
+# Visit Unraid Apps and install "Node.js" by ich777
+# OR download Node.js binary manually
+
+# Install dependencies
 npm install
 
 # Build for production
 npm run build
-
-# Package build output
-cd dist
-tar -czf audit-proof-frontend.tar.gz *
-cd ..
 ```
 
-### Step 4.2: Deploy to Unraid
+### Step 4.2: Deploy Built Files to Web Directory
 
 ```bash
-# Copy to Unraid
-scp dist/audit-proof-frontend.tar.gz root@192.168.1.246:/mnt/user/appdata/auditproof/
-```
+# The build output is in the dist/ folder
+# Copy it to the Nginx serving directory
+cp -r /mnt/user/appdata/auditproof/project/AuditReady/dist/* /mnt/user/appdata/auditproof/dist/
 
-**On Unraid SSH:**
-
-```bash
-cd /mnt/user/appdata/auditproof/dist
-
-# Extract frontend files
-tar -xzf ../audit-proof-frontend.tar.gz
-
-# Verify files exist
-ls -la
+# Verify files were copied
+ls -la /mnt/user/appdata/auditproof/dist/
 # Should see: index.html, assets/, etc.
 
-# Set permissions
+# Set proper permissions
 chown -R nobody:users /mnt/user/appdata/auditproof/dist
 chmod -R 755 /mnt/user/appdata/auditproof/dist
+```
+
+**Alternative: Install Node.js on Unraid**
+
+If Node.js is not installed, you have two options:
+
+**Option 1: Install via Unraid Apps**
+1. Go to Unraid Apps tab
+2. Search for "Node.js"
+3. Install "Node.js" by ich777
+4. Restart and run the build commands above
+
+**Option 2: Build on a workstation and copy**
+
+If you prefer to build on your Windows/Mac workstation:
+
+```bash
+# On your workstation:
+cd /path/to/local/project
+
+# Create .env.production file (same as above)
+# Run npm install and npm run build
+# Then copy:
+scp -r dist/* root@192.168.1.246:/mnt/user/appdata/auditproof/dist/
 ```
 
 ### Step 4.3: Create Nginx Configuration
@@ -2337,11 +2366,16 @@ docker exec -it duplicacy duplicacy restore -r [revision] [file-path]
 
 ## Document Maintenance
 
-**Last Updated:** 2025-10-24
-**Version:** 2.0
+**Last Updated:** 2025-10-27
+**Version:** 2.2
 **Tested On:** Unraid 7.1.4
 **Author:** Audit Proof Development Team
 **For Support:** Review troubleshooting section or community resources
+
+**Changelog:**
+- **v2.2 (2025-10-27):** Updated for project already cloned on Unraid, moved Edge Functions to Phase 3.5
+- **v2.1 (2025-10-27):** Added Edge Functions deployment guide
+- **v2.0 (2025-10-24):** Initial comprehensive guide
 
 **Good luck with your self-hosted Audit Proof installation!** 🚀
 
