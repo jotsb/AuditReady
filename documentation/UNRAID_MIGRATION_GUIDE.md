@@ -946,13 +946,13 @@ Some migrations may have dependency issues causing missing columns. Run this cle
 POSTGRES_CONTAINER="supabase-db"  # Change if different
 
 # Fix missing display_order column in expense_categories
-docker exec -it "$POSTGRES_CONTAINER" psql -U postgres -d postgres << 'EOF'
+docker exec -i "$POSTGRES_CONTAINER" psql -U postgres -d postgres << 'EOF'
 ALTER TABLE expense_categories ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
 UPDATE expense_categories SET display_order = id WHERE display_order = 0;
 EOF
 
 # Fix cleanup_expired_recovery_codes function
-docker exec -it "$POSTGRES_CONTAINER" psql -U postgres -d postgres << 'EOF'
+docker exec -i "$POSTGRES_CONTAINER" psql -U postgres -d postgres << 'EOF'
 DROP FUNCTION IF EXISTS cleanup_expired_recovery_codes();
 CREATE FUNCTION cleanup_expired_recovery_codes()
 RETURNS INTEGER
@@ -981,7 +981,7 @@ echo "✓ Post-migration cleanup complete"
 # Run comprehensive database health check
 POSTGRES_CONTAINER="supabase-db"  # Your container name
 
-docker exec -it "$POSTGRES_CONTAINER" psql -U postgres -d postgres << 'EOF'
+docker exec -i "$POSTGRES_CONTAINER" psql -U postgres -d postgres << 'EOF'
 -- Check table count
 SELECT COUNT(*) AS total_tables FROM information_schema.tables
 WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
