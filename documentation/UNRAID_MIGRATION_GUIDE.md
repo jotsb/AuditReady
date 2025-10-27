@@ -821,44 +821,83 @@ You should see 84 SQL migration files.
 
 **Note:** The project is already on your Unraid server at `/mnt/user/appdata/auditproof/project/AuditReady`, so no need to copy files from a workstation.
 
-### Step 3.3: Initialize Supabase Project Link
+### Step 3.3: Configure Supabase CLI for Local Instance
+
+For self-hosted Supabase, we don't use `supabase link`. Instead, we'll apply migrations directly to the database.
 
 ```bash
 # Navigate to project directory
 cd /mnt/user/appdata/auditproof/project/AuditReady
 
-# Initialize Supabase config (creates .supabase directory)
-supabase init
+# Verify supabase directory exists
+ls -la supabase/
 
-# Link to local instance
-supabase link --project-ref http://192.168.1.246:8000
-
-# When prompted for password, enter your POSTGRES_PASSWORD from Phase 2
+# You should see:
+# - migrations/ (84 SQL files)
+# - functions/ (6 Edge Functions + _shared)
+# - config.toml (Supabase configuration)
 ```
+
+**Note:** The Supabase CLI's `link` command is designed for Supabase Cloud projects. For self-hosted instances, we'll apply migrations directly using `psql` or the database connection string.
 
 ### Step 3.4: Apply All Migrations
 
-```bash
-# Apply migrations to database
-supabase db push
+Since we're using self-hosted Supabase, we'll apply migrations directly to PostgreSQL:
 
-# This will:
-# 1. Read all files in supabase/migrations/
-# 2. Apply them in order to PostgreSQL
-# 3. Create all 18 tables with RLS policies
-# 4. Set up functions and triggers
+```bash
+# Navigate to migrations directory
+cd /mnt/user/appdata/auditproof/project/AuditReady/supabase/migrations
+
+# Get your PostgreSQL password from secrets file
+cat /mnt/user/appdata/auditproof/config/secrets.txt | grep POSTGRES_PASSWORD
+
+# Apply all migrations in order
+for migration in *.sql; do
+  echo "Applying: $migration"
+  docker exec -i supabase-db psql -U postgres -d postgres < "$migration"
+  if [ $? -eq 0 ]; then
+    echo "✓ Success: $migration"
+  else
+    echo "✗ Failed: $migration"
+    break
+  fi
+done
+```
+
+**Alternative: Apply migrations one by one manually**
+
+If the loop doesn't work or you want more control:
+
+```bash
+cd /mnt/user/appdata/auditproof/project/AuditReady/supabase/migrations
+
+# Apply first migration
+docker exec -i supabase-db psql -U postgres -d postgres < 20251006010328_create_auditready_schema.sql
+
+# Apply second migration
+docker exec -i supabase-db psql -U postgres -d postgres < 20251006011419_fix_business_rls_policy.sql
+
+# Continue for all 84 migrations...
+# OR use the loop above
 ```
 
 **Expected Output:**
 ```
-Applying migration 20251006010328_create_auditready_schema.sql...
-Applying migration 20251006011419_fix_business_rls_policy.sql...
-Applying migration 20251006011649_fix_all_circular_rls_policies.sql...
+Applying: 20251006010328_create_auditready_schema.sql
+CREATE SCHEMA
+CREATE TABLE
+CREATE POLICY
 ...
-Applying migration 20251022141212_add_missing_performance_indexes.sql...
+✓ Success: 20251006010328_create_auditready_schema.sql
 
-Finished supabase db push
+Applying: 20251006011419_fix_business_rls_policy.sql
+DROP POLICY
+CREATE POLICY
+...
+✓ Success: 20251006011419_fix_business_rls_policy.sql
 ```
+
+**If you see errors about objects already existing**, that's OK - it means some migrations were partially applied. Continue with the remaining migrations.
 
 ### Step 3.5: Verify Database Schema
 
