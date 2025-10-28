@@ -1458,11 +1458,7 @@ curl -s http://localhost:9000/ | grep ok
 # Should show: {"ok":true}
 
 # 4. Check Kong configuration for functions service
-docker exec supabase-kong kong config db_export
-# Look for "functions" service definition
-
-# 5. If Kong doesn't have functions route, you need to add it manually
-# Navigate to Supabase docker directory
+# Kong is using DB-less mode, check the config file
 cd /mnt/user/appdata/auditproof/supabase-src/docker
 
 # Check if volumes/api/kong.yml exists
@@ -1470,6 +1466,14 @@ ls -la volumes/api/kong.yml
 
 # If kong.yml exists, verify it has the functions service:
 cat volumes/api/kong.yml | grep -A 10 "name: functions"
+
+# If no kong.yml, Kong gets config from environment variables
+# Check Kong logs for startup configuration:
+docker logs supabase-kong 2>&1 | grep -i "function"
+
+# Test if Kong can reach functions service directly:
+docker exec supabase-kong curl -s http://functions:9000/
+# Should return: {"ok":true}
 
 # If functions service is missing, you need to restart Kong after Edge Functions is healthy
 docker restart supabase-kong
