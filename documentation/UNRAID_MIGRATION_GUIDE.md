@@ -1435,6 +1435,72 @@ docker compose down
 docker compose up -d
 ```
 
+**Problem: Kong returns "Function not found" when calling functions**
+
+This means Kong doesn't know how to route `/functions/v1/*` to the Edge Functions service.
+
+```bash
+# 1. Check if Edge Functions container is running and healthy
+docker ps | grep edge-functions
+# Should show: Up (healthy) or Up
+
+# 2. Check if Kong can reach Edge Functions on the custom network
+docker exec supabase-kong ping -c 3 functions
+# Should get responses
+
+# 3. Verify Edge Functions is listening on port 9000
+docker exec supabase-edge-functions netstat -tlnp | grep 9000
+# Should show: 0.0.0.0:9000
+
+# 4. Check Kong configuration for functions service
+docker exec supabase-kong kong config db_export
+# Look for "functions" service definition
+
+# 5. If Kong doesn't have functions route, you need to add it manually
+# Navigate to Supabase docker directory
+cd /mnt/user/appdata/auditproof/supabase-src/docker
+
+# Check if volumes/api/kong.yml exists
+ls -la volumes/api/kong.yml
+
+# If kong.yml exists, verify it has the functions service:
+cat volumes/api/kong.yml | grep -A 10 "name: functions"
+
+# If functions service is missing, you need to restart Kong after Edge Functions is healthy
+docker restart supabase-kong
+
+# Wait 30 seconds for Kong to reload
+sleep 30
+
+# Test again
+curl -X POST \
+  "http://192.168.1.246:8000/functions/v1/accept-invitation" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ANON_KEY" \
+  -d '{"token":"test"}'
+```
+
+**If Kong still doesn't route to functions after restart:**
+
+The Supabase docker-compose setup should automatically configure Kong to route to functions. If it's not working:
+
+```bash
+# Check docker-compose.yml to ensure Kong depends on functions service
+cd /mnt/user/appdata/auditproof/supabase-src/docker
+nano docker-compose.yml
+
+# Find the kong service and verify it has functions in depends_on:
+# kong:
+#   depends_on:
+#     ...
+#     functions:
+#       condition: service_started  # or service_healthy
+
+# If functions is NOT in depends_on, add it and restart:
+docker compose down
+docker compose up -d
+```
+
 **Problem: OpenAI extraction returns errors**
 
 ```bash
