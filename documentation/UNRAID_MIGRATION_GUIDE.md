@@ -1100,6 +1100,44 @@ ls -la /mnt/user/appdata/auditproof/edge-functions/ | grep "^d" | wc -l
 # Should show: 7 (6 functions + _shared)
 ```
 
+**IMPORTANT: Create Main Routing Function**
+
+The Edge Runtime expects a `main` service that routes to individual functions:
+
+```bash
+# Create main directory
+mkdir -p /mnt/user/appdata/auditproof/edge-functions/main
+
+# Create main router
+cat > /mnt/user/appdata/auditproof/edge-functions/main/index.ts << 'EOF'
+Deno.serve(async (req: Request): Promise<Response> => {
+  const { pathname } = new URL(req.url);
+  const name = pathname.replace(/^\/+|\/+$/g, "");
+
+  if (!name) {
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { "content-type": "application/json" },
+      status: 200,
+    });
+  }
+
+  try {
+    const mod = await import(`../${name}/index.ts`);
+    const handler = (mod as any).default ?? (mod as any).fetch ?? (mod as any).handler;
+    if (typeof handler !== "function") {
+      return new Response("Function has no exported handler", { status: 500 });
+    }
+    return await handler(req);
+  } catch {
+    return new Response("Function not found", { status: 404 });
+  }
+});
+EOF
+
+# Verify main function created
+cat /mnt/user/appdata/auditproof/edge-functions/main/index.ts
+```
+
 ### Step 3.5.2: Configure Edge Function Environment Variables
 
 ```bash
@@ -1146,19 +1184,22 @@ OPENAI_API_KEY=sk-your-openai-api-key-here
 nano docker-compose.yml
 ```
 
-**Find the commented `functions:` service (around line 250-300) and uncomment it:**
+**Find the commented `functions:` service (around line 250-300) and uncomment/configure it:**
 
 ```yaml
 functions:
   container_name: supabase-edge-functions
   image: supabase/edge-runtime:v1.69.14
   restart: unless-stopped
+  command: ["start", "--main-service", "/home/deno/functions/main", "-p", "9000"]
   depends_on:
     analytics:
       condition: service_healthy
   volumes:
-    - /mnt/user/appdata/auditproof/edge-functions:/home/deno/functions:Z
+    - /mnt/user/appdata/auditproof/edge-functions:/home/deno/functions
   environment:
+    DENO_DIR: /tmp/deno
+    DENO_NO_PROMPT: "1"
     JWT_SECRET: ${JWT_SECRET}
     SUPABASE_URL: http://kong:8000
     SUPABASE_ANON_KEY: ${ANON_KEY}
@@ -1175,19 +1216,12 @@ functions:
     - default
 ```
 
-**CRITICAL: Remove the `command:` section if it exists!**
+**CRITICAL CONFIGURATION NOTES:**
 
-The default Supabase docker-compose.yml has a command that tries to start a `main` function that doesn't exist. Make sure these lines are REMOVED or commented out:
-
-```yaml
-# REMOVE THIS ENTIRE SECTION:
-# command:
-#   [
-#     "start",
-#     "--main-service",
-#     "/home/deno/functions/main"
-#   ]
-```
+1. **The `command:` section IS REQUIRED** - It tells the Edge Runtime to start the main routing service
+2. **Port 9000** is internal only (not exposed to host) - Kong routes to this internally
+3. **DENO_DIR** environment variable is set to avoid permission issues
+4. **Volume mount** should NOT have `:Z` suffix for Unraid
 
 **Save and exit:** Ctrl+X, Y, Enter
 
@@ -1349,19 +1383,56 @@ curl -X POST \
 
 ```bash
 # Check logs
-docker logs supabase-edge-functions
+docker logs supabase-edge-functions --tail=50
 
 # Common causes:
-# 1. Missing function files
-ls -la /mnt/user/appdata/auditproof/edge-functions/
+# 1. Missing main routing function
+ls -la /mnt/user/appdata/auditproof/edge-functions/main/
+# Should see index.ts file
 
-# 2. Bad command in docker-compose.yml
-nano docker-compose.yml
-# Make sure command: section is removed/commented
+# If missing, create it:
+mkdir -p /mnt/user/appdata/auditproof/edge-functions/main
+cat > /mnt/user/appdata/auditproof/edge-functions/main/index.ts << 'EOF'
+Deno.serve(async (req: Request): Promise<Response> => {
+  const { pathname } = new URL(req.url);
+  const name = pathname.replace(/^\/+|\/+$/g, "");
 
-# 3. Memory limit
+  if (!name) {
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { "content-type": "application/json" },
+      status: 200,
+    });
+  }
+
+  try {
+    const mod = await import(`../${name}/index.ts`);
+    const handler = (mod as any).default ?? (mod as any).fetch ?? (mod as any).handler;
+    if (typeof handler !== "function") {
+      return new Response("Function has no exported handler", { status: 500 });
+    }
+    return await handler(req);
+  } catch {
+    return new Response("Function not found", { status: 404 });
+  }
+});
+EOF
+
+# 2. Missing DENO_DIR environment variable
+docker exec -it supabase-edge-functions env | grep DENO_DIR
+# Should show: DENO_DIR=/tmp/deno
+
+# 3. Command section missing or incorrect
+docker inspect supabase-edge-functions | grep -A 5 Cmd
+# Should show: ["start", "--main-service", "/home/deno/functions/main", "-p", "9000"]
+
+# 4. Memory limit
 docker stats supabase-edge-functions
 # If high, restart: docker restart supabase-edge-functions
+
+# After fixing, restart services:
+cd /mnt/user/appdata/auditproof/supabase-src/docker
+docker compose down
+docker compose up -d
 ```
 
 **Problem: OpenAI extraction returns errors**
