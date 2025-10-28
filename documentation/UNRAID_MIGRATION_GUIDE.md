@@ -1449,8 +1449,13 @@ docker exec supabase-kong ping -c 3 functions
 # Should get responses
 
 # 3. Verify Edge Functions is listening on port 9000
-docker exec supabase-edge-functions netstat -tlnp | grep 9000
-# Should show: 0.0.0.0:9000
+# netstat isn't available in Deno container, use docker port instead:
+docker port supabase-edge-functions
+# Should show: 9000/tcp -> 0.0.0.0:9000
+
+# Alternative: Test if port responds
+curl -s http://localhost:9000/ | grep ok
+# Should show: {"ok":true}
 
 # 4. Check Kong configuration for functions service
 docker exec supabase-kong kong config db_export
