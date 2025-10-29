@@ -10,7 +10,7 @@ echo "WARNING: This will DELETE ALL DATA and ALL SCHEMAS"
 echo "Press Ctrl+C within 5 seconds to cancel..."
 sleep 5
 
-DOCKER_DIR="/mnt/user/appdata/auditproof/supabase-src/docker"
+DOCKER_DIR="/mnt/user/appdata/auditproof/supabase-project"
 ENV_FILE="/mnt/user/appdata/auditproof/supabase-project/.env"
 
 # Stop all Supabase services
