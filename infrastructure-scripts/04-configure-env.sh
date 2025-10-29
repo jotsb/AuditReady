@@ -1,0 +1,83 @@
+#!/bin/bash
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/00-config.sh"
+source /tmp/infrastructure_secrets.env
+
+section "Step 4: Configuring Environment Files"
+
+# Docker .env
+cat > "$DOCKER_PATH/.env" << EOF
+############
+# Secrets
+############
+POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+JWT_SECRET=$JWT_SECRET
+ANON_KEY=$ANON_KEY
+SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY
+VAULT_ENC_KEY=$VAULT_ENC_KEY
+SECRET_KEY_BASE=$SECRET_KEY_BASE
+DASHBOARD_PASSWORD=$DASHBOARD_PASSWORD
+PG_META_CRYPTO_KEY=$PG_META_CRYPTO_KEY
+POOLER_TENANT_ID=$POOLER_TENANT_ID
+
+############
+# Database
+############
+POSTGRES_HOST=db
+POSTGRES_DB=postgres
+POSTGRES_USER=postgres
+POSTGRES_PORT=5432
+
+############
+# API
+############
+API_EXTERNAL_URL=$API_EXTERNAL_URL
+SITE_URL=$SITE_URL
+
+############
+# Auth
+############
+DISABLE_SIGNUP=false
+MAILER_URLPATHS_CONFIRMATION="/auth/v1/verify"
+MAILER_URLPATHS_INVITE="/auth/v1/verify"
+MAILER_URLPATHS_RECOVERY="/auth/v1/verify"
+MAILER_URLPATHS_EMAIL_CHANGE="/auth/v1/verify"
+ENABLE_EMAIL_SIGNUP=true
+ENABLE_EMAIL_AUTOCONFIRM=false
+ENABLE_ANONYMOUS_USERS=false
+
+############
+# Email (SMTP)
+############
+SMTP_ADMIN_EMAIL=$SMTP_ADMIN_EMAIL
+SMTP_HOST=$SMTP_HOST
+SMTP_PORT=$SMTP_PORT
+SMTP_USER=$SMTP_USER
+SMTP_PASS=$SMTP_PASS
+SMTP_SENDER_NAME=$SMTP_SENDER_NAME
+MAILER_AUTOCONFIRM=false
+
+############
+# Dashboard
+############
+DASHBOARD_USERNAME=$DASHBOARD_USERNAME
+DASHBOARD_PASSWORD=$DASHBOARD_PASSWORD
+STUDIO_DEFAULT_ORGANIZATION="AuditProof"
+STUDIO_DEFAULT_PROJECT="Production"
+EOF
+
+chmod 600 "$DOCKER_PATH/.env"
+success "Docker .env configured"
+
+# Frontend .env
+cat > "$PROJECT_PATH/.env" << EOF
+VITE_SUPABASE_URL=$API_EXTERNAL_URL
+VITE_SUPABASE_ANON_KEY=$ANON_KEY
+VITE_OPENAI_API_KEY=$OPENAI_API_KEY
+VITE_APP_URL=$SITE_URL
+EOF
+
+chmod 600 "$PROJECT_PATH/.env"
+success "Frontend .env configured"
+
+exit 0
