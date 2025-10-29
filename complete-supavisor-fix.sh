@@ -12,7 +12,7 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-DOCKER_DIR="/mnt/user/appdata/auditproof/supabase-src/docker"
+DOCKER_DIR="/mnt/user/appdata/auditproof/supabase-project"
 
 echo -e "${RED}╔════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${RED}║     COMPLETE SUPAVISOR FIX - NUCLEAR OPTION               ║${NC}"
