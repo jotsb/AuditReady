@@ -6,14 +6,15 @@ section "Step 9: Starting Supabase Services"
 
 cd "$DOCKER_PATH"
 
-subsection "Disabling Supavisor"
+subsection "Verifying Supavisor Configuration"
 if grep -q "^  supavisor:" docker-compose.yml 2>/dev/null; then
-    cp docker-compose.yml docker-compose.yml.backup
-    sed -i '/^  supavisor:/,/^  [a-z]/{ /^  supavisor:/s/^/#/; /^  [a-z]/!s/^/#/ }' docker-compose.yml
-    success "Supavisor disabled"
+    success "Supavisor is enabled in docker-compose.yml"
+    info "Supavisor will start with proper encryption keys"
+else
+    warning "Supavisor not found in docker-compose.yml"
 fi
 
-subsection "Starting All Services"
+subsection "Starting All Services (Including Supavisor)"
 docker compose down
 sleep 3
 docker compose up -d

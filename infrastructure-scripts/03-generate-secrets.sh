@@ -57,8 +57,12 @@ export ADMIN_EMAIL="admin@${APP_DOMAIN}"
 export ADMIN_PASSWORD=$(openssl rand -base64 16 | tr -d "=+/\n" | head -c 16)
 success "Generated ADMIN_PASSWORD (16 chars)"
 
-# Pooler (disabled but still set)
+# Supavisor Configuration
 export POOLER_TENANT_ID=$(openssl rand -hex 16)
+export REGION="local"
+export ERL_AFLAGS="-proto_dist inet_tcp"
+export CLUSTER_POSTGRES="true"
+success "Generated Supavisor configuration (POOLER_TENANT_ID: 32 hex, REGION: local)"
 
 # Save all secrets
 cat > "$SECRETS_FILE" << EOF
@@ -105,11 +109,18 @@ SITE_URL=$SITE_URL
 API_EXTERNAL_URL=$API_EXTERNAL_URL
 APP_DOMAIN=$APP_DOMAIN
 
+# Supavisor
+POOLER_TENANT_ID=$POOLER_TENANT_ID
+REGION=$REGION
+ERL_AFLAGS=$ERL_AFLAGS
+CLUSTER_POSTGRES=$CLUSTER_POSTGRES
+
 ################################################################################
 # IMPORTANT NOTES:
 # 1. Update ANON_KEY and SERVICE_ROLE_KEY after services start
 # 2. Configure SMTP credentials if email is needed
 # 3. Backup this file securely
+# 4. Supavisor is ENABLED with proper encryption keys
 ################################################################################
 EOF
 
@@ -139,6 +150,9 @@ export SITE_URL="$SITE_URL"
 export API_EXTERNAL_URL="$API_EXTERNAL_URL"
 export APP_DOMAIN="$APP_DOMAIN"
 export POOLER_TENANT_ID="$POOLER_TENANT_ID"
+export REGION="$REGION"
+export ERL_AFLAGS="$ERL_AFLAGS"
+export CLUSTER_POSTGRES="$CLUSTER_POSTGRES"
 EOF
 
 source "$ENV_SECRETS"
