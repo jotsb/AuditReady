@@ -32,7 +32,7 @@ NC='\033[0m'
 
 # Configuration
 ENV_FILE="/mnt/user/appdata/auditproof/supabase-project/.env"
-DOCKER_DIR="/mnt/user/appdata/auditproof/supabase-src/docker"
+DOCKER_DIR="/mnt/user/appdata/auditproof/supabase-project"
 
 echo -e "${RED}========================================${NC}"
 echo -e "${RED}Supavisor Encryption Key Fix${NC}"
