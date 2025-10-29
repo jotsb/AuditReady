@@ -29,10 +29,10 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Configuration
-DOCKER_DIR="/mnt/user/appdata/auditproof/supabase-src/docker"
-PROJECT_DIR="/mnt/user/appdata/auditproof/supabase-project"
+DOCKER_DIR="/mnt/user/appdata/auditproof/supabase-project"
+PROJECT_DIR="/mnt/user/appdata/auditproof/project/AuditReady"
 ENV_FILE="${PROJECT_DIR}/.env"
-MIGRATIONS_DIR="${PROJECT_DIR}/supabase/migrations"
+MIGRATIONS_DIR="/mnt/user/appdata/auditproof/postgres/migrations"
 
 echo -e "${RED}========================================${NC}"
 echo -e "${RED}COMPLETE DATABASE RESET${NC}"
