@@ -59,7 +59,7 @@ BACKUP_FILE=""
 
 # Step 1: Validate Environment
 log "\n${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
-log "${MAGENTA}Starting Step 1/9: Environment Validation${NC}"
+log "${MAGENTA}Starting Step 1/10: Environment Validation${NC}"
 log "${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
 
 if ! bash "$SCRIPT_DIR/01-validate-environment.sh"; then
@@ -69,7 +69,7 @@ fi
 
 # Step 2: Backup
 log "\n${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
-log "${MAGENTA}Starting Step 2/9: Configuration Backup${NC}"
+log "${MAGENTA}Starting Step 2/10: Configuration Backup${NC}"
 log "${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
 
 if ! bash "$SCRIPT_DIR/02-backup.sh"; then
@@ -84,7 +84,7 @@ fi
 
 # Step 3: Stop Services
 log "\n${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
-log "${MAGENTA}Starting Step 3/9: Stopping Services${NC}"
+log "${MAGENTA}Starting Step 3/10: Stopping Services${NC}"
 log "${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
 
 if ! bash "$SCRIPT_DIR/03-stop-services.sh"; then
@@ -94,7 +94,7 @@ fi
 
 # Step 4: Wipe Database
 log "\n${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
-log "${MAGENTA}Starting Step 4/9: Database Wipe${NC}"
+log "${MAGENTA}Starting Step 4/10: Database Wipe${NC}"
 log "${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
 
 if ! bash "$SCRIPT_DIR/04-wipe-database.sh"; then
@@ -104,7 +104,7 @@ fi
 
 # Step 5: Update Encryption Key
 log "\n${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
-log "${MAGENTA}Starting Step 5/9: Encryption Key Update${NC}"
+log "${MAGENTA}Starting Step 5/10: Encryption Key Update${NC}"
 log "${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
 
 if ! bash "$SCRIPT_DIR/05-update-encryption-key.sh"; then
@@ -114,7 +114,7 @@ fi
 
 # Step 6: Apply Migrations
 log "\n${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
-log "${MAGENTA}Starting Step 6/9: Applying Migrations${NC}"
+log "${MAGENTA}Starting Step 6/10: Applying Migrations${NC}"
 log "${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
 
 if ! bash "$SCRIPT_DIR/06-apply-migrations.sh"; then
@@ -122,16 +122,23 @@ if ! bash "$SCRIPT_DIR/06-apply-migrations.sh"; then
     OVERALL_STATUS=1
 fi
 
-# Step 7: Verify Schema
+# Step 7: Clear Supavisor Data
 log "\n${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
-log "${MAGENTA}Starting Step 7/9: Schema Verification${NC}"
+log "${MAGENTA}Starting Step 7/10: Clear Supavisor Data${NC}"
+log "${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
+
+bash "$SCRIPT_DIR/10-clear-supavisor.sh"
+
+# Step 8: Verify Schema
+log "\n${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
+log "${MAGENTA}Starting Step 8/10: Schema Verification${NC}"
 log "${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
 
 bash "$SCRIPT_DIR/07-verify-schema.sh"
 
-# Step 8: Start Services
+# Step 9: Start Services
 log "\n${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
-log "${MAGENTA}Starting Step 8/9: Starting Services${NC}"
+log "${MAGENTA}Starting Step 9/10: Starting Services${NC}"
 log "${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
 
 if ! bash "$SCRIPT_DIR/08-start-services.sh"; then
@@ -139,9 +146,9 @@ if ! bash "$SCRIPT_DIR/08-start-services.sh"; then
     OVERALL_STATUS=1
 fi
 
-# Step 9: Health Check
+# Step 10: Health Check
 log "\n${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
-log "${MAGENTA}Starting Step 9/9: Health Check${NC}"
+log "${MAGENTA}Starting Step 10/10: Health Check${NC}"
 log "${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
 
 if ! bash "$SCRIPT_DIR/09-health-check.sh"; then
