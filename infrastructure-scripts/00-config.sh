@@ -43,7 +43,7 @@ export BACKUP_TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 export APP_DOMAIN="test.auditproof.ca"
 export FRONTEND_PORT=8080
 export FRONTEND_CONTAINER="auditproof-frontend"
-export DOCKER_NETWORK="supabase-project_default"
+export DOCKER_NETWORK="supabase_default"
 
 # OpenAI API Key
 export OPENAI_API_KEY="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"
