@@ -38,14 +38,15 @@ export DASHBOARD_USERNAME="supabase"
 export DASHBOARD_PASSWORD=$(openssl rand -base64 16 | tr -d "=+/\n" | head -c 16)
 success "Generated DASHBOARD_PASSWORD (16 chars)"
 
-# SMTP Configuration
+# SMTP Configuration (PrivateMail)
 export SMTP_ADMIN_EMAIL="admin@${APP_DOMAIN}"
-export SMTP_HOST="mail.smtp2go.com"
+export SMTP_HOST="mail.privateemail.com"
 export SMTP_PORT="587"
-export SMTP_USER=""
+export SMTP_USER="admin@${APP_DOMAIN}"
 export SMTP_PASS=""
 export SMTP_SENDER_NAME="AuditProof"
-warning "SMTP credentials are empty - configure manually if email is needed"
+success "SMTP configured for PrivateMail"
+warning "SMTP_PASS is empty - add your password to secrets.txt"
 
 # URLs
 export SITE_URL="https://${APP_DOMAIN}"
@@ -77,7 +78,21 @@ log "  - Transaction Port: 6543"
 # Vector Analytics Configuration
 info "Configuring Vector (Log Analytics)..."
 export LOGFLARE_PUBLIC_ACCESS_TOKEN=$(openssl rand -hex 32)
-success "Generated LOGFLARE_PUBLIC_ACCESS_TOKEN (64 hex chars)"
+export LOGFLARE_PRIVATE_ACCESS_TOKEN=$(openssl rand -hex 32)
+success "Generated LOGFLARE tokens (64 hex chars each)"
+
+# Additional Missing Variables
+export KONG_HTTP_PORT="8000"
+export KONG_HTTPS_PORT="8443"
+export IMGPROXY_ENABLE_WEBP_DETECTION="true"
+export FUNCTIONS_VERIFY_JWT="true"
+export JWT_EXPIRY="3600"
+export ENABLE_PHONE_AUTOCONFIRM="false"
+export ENABLE_PHONE_SIGNUP="false"
+export ADDITIONAL_REDIRECT_URLS=""
+export PGRST_DB_SCHEMAS="public,storage,graphql_public"
+export DOCKER_SOCKET_LOCATION="/var/run/docker.sock"
+success "Additional docker-compose.yml variables configured"
 
 log ""
 info "${CYAN}Summary of Generated Secrets:${NC}"
@@ -148,11 +163,24 @@ POOLER_PROXY_PORT_TRANSACTION=$POOLER_PROXY_PORT_TRANSACTION
 
 # Vector Analytics
 LOGFLARE_PUBLIC_ACCESS_TOKEN=$LOGFLARE_PUBLIC_ACCESS_TOKEN
+LOGFLARE_PRIVATE_ACCESS_TOKEN=$LOGFLARE_PRIVATE_ACCESS_TOKEN
+
+# Additional Configuration
+KONG_HTTP_PORT=$KONG_HTTP_PORT
+KONG_HTTPS_PORT=$KONG_HTTPS_PORT
+IMGPROXY_ENABLE_WEBP_DETECTION=$IMGPROXY_ENABLE_WEBP_DETECTION
+FUNCTIONS_VERIFY_JWT=$FUNCTIONS_VERIFY_JWT
+JWT_EXPIRY=$JWT_EXPIRY
+ENABLE_PHONE_AUTOCONFIRM=$ENABLE_PHONE_AUTOCONFIRM
+ENABLE_PHONE_SIGNUP=$ENABLE_PHONE_SIGNUP
+ADDITIONAL_REDIRECT_URLS=$ADDITIONAL_REDIRECT_URLS
+PGRST_DB_SCHEMAS=$PGRST_DB_SCHEMAS
+DOCKER_SOCKET_LOCATION=$DOCKER_SOCKET_LOCATION
 
 ################################################################################
 # IMPORTANT NOTES:
 # 1. Update ANON_KEY and SERVICE_ROLE_KEY after services start
-# 2. Configure SMTP credentials if email is needed
+# 2. Add SMTP_PASS for PrivateMail (admin@test.auditproof.ca)
 # 3. Backup this file securely
 # 4. Supavisor is ENABLED with proper encryption keys
 ################################################################################
@@ -192,6 +220,17 @@ export POOLER_MAX_CLIENT_CONN="$POOLER_MAX_CLIENT_CONN"
 export POOLER_DB_POOL_SIZE="$POOLER_DB_POOL_SIZE"
 export POOLER_PROXY_PORT_TRANSACTION="$POOLER_PROXY_PORT_TRANSACTION"
 export LOGFLARE_PUBLIC_ACCESS_TOKEN="$LOGFLARE_PUBLIC_ACCESS_TOKEN"
+export LOGFLARE_PRIVATE_ACCESS_TOKEN="$LOGFLARE_PRIVATE_ACCESS_TOKEN"
+export KONG_HTTP_PORT="$KONG_HTTP_PORT"
+export KONG_HTTPS_PORT="$KONG_HTTPS_PORT"
+export IMGPROXY_ENABLE_WEBP_DETECTION="$IMGPROXY_ENABLE_WEBP_DETECTION"
+export FUNCTIONS_VERIFY_JWT="$FUNCTIONS_VERIFY_JWT"
+export JWT_EXPIRY="$JWT_EXPIRY"
+export ENABLE_PHONE_AUTOCONFIRM="$ENABLE_PHONE_AUTOCONFIRM"
+export ENABLE_PHONE_SIGNUP="$ENABLE_PHONE_SIGNUP"
+export ADDITIONAL_REDIRECT_URLS="$ADDITIONAL_REDIRECT_URLS"
+export PGRST_DB_SCHEMAS="$PGRST_DB_SCHEMAS"
+export DOCKER_SOCKET_LOCATION="$DOCKER_SOCKET_LOCATION"
 EOF
 
 source "$ENV_SECRETS"

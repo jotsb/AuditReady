@@ -18,12 +18,10 @@ export NC='\033[0m'
 # Default Paths
 export DEFAULT_BASE_PATH="/mnt/user/appdata/auditproof"
 export DEFAULT_PROJECT_PATH="$DEFAULT_BASE_PATH/project/AuditReady"
-export DEFAULT_SUPABASE_CLI_PATH="$DEFAULT_BASE_PATH/supabase"
 export DEFAULT_DOCKER_PATH="$DEFAULT_BASE_PATH/supabase-project"
 
 export BASE_PATH="${BASE_PATH:-$DEFAULT_BASE_PATH}"
 export PROJECT_PATH="${PROJECT_PATH:-$DEFAULT_PROJECT_PATH}"
-export SUPABASE_CLI_PATH="${SUPABASE_CLI_PATH:-$DEFAULT_SUPABASE_CLI_PATH}"
 export DOCKER_PATH="${DOCKER_PATH:-$DEFAULT_DOCKER_PATH}"
 
 # Derived Paths
@@ -34,8 +32,8 @@ export FUNCTIONS_PATH="$VOLUMES_PATH/functions"
 export DB_PATH="$VOLUMES_PATH/db"
 
 export PROJECT_DIST="$PROJECT_PATH/dist"
-export PROJECT_FUNCTIONS="$SUPABASE_CLI_PATH/functions"
-export PROJECT_MIGRATIONS="$SUPABASE_CLI_PATH/migrations"
+export PROJECT_FUNCTIONS="$PROJECT_PATH/supabase/functions"
+export PROJECT_MIGRATIONS="$PROJECT_PATH/supabase/migrations"
 
 # Backup Configuration
 export BACKUP_DIR="$BASE_PATH/backups/infrastructure_$(date +%Y%m%d_%H%M%S)"

@@ -9,7 +9,6 @@ log ""
 log "Default paths:"
 log "  Base:       $DEFAULT_BASE_PATH"
 log "  Project:    $DEFAULT_PROJECT_PATH"
-log "  Supabase:   $DEFAULT_SUPABASE_CLI_PATH"
 log "  Docker:     $DEFAULT_DOCKER_PATH"
 log ""
 read -p "Press Enter to use defaults, or type 'custom' to specify: " choice
@@ -21,15 +20,13 @@ if [ "$choice" = "custom" ]; then
         read -p "Enter path (or press Enter for default): " user_path
         [ -z "$user_path" ] && eval "export $var=\"$default\"" || eval "export $var=\"${user_path/#\~/$HOME}\""
     }
-    
+
     prompt_path "Base directory" "$DEFAULT_BASE_PATH" "BASE_PATH"
     prompt_path "Project directory" "$DEFAULT_PROJECT_PATH" "PROJECT_PATH"
-    prompt_path "Supabase CLI directory" "$DEFAULT_SUPABASE_CLI_PATH" "SUPABASE_CLI_PATH"
     prompt_path "Docker directory" "$DEFAULT_DOCKER_PATH" "DOCKER_PATH"
 else
     export BASE_PATH="$DEFAULT_BASE_PATH"
     export PROJECT_PATH="$DEFAULT_PROJECT_PATH"
-    export SUPABASE_CLI_PATH="$DEFAULT_SUPABASE_CLI_PATH"
     export DOCKER_PATH="$DEFAULT_DOCKER_PATH"
     info "Using default paths"
 fi
@@ -41,19 +38,19 @@ export DIST_PATH="$VOLUMES_PATH/dist"
 export FUNCTIONS_PATH="$VOLUMES_PATH/functions"
 export DB_PATH="$VOLUMES_PATH/db"
 export PROJECT_DIST="$PROJECT_PATH/dist"
-export PROJECT_FUNCTIONS="$SUPABASE_CLI_PATH/functions"
-export PROJECT_MIGRATIONS="$SUPABASE_CLI_PATH/migrations"
+export PROJECT_FUNCTIONS="$PROJECT_PATH/supabase/functions"
+export PROJECT_MIGRATIONS="$PROJECT_PATH/supabase/migrations"
 
 log ""
 subsection "Validating Paths"
 
 # Validate and create
 FAILED=0
-for path in "$BASE_PATH" "$PROJECT_PATH" "$SUPABASE_CLI_PATH" "$DOCKER_PATH"; do
-    if ! dir_exists "$path"; then 
+for path in "$BASE_PATH" "$PROJECT_PATH" "$DOCKER_PATH"; do
+    if ! dir_exists "$path"; then
         error "Missing: $path"
         FAILED=1
-    else 
+    else
         success "Found: $path"
     fi
 done
@@ -72,9 +69,10 @@ ensure_dir "$BACKUP_DIR"
 cat > "$BASE_PATH/.infrastructure-paths" << EOF
 BASE_PATH="$BASE_PATH"
 PROJECT_PATH="$PROJECT_PATH"
-SUPABASE_CLI_PATH="$SUPABASE_CLI_PATH"
 DOCKER_PATH="$DOCKER_PATH"
 VOLUMES_PATH="$VOLUMES_PATH"
+PROJECT_FUNCTIONS="$PROJECT_FUNCTIONS"
+PROJECT_MIGRATIONS="$PROJECT_MIGRATIONS"
 EOF
 
 log ""
