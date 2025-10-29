@@ -52,7 +52,5 @@ apply_migrations() {
     fi
 }
 
-# Run if executed directly
-if [ "${BASH_SOURCE[0]}" -eq "${0}" ]; then
-    apply_migrations
-fi
+# Run function when script is executed
+apply_migrations

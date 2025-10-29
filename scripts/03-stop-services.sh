@@ -23,7 +23,5 @@ stop_services() {
     fi
 }
 
-# Run if executed directly
-if [ "${BASH_SOURCE[0]}" -eq "${0}" ]; then
-    stop_services
-fi
+# Run function when script is executed
+stop_services

@@ -87,7 +87,5 @@ EOF
     fi
 }
 
-# Run if executed directly
-if [ "${BASH_SOURCE[0]}" -eq "${0}" ]; then
-    wipe_database
-fi
+# Run function when script is executed
+wipe_database

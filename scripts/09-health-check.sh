@@ -110,7 +110,5 @@ health_check() {
     fi
 }
 
-# Run if executed directly
-if [ "${BASH_SOURCE[0]}" -eq "${0}" ]; then
-    health_check
-fi
+# Run function when script is executed
+health_check

@@ -36,7 +36,5 @@ EOF
     return 0
 }
 
-# Run if executed directly
-if [ "${BASH_SOURCE[0]}" -eq "${0}" ]; then
-    verify_schema
-fi
+# Run function when script is executed
+verify_schema

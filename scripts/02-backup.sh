@@ -23,7 +23,5 @@ backup_configuration() {
     fi
 }
 
-# Run if executed directly
-if [ "${BASH_SOURCE[0]}" -eq "${0}" ]; then
-    backup_configuration
-fi
+# Run function when script is executed
+backup_configuration

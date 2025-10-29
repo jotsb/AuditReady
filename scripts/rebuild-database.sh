@@ -62,7 +62,7 @@ log "\n${MAGENTA}═════════════════════
 log "${MAGENTA}Starting Step 1/9: Environment Validation${NC}"
 log "${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
 
-if ! source "$SCRIPT_DIR/01-validate-environment.sh" || ! validate_environment; then
+if ! bash "$SCRIPT_DIR/01-validate-environment.sh"; then
     log "${RED}✗ Environment validation failed. Aborting.${NC}"
     exit 1
 fi
@@ -72,7 +72,7 @@ log "\n${MAGENTA}═════════════════════
 log "${MAGENTA}Starting Step 2/9: Configuration Backup${NC}"
 log "${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
 
-if ! source "$SCRIPT_DIR/02-backup.sh" || ! backup_configuration; then
+if ! bash "$SCRIPT_DIR/02-backup.sh"; then
     log "${RED}✗ Backup failed. Aborting.${NC}"
     exit 1
 fi
@@ -87,7 +87,7 @@ log "\n${MAGENTA}═════════════════════
 log "${MAGENTA}Starting Step 3/9: Stopping Services${NC}"
 log "${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
 
-if ! source "$SCRIPT_DIR/03-stop-services.sh" || ! stop_services; then
+if ! bash "$SCRIPT_DIR/03-stop-services.sh"; then
     log "${RED}✗ Failed to stop services. Aborting.${NC}"
     exit 1
 fi
@@ -97,7 +97,7 @@ log "\n${MAGENTA}═════════════════════
 log "${MAGENTA}Starting Step 4/9: Database Wipe${NC}"
 log "${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
 
-if ! source "$SCRIPT_DIR/04-wipe-database.sh" || ! wipe_database; then
+if ! bash "$SCRIPT_DIR/04-wipe-database.sh"; then
     log "${RED}✗ Database wipe failed. Aborting.${NC}"
     exit 1
 fi
@@ -107,7 +107,7 @@ log "\n${MAGENTA}═════════════════════
 log "${MAGENTA}Starting Step 5/9: Encryption Key Update${NC}"
 log "${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
 
-if ! source "$SCRIPT_DIR/05-update-encryption-key.sh" || ! update_encryption_key; then
+if ! bash "$SCRIPT_DIR/05-update-encryption-key.sh"; then
     log "${RED}✗ Encryption key update failed. Aborting.${NC}"
     exit 1
 fi
@@ -117,7 +117,7 @@ log "\n${MAGENTA}═════════════════════
 log "${MAGENTA}Starting Step 6/9: Applying Migrations${NC}"
 log "${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
 
-if ! source "$SCRIPT_DIR/06-apply-migrations.sh" || ! apply_migrations; then
+if ! bash "$SCRIPT_DIR/06-apply-migrations.sh"; then
     log "${YELLOW}⚠ Some migrations failed. Continuing...${NC}"
     OVERALL_STATUS=1
 fi
@@ -127,15 +127,14 @@ log "\n${MAGENTA}═════════════════════
 log "${MAGENTA}Starting Step 7/9: Schema Verification${NC}"
 log "${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
 
-source "$SCRIPT_DIR/07-verify-schema.sh"
-verify_schema
+bash "$SCRIPT_DIR/07-verify-schema.sh"
 
 # Step 8: Start Services
 log "\n${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
 log "${MAGENTA}Starting Step 8/9: Starting Services${NC}"
 log "${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
 
-if ! source "$SCRIPT_DIR/08-start-services.sh" || ! start_services; then
+if ! bash "$SCRIPT_DIR/08-start-services.sh"; then
     log "${RED}✗ Failed to start services${NC}"
     OVERALL_STATUS=1
 fi
@@ -145,7 +144,7 @@ log "\n${MAGENTA}═════════════════════
 log "${MAGENTA}Starting Step 9/9: Health Check${NC}"
 log "${MAGENTA}═══════════════════════════════════════════════════════════${NC}"
 
-if ! source "$SCRIPT_DIR/09-health-check.sh" || ! health_check; then
+if ! bash "$SCRIPT_DIR/09-health-check.sh"; then
     log "${YELLOW}⚠ Health check found issues${NC}"
     OVERALL_STATUS=1
 fi

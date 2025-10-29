@@ -31,7 +31,5 @@ update_encryption_key() {
     fi
 }
 
-# Run if executed directly
-if [ "${BASH_SOURCE[0]}" -eq "${0}" ]; then
-    update_encryption_key
-fi
+# Run function when script is executed
+update_encryption_key

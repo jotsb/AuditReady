@@ -35,7 +35,5 @@ start_services() {
     return 0
 }
 
-# Run if executed directly
-if [ "${BASH_SOURCE[0]}" -eq "${0}" ]; then
-    start_services
-fi
+# Run function when script is executed
+start_services
