@@ -1787,15 +1787,33 @@ nano auditproof.subdomain.conf
 ```nginx
 # Audit Proof proxy configuration
 
+# HTTP to HTTPS redirect
+server {
+    listen 80;
+    listen [::]:80;
+
+    server_name test.auditproof.ca auditproof.*;
+
+    # Redirect all HTTP traffic to HTTPS
+    return 301 https://$host$request_uri;
+}
+
+# HTTPS server block
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
 
-    server_name auditproof.*;
+    server_name test.auditproof.ca auditproof.*;
 
     include /config/nginx/ssl.conf;
 
     client_max_body_size 50M;
+
+    # Security headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
 
     # Proxy to frontend
     location / {
@@ -1829,6 +1847,18 @@ server {
         proxy_pass http://192.168.1.246:8000;
         client_max_body_size 50M;
     }
+
+    location /realtime/ {
+        include /config/nginx/proxy.conf;
+        resolver 127.0.0.11 valid=30s;
+        proxy_pass http://192.168.1.246:8000;
+
+        # WebSocket support
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 86400;
+    }
 }
 ```
 
@@ -1849,29 +1879,33 @@ docker restart swag-reverse-proxy
 
 **In your domain registrar (Cloudflare, GoDaddy, etc.):**
 
-1. Add A record or CNAME:
+1. Add A record or CNAME for your test subdomain:
    - **Type:** A (or CNAME)
-   - **Name:** `auditproof`
+   - **Name:** `test`
    - **Value:** Your public IP (or domain if CNAME)
    - **TTL:** Auto or 3600
 
 2. Wait for DNS propagation (5-30 minutes)
 
-3. Test: `nslookup auditproof.yourdomain.com`
+3. Test: `nslookup test.auditproof.ca`
 
 ### Step 5.4: Test HTTPS Access
 
-**Open browser:** `https://auditproof.yourdomain.com`
+**Open browser:** `https://test.auditproof.ca`
+
+**Or test HTTP redirect:** `http://test.auditproof.ca` (should redirect to HTTPS)
 
 You should see:
 - ✅ Green padlock (SSL working)
 - ✅ Audit Proof login page
 - ✅ No certificate errors
+- ✅ HTTP automatically redirects to HTTPS
 
 **If SSL doesn't work:**
 - Check SWAG logs: `docker logs swag-reverse-proxy`
 - Verify DNS is propagated
-- Make sure ports 80 and 443 are forwarded to 192.168.1.65
+- Make sure ports 80 and 443 are forwarded to your SWAG IP (192.168.1.65)
+- Check SWAG generated certificate: `docker exec swag-reverse-proxy ls -la /config/keys/letsencrypt/`
 
 ---
 
