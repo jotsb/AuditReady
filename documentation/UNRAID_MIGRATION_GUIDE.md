@@ -1,8 +1,12 @@
 # Audit Proof - Complete Unraid Self-Hosting Guide
 
-**Document Version:** 2.2
-**Last Updated:** 2025-10-27
+**Document Version:** 2.3
+**Last Updated:** 2025-10-29
 **Target:** Unraid 7.1.4+ with SWAG Reverse Proxy
+**Your Configuration:**
+- **Unraid IP:** 192.168.1.246
+- **Public Domain:** test.auditproof.ca
+- **SWAG IP:** 192.168.1.65 (br0)
 **Migration Approach:** Fresh Installation (No data migration from Bolt.new)
 **Estimated Time:** 15-20 hours (first-time setup)
 
@@ -42,6 +46,41 @@ Your Supabase infrastructure is running with:
 - Enable AI receipt extraction
 - Enable email invitations
 - Enable all application features
+
+---
+
+## 🔧 Your Configuration Reference
+
+**Use these values throughout this guide:**
+
+| Component | Value | Usage |
+|-----------|-------|-------|
+| **Unraid Server IP** | `192.168.1.246` | Internal access, SSH, Docker host |
+| **SWAG Proxy IP** | `192.168.1.65` | br0 network, reverse proxy |
+| **Public Domain** | `test.auditproof.ca` | External HTTPS access |
+| **Frontend URL** | `https://test.auditproof.ca` | User-facing application |
+| **API Base URL** | `https://test.auditproof.ca` | Same domain (proxied to Kong) |
+| **Studio URL** | `http://192.168.1.246:3000` | Supabase admin (internal only) |
+
+**Environment Variables (.env.production):**
+```bash
+VITE_SUPABASE_URL=https://test.auditproof.ca
+VITE_SUPABASE_ANON_KEY=<from /mnt/user/appdata/auditproof/config/secrets.txt>
+```
+
+**Key Files on Unraid:**
+- **Project:** `/mnt/user/appdata/auditproof/project/AuditReady`
+- **Secrets:** `/mnt/user/appdata/auditproof/config/secrets.txt`
+- **Frontend Build:** `/mnt/user/appdata/auditproof/dist/`
+- **SWAG Config:** `/mnt/user/appdata/swag/nginx/proxy-confs/auditproof.subdomain.conf`
+
+**Important Notes:**
+1. ✅ **Always use `test.auditproof.ca` in your .env** - NOT `192.168.1.246:8000`
+   - This prevents Content Security Policy (CSP) violations
+   - All requests go through SWAG proxy (HTTPS, logging, security)
+2. ✅ **Get your ANON_KEY** from secrets.txt (generated during Phase 2.3)
+3. ✅ **Rebuild frontend** after changing .env variables
+4. ✅ **Clear browser cache** after deploying new builds
 
 ---
 
@@ -85,7 +124,7 @@ A **completely self-hosted** Audit Proof installation on your Unraid server with
 │  ┌───────────────────────────────────────────────────────────┐ │
 │  │  SWAG Reverse Proxy (br0: 192.168.1.65)                  │ │
 │  │  - SSL/TLS termination (Let's Encrypt)                    │ │
-│  │  - Domain: auditproof.yourdomain.com                      │ │
+│  │  - Domain: test.auditproof.ca                             │ │
 │  │  - Ports: 80 → 443 (external)                             │ │
 │  └──────────────────┬────────────────────────────────────────┘ │
 │                     │                                           │
@@ -130,6 +169,7 @@ A **completely self-hosted** Audit Proof installation on your Unraid server with
 │                                                                 │
 │  ┌───────────────────────────────────────────────────────────┐ │
 │  │  Uptime Kuma (monitoring - br0: 192.168.1.x)             │ │
+│  │  Note: Use your own br0 IP for monitoring service        │ │
 │  │  Port: 3001                                               │ │
 │  └───────────────────────────────────────────────────────────┘ │
 │                                                                 │
@@ -243,8 +283,8 @@ Since you currently use **bridge**, **br0**, and **host** networks via Unraid GU
 - **Free Storage:** 100 GB minimum (200 GB recommended)
 - **Free RAM:** 6 GB minimum (8 GB recommended)
 - **Free CPU:** 20-30% average headroom
-- **Static IP:** Your Unraid server should have static IP
-- **Domain Name:** For SSL (auditproof.yourdomain.com)
+- **Static IP:** Your Unraid server should have static IP (✓ 192.168.1.246)
+- **Domain Name:** For SSL (✓ test.auditproof.ca)
 
 ### Skills Required
 
@@ -1575,6 +1615,35 @@ Before moving to Phase 4, verify:
 
 ## Phase 4: Deploy Frontend
 
+### ⚠️ CRITICAL: Environment Configuration
+
+**BEFORE BUILDING, YOU MUST:**
+
+1. **Use your domain URL** - NOT the internal IP
+2. **Get your ANON_KEY** from secrets.txt
+3. **Understand why this matters**
+
+**Why use `test.auditproof.ca` instead of `192.168.1.246:8000`?**
+
+When you access the app via `https://test.auditproof.ca`, the browser's Content Security Policy (CSP) only allows connections to:
+- ✅ `'self'` (same origin = `test.auditproof.ca`)
+- ✅ Official Supabase domains
+- ❌ Different origins like `http://192.168.1.246:8000`
+
+**If you use the internal IP, you'll get:**
+```
+Refused to connect to 'http://192.168.1.246:8000/auth/v1/signup'
+because it violates the Content Security Policy directive
+```
+
+**Using your domain URL:**
+- All API requests go to `test.auditproof.ca` → SWAG proxy → Kong Gateway
+- CSP allows it (same origin)
+- All traffic uses HTTPS
+- Works from any network
+
+See `documentation/CSP_FIX_GUIDE.md` for troubleshooting.
+
 ### Step 4.1: Build Frontend on Unraid
 
 **Since your project is already on Unraid, we'll build it directly there:**
@@ -1922,7 +1991,7 @@ Now let's create your first user account and grant it system admin privileges.
 
 ### Step 6.1: Register First User via UI
 
-**Open app:** `https://auditproof.yourdomain.com`
+**Open app:** `https://test.auditproof.ca`
 
 1. Click **Register** (or **Sign Up**)
 2. Fill in:
@@ -2023,7 +2092,7 @@ You already installed Uptime Kuma from Community Apps. Now configure it:
 
 1. **Audit Proof Frontend**
    - Type: HTTP(s)
-   - URL: `https://auditproof.yourdomain.com`
+   - URL: `https://test.auditproof.ca`
    - Interval: 60 seconds
    - Retries: 3
 
@@ -2134,7 +2203,7 @@ This gives you:
 
 #### 1. Frontend Access
 - [ ] HTTP access works: `http://192.168.1.246:8080`
-- [ ] HTTPS access works: `https://auditproof.yourdomain.com`
+- [ ] HTTPS access works: `https://test.auditproof.ca`
 - [ ] SSL certificate is valid (green padlock)
 - [ ] Page loads without errors (check browser console)
 
@@ -2315,6 +2384,55 @@ mkdir -p /tmp/restore-test
 ---
 
 ## Troubleshooting
+
+### Content Security Policy (CSP) Errors
+
+**Symptom:** Browser console shows:
+```
+Refused to connect to 'http://192.168.1.246:8000/auth/v1/signup'
+because it violates the Content Security Policy directive
+```
+
+**Root Cause:** Frontend was built with `VITE_SUPABASE_URL=http://192.168.1.246:8000` instead of your domain.
+
+**Solution:**
+
+```bash
+# 1. Get your ANON_KEY
+ssh root@192.168.1.246
+cat /mnt/user/appdata/auditproof/config/secrets.txt
+
+# 2. Update environment
+cd /mnt/user/appdata/auditproof/project/AuditReady
+nano .env.production
+```
+
+Add (replace with your actual ANON_KEY):
+```bash
+VITE_SUPABASE_URL=https://test.auditproof.ca
+VITE_SUPABASE_ANON_KEY=eyJhbG...your_actual_key...
+```
+
+```bash
+# 3. Rebuild frontend
+npm run build
+
+# 4. Copy new build
+cp -r dist/* /mnt/user/appdata/auditproof/dist/
+
+# 5. Restart container
+docker restart auditproof-frontend
+
+# 6. Clear browser cache (Ctrl+Shift+R)
+```
+
+**Verify:**
+- Open browser Network tab (F12)
+- Try to register
+- Should see requests to `https://test.auditproof.ca/auth/v1/signup` (not the IP)
+- No CSP errors in Console
+
+**See:** `documentation/CSP_FIX_GUIDE.md` for detailed troubleshooting.
 
 ### Container Won't Start
 
@@ -2684,15 +2802,123 @@ docker exec -it duplicacy duplicacy restore -r [revision] [file-path]
 
 ---
 
+---
+
+## Quick Reference: Your Configuration
+
+**Copy and save these values for quick reference:**
+
+### Network Configuration
+```bash
+# Unraid Server
+SERVER_IP=192.168.1.246
+
+# SWAG Reverse Proxy
+SWAG_IP=192.168.1.65  # br0 network
+
+# Public Access
+DOMAIN=test.auditproof.ca
+PUBLIC_URL=https://test.auditproof.ca
+```
+
+### Key URLs
+```bash
+# Frontend (public)
+https://test.auditproof.ca
+
+# Supabase Studio (internal only)
+http://192.168.1.246:3000
+
+# Kong Gateway (internal only)
+http://192.168.1.246:8000
+
+# Frontend Container (internal only)
+http://192.168.1.246:8080
+```
+
+### Important Files
+```bash
+# Secrets (ANON_KEY, JWT_SECRET, etc.)
+/mnt/user/appdata/auditproof/config/secrets.txt
+
+# Project Source
+/mnt/user/appdata/auditproof/project/AuditReady
+
+# Frontend Build
+/mnt/user/appdata/auditproof/dist/
+
+# SWAG Proxy Config
+/mnt/user/appdata/swag/nginx/proxy-confs/auditproof.subdomain.conf
+
+# Supabase Docker Config
+/mnt/user/appdata/auditproof/supabase-src/docker/.env
+```
+
+### Environment Variables (.env.production)
+```bash
+VITE_SUPABASE_URL=https://test.auditproof.ca
+VITE_SUPABASE_ANON_KEY=<from secrets.txt>
+```
+
+### Common Commands
+```bash
+# SSH into Unraid
+ssh root@192.168.1.246
+
+# View secrets
+cat /mnt/user/appdata/auditproof/config/secrets.txt
+
+# Rebuild frontend
+cd /mnt/user/appdata/auditproof/project/AuditReady
+npm run build
+cp -r dist/* /mnt/user/appdata/auditproof/dist/
+docker restart auditproof-frontend
+
+# Restart all Supabase services
+cd /mnt/user/appdata/auditproof/supabase-src/docker
+docker compose restart
+
+# Check all containers
+docker ps | grep -E "supabase|auditproof"
+
+# View logs
+docker logs auditproof-frontend
+docker logs supabase-kong
+docker logs supabase-auth
+```
+
+### Troubleshooting Quick Checks
+```bash
+# CSP errors? Check environment
+grep -r "test.auditproof.ca" /mnt/user/appdata/auditproof/dist/assets/*.js | head -1
+
+# Can't login? Check Kong
+curl http://192.168.1.246:8000/health
+
+# Database issues? Test connection
+docker exec -it supabase-db psql -U postgres -d postgres -c "SELECT 1;"
+
+# SWAG not proxying? Check config
+docker logs swag-reverse-proxy | grep error
+```
+
+---
+
 ## Document Maintenance
 
-**Last Updated:** 2025-10-27
-**Version:** 2.2
+**Last Updated:** 2025-10-29
+**Version:** 2.3
+**Your Configuration:**
+- Unraid IP: 192.168.1.246
+- Domain: test.auditproof.ca
+- SWAG IP: 192.168.1.65
+
 **Tested On:** Unraid 7.1.4
 **Author:** Audit Proof Development Team
 **For Support:** Review troubleshooting section or community resources
 
 **Changelog:**
+- **v2.3 (2025-10-29):** Added configuration reference, CSP troubleshooting, updated with actual IP/domain values
 - **v2.2 (2025-10-27):** Updated for project already cloned on Unraid, moved Edge Functions to Phase 3.5
 - **v2.1 (2025-10-27):** Added Edge Functions deployment guide
 - **v2.0 (2025-10-24):** Initial comprehensive guide
