@@ -32,7 +32,7 @@ NC='\033[0m'
 DOCKER_DIR="/mnt/user/appdata/auditproof/supabase-project"
 PROJECT_DIR="/mnt/user/appdata/auditproof/project/AuditReady"
 ENV_FILE="${DOCKER_DIR}/.env"
-MIGRATIONS_DIR="{PROJECT_DIR}/supabase/migrations"
+MIGRATIONS_DIR="${PROJECT_DIR}/supabase/migrations"
 
 echo -e "${RED}========================================${NC}"
 echo -e "${RED}COMPLETE DATABASE RESET${NC}"
