@@ -16,8 +16,8 @@ export NC='\033[0m'
 # Paths
 export BASE_DIR="/mnt/user/appdata/auditproof"
 export ENV_FILE="$BASE_DIR/supabase-project/.env"
-export DOCKER_DIR="$BASE_DIR/supabase-src/docker"
-export MIGRATIONS_DIR="./supabase/migrations"
+export DOCKER_DIR="$BASE_DIR/supabase-project"
+export MIGRATIONS_DIR="$BASE_DIR/project/AuditReady/supabase/migrations"
 export LOG_FILE="/tmp/database-rebuild-$(date +%Y%m%d_%H%M%S).log"
 
 # Required environment variables
