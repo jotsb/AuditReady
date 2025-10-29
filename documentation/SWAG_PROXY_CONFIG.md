@@ -77,8 +77,7 @@ server {
         resolver 127.0.0.11 valid=30s;
         proxy_pass http://192.168.1.246:8000;
 
-        # WebSocket support
-        proxy_http_version 1.1;
+        # WebSocket support (proxy.conf already sets proxy_http_version 1.1)
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_read_timeout 86400;
