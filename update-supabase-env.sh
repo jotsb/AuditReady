@@ -107,9 +107,10 @@ fi
 
 if [ "$GENERATE_NEW_KEYS" = true ]; then
     echo -e "${BLUE}Generating new encryption keys...${NC}"
-    NEW_VAULT_KEY=$(openssl rand -base64 32)
-    NEW_PG_META_KEY=$(openssl rand -base64 32)
-    echo -e "${GREEN}✓ Generated new encryption keys${NC}"
+    # Generate keys without padding (= characters) for Supavisor compatibility
+    NEW_VAULT_KEY=$(openssl rand -base64 32 | tr -d '=')
+    NEW_PG_META_KEY=$(openssl rand -base64 32 | tr -d '=')
+    echo -e "${GREEN}✓ Generated new encryption keys (without padding)${NC}"
 else
     echo -e "${GREEN}✓ Encryption keys already set, keeping existing values${NC}"
     NEW_VAULT_KEY="$CURRENT_VAULT_KEY"
