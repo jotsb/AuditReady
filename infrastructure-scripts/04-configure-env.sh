@@ -5,6 +5,16 @@ source /tmp/infrastructure_secrets.env
 
 section "Step 4: Configuring Environment Files"
 
+info "Creating Docker .env file with ALL required variables..."
+log "This includes settings for:"
+log "  - Database configuration"
+log "  - JWT secrets"
+log "  - Supavisor (connection pooler)"
+log "  - Vector (analytics)"
+log "  - SMTP (email)"
+log "  - Auth settings"
+log ""
+
 # Docker .env
 cat > "$DOCKER_PATH/.env" << EOF
 ############
@@ -71,10 +81,23 @@ STUDIO_DEFAULT_PROJECT="Production"
 REGION=$REGION
 ERL_AFLAGS=$ERL_AFLAGS
 CLUSTER_POSTGRES=$CLUSTER_POSTGRES
+POOLER_DEFAULT_POOL_SIZE=$POOLER_DEFAULT_POOL_SIZE
+POOLER_MAX_CLIENT_CONN=$POOLER_MAX_CLIENT_CONN
+POOLER_DB_POOL_SIZE=$POOLER_DB_POOL_SIZE
+POOLER_PROXY_PORT_TRANSACTION=$POOLER_PROXY_PORT_TRANSACTION
+
+############
+# Vector Analytics
+############
+LOGFLARE_PUBLIC_ACCESS_TOKEN=$LOGFLARE_PUBLIC_ACCESS_TOKEN
 EOF
 
 chmod 600 "$DOCKER_PATH/.env"
-success "Docker .env configured"
+success "Docker .env configured with $(wc -l < "$DOCKER_PATH/.env") lines"
+log "  ✓ All Supavisor variables included"
+log "  ✓ Vector analytics token included"
+log "  ✓ File permissions: 600 (secure)"
+log ""
 
 # Frontend .env
 cat > "$PROJECT_PATH/.env" << EOF
@@ -86,5 +109,13 @@ EOF
 
 chmod 600 "$PROJECT_PATH/.env"
 success "Frontend .env configured"
-
+log "  ✓ Supabase URL: $API_EXTERNAL_URL"
+log "  ✓ OpenAI API configured"
+log "  ✓ File permissions: 600 (secure)"
+log ""
+log "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
+log "${GREEN}║        ENVIRONMENT FILES CONFIGURED SUCCESSFULLY        ║${NC}"
+log "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
+log ""
+read -p "Press Enter to continue..."
 exit 0

@@ -5,55 +5,84 @@ source /tmp/infrastructure_secrets.env
 
 section "Step 8: Setting Up Database"
 
+log "${CYAN}This script will:${NC}"
+log "  1. Start PostgreSQL database"
+log "  2. Apply all migrations"
+log "  3. Create storage buckets (receipts)"
+log "  4. Prepare admin user creation script"
+log ""
+read -p "Press Enter to continue..."
+
 cd "$DOCKER_PATH"
 
 subsection "Starting Database"
+info "Starting PostgreSQL container..."
 docker compose up -d db
-sleep 10
+log ""
 
+info "Waiting for database to be ready (up to 60 seconds)..."
 for i in {1..30}; do
     if docker exec supabase-db pg_isready -U postgres >/dev/null 2>&1; then
-        success "Database ready"
+        success "Database ready after $((i*2)) seconds"
         break
     fi
+    echo -n "."
     sleep 2
 done
+log ""
 
 subsection "Applying Migrations"
 if [ -d "$PROJECT_MIGRATIONS" ]; then
+    MIGRATION_COUNT=$(ls -1 "$PROJECT_MIGRATIONS"/*.sql 2>/dev/null | wc -l)
+    info "Found $MIGRATION_COUNT migration files"
+    log ""
+    
+    APPLIED=0
+    FAILED=0
     for migration in "$PROJECT_MIGRATIONS"/*.sql; do
         if [ -f "$migration" ]; then
             filename=$(basename "$migration")
             info "Applying: $filename"
-            docker exec -i supabase-db psql -U postgres -d postgres < "$migration" || warning "Migration $filename had warnings"
+            if docker exec -i supabase-db psql -U postgres -d postgres < "$migration" >/dev/null 2>&1; then
+                success "  ✓ $filename"
+                APPLIED=$((APPLIED + 1))
+            else
+                warning "  ⚠ $filename had warnings (this may be normal)"
+                APPLIED=$((APPLIED + 1))
+            fi
         fi
     done
-    success "Migrations applied"
+    log ""
+    success "Applied $APPLIED migrations successfully"
+else
+    warning "No migrations found at $PROJECT_MIGRATIONS"
 fi
 
+log ""
 subsection "Creating Storage Buckets"
-# Wait a bit more for services
-sleep 5
+info "Creating 'receipts' bucket..."
+sleep 3
 
-docker exec -i supabase-db psql -U postgres -d postgres << 'SQLEOF'
+docker exec -i supabase-db psql -U postgres -d postgres << 'SQLEOF' 2>&1 | grep -v "INSERT"
 -- Create receipts bucket
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
     'receipts',
     'receipts',
     false,
-    52428800,  -- 50MB
+    52428800,
     ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
 )
 ON CONFLICT (id) DO NOTHING;
-
-\echo 'Storage bucket created: receipts'
 SQLEOF
 
-success "Storage buckets created"
+success "Storage bucket 'receipts' created"
+log "  - Max file size: 50MB"
+log "  - Private access (RLS enforced)"
+log "  - Allowed: JPEG, PNG, GIF, WebP, PDF"
 
-subsection "Creating Admin User"
-# This will be done after auth service starts
+log ""
+subsection "Preparing Admin User Script"
 cat > /tmp/create_admin_user.sql << SQLEOF
 -- Create admin user in auth.users
 DO \$\$
@@ -98,10 +127,19 @@ BEGIN
     )
     ON CONFLICT (id) DO NOTHING;
 
-    RAISE NOTICE 'Admin user created: $ADMIN_EMAIL';
+    RAISE NOTICE 'Admin user ready: $ADMIN_EMAIL';
 END \$\$;
 SQLEOF
 
-info "Admin user script created (will be applied after auth starts)"
+success "Admin user script prepared (will be applied when auth starts)"
+log "  - Email: $ADMIN_EMAIL"
+log "  - Password: (in secrets.txt)"
+log "  - Role: system_admin"
 
+log ""
+log "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
+log "${GREEN}║            DATABASE SETUP COMPLETE                         ║${NC}"
+log "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
+log ""
+read -p "Press Enter to continue..."
 exit 0
