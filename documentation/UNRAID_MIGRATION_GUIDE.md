@@ -1727,7 +1727,7 @@ scp -r dist/* root@192.168.1.246:/mnt/user/appdata/auditproof/dist/
 ### Step 4.3: Create Nginx Configuration
 
 ```bash
-cat > /mnt/user/appdata/auditproof/config/nginx.conf << 'EOF'
+cat > /mnt/user/appdata/auditproof/supabase-project/volumes/config/nginx.conf << 'EOF'
 user nginx;
 worker_processes auto;
 pid /var/run/nginx.pid;
