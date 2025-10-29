@@ -38,7 +38,8 @@ cat > /tmp/fix-storage-migration.sql << 'SQLEOF'
 SELECT
     n.nspname as schema,
     p.proname as function_name,
-    pg_get_function_identity_arguments(p.oid) as arguments
+    pg_get_function_identity_arguments(p.oid) as arguments,
+    pg_get_userbyid(p.proowner) as owner
 FROM pg_proc p
 JOIN pg_namespace n ON p.pronamespace = n.oid
 WHERE p.proname = 'foldername';
@@ -58,16 +59,38 @@ BEGIN
     END LOOP;
 END $$;
 
-\echo '=== Step 3: Dropping storage views ==='
-DROP VIEW IF EXISTS storage.buckets CASCADE;
-DROP VIEW IF EXISTS storage.objects CASCADE;
+\echo '=== Step 3: Taking ownership and dropping function ==='
+DO $$
+DECLARE
+    func_owner text;
+BEGIN
+    -- Get the function owner
+    SELECT pg_get_userbyid(proowner) INTO func_owner
+    FROM pg_proc
+    WHERE proname = 'foldername'
+    AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'storage')
+    LIMIT 1;
 
-\echo '=== Step 4: Dropping the foldername function (all variants) ==='
-DROP FUNCTION IF EXISTS storage.foldername(text) CASCADE;
-DROP FUNCTION IF EXISTS storage.foldername(name) CASCADE;
-DROP FUNCTION IF EXISTS storage.foldername CASCADE;
+    IF func_owner IS NOT NULL THEN
+        RAISE NOTICE 'Function owned by: %', func_owner;
 
-\echo '=== Step 5: Verification ==='
+        -- Reassign ownership to postgres (superuser)
+        EXECUTE format('ALTER FUNCTION storage.foldername(text) OWNER TO postgres');
+        RAISE NOTICE 'Transferred ownership to postgres';
+    END IF;
+
+    -- Now drop it
+    DROP FUNCTION IF EXISTS storage.foldername(text) CASCADE;
+    DROP FUNCTION IF EXISTS storage.foldername(name) CASCADE;
+    DROP FUNCTION IF EXISTS storage.foldername CASCADE;
+
+    RAISE NOTICE 'Successfully dropped foldername function';
+
+EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Error during drop: %', SQLERRM;
+END $$;
+
+\echo '=== Step 4: Verification ==='
 SELECT
     CASE
         WHEN COUNT(*) = 0 THEN '✓ SUCCESS: Function removed, migrations will recreate storage schema'
