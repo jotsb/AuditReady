@@ -23,33 +23,40 @@ info "Connecting to database..."
 # Create fix script
 cat > /tmp/fix-storage-migration.sql << 'SQLEOF'
 -- Fix storage migration conflict
--- Drop dependent objects first, then recreate if needed
+-- Simple CASCADE drop handles all dependencies automatically
 
 DO $$
-DECLARE
-    pol record;
 BEGIN
-    -- Drop all policies that reference foldername function
-    FOR pol IN
-        SELECT schemaname, tablename, policyname
-        FROM pg_policies
-        WHERE schemaname = 'storage'
-        AND definition LIKE '%foldername%'
-    LOOP
-        EXECUTE format('DROP POLICY IF EXISTS %I ON %I.%I',
-            pol.policyname, pol.schemaname, pol.tablename);
-        RAISE NOTICE 'Dropped policy: %.%', pol.tablename, pol.policyname;
-    END LOOP;
-
     -- Drop the function with CASCADE to remove all dependencies
+    -- This automatically drops any policies, views, or triggers that depend on it
     DROP FUNCTION IF EXISTS storage.foldername(text) CASCADE;
-    RAISE NOTICE 'Dropped foldername function and dependencies';
+    RAISE NOTICE 'Dropped foldername function with CASCADE';
 
-    -- Recreate the function (storage migrations will handle this)
-    -- We just need to remove the conflicting dependencies
+    -- Also try to drop common storage policies that might exist
+    BEGIN
+        DROP POLICY IF EXISTS "folder list policy" ON storage.objects;
+    EXCEPTION WHEN OTHERS THEN
+        RAISE NOTICE 'Policy "folder list policy" does not exist or already dropped';
+    END;
+
+    BEGIN
+        DROP POLICY IF EXISTS "Users can view their own folders" ON storage.objects;
+    EXCEPTION WHEN OTHERS THEN
+        RAISE NOTICE 'Policy "Users can view their own folders" does not exist or already dropped';
+    END;
 
     RAISE NOTICE 'Storage migration conflict fixed!';
 END $$;
+
+-- Verify the function is gone
+SELECT
+    CASE
+        WHEN COUNT(*) = 0 THEN 'SUCCESS: foldername function removed'
+        ELSE 'WARNING: foldername function still exists'
+    END as status
+FROM pg_proc
+WHERE proname = 'foldername'
+AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'storage');
 SQLEOF
 
 info "Starting database temporarily..."
