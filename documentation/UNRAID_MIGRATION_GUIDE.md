@@ -1584,13 +1584,21 @@ Before moving to Phase 4, verify:
 cd /mnt/user/appdata/auditproof/project/AuditReady
 
 # Create production environment file
+# IMPORTANT: Use your domain URL, NOT the internal IP
+# This ensures all API calls go through SWAG proxy and match CSP rules
 cat > .env.production << EOF
-VITE_SUPABASE_URL=http://192.168.1.246:8000
+VITE_SUPABASE_URL=https://test.auditproof.ca
 VITE_SUPABASE_ANON_KEY=YOUR_ANON_KEY_HERE
 EOF
 
 # Replace YOUR_ANON_KEY_HERE with the actual ANON_KEY from Phase 2.3
 # You can find it in: /mnt/user/appdata/auditproof/config/secrets.txt
+
+# Why use the domain URL instead of http://192.168.1.246:8000?
+# 1. Matches Content Security Policy (CSP) - allows 'self' origin
+# 2. Uses HTTPS consistently (no mixed content warnings)
+# 3. All requests go through SWAG proxy (single entry point)
+# 4. Works correctly when accessed from external networks
 
 # Install Node.js if not already installed
 # Check if node is available
