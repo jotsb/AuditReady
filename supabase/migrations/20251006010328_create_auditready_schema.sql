@@ -484,6 +484,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Create trigger on auth.users to auto-create profiles on signup
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.sync_user_email_to_profile();
+
 -- Apply updated_at triggers
 DROP TRIGGER IF EXISTS update_profiles_updated_at ON profiles;
 CREATE TRIGGER update_profiles_updated_at
