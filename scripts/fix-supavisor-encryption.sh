@@ -127,7 +127,7 @@ echo -e "${GREEN}✓ Supavisor data cleared${NC}"
 echo -e "\n${YELLOW}Step 4: Generating new encryption key...${NC}"
 
 # Generate key without padding for Supavisor compatibility
-NEW_VAULT_KEY=$(openssl rand -base64 32 | tr -d '=')
+NEW_VAULT_KEY=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)
 
 echo "New VAULT_ENC_KEY (first 20 chars): ${NEW_VAULT_KEY:0:20}..."
 

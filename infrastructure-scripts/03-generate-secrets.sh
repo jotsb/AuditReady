@@ -23,10 +23,10 @@ export JWT_SECRET=$(openssl rand -hex 32)
 success "Generated JWT_SECRET (64 hex chars)"
 
 # Encryption Keys
-export VAULT_ENC_KEY=$(openssl rand -hex 32)
+export VAULT_ENC_KEY=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)
 export SECRET_KEY_BASE=$(openssl rand -base64 64 | tr -d "=+/\n" | head -c 64)
 export PG_META_CRYPTO_KEY=$(openssl rand -base64 32 | tr -d "=+/\n" | head -c 32)
-success "Generated encryption keys (VAULT: 64 hex, SECRET_KEY_BASE: 64, PG_META: 32)"
+success "Generated encryption keys (VAULT: 32 alphanumeric, SECRET_KEY_BASE: 64, PG_META: 32)"
 
 # Placeholders for JWT tokens (will be updated after Kong starts)
 export ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
