@@ -3,7 +3,7 @@
 # Migration runner script with idempotent execution
 # This script runs all migrations in correct order and tracks which ones completed
 
-set -e  # Exit on error
+set +e  # Don't exit on error - we handle errors manually
 
 # Colors for output
 RED='\033[0;31m'
@@ -82,15 +82,31 @@ for file in "${migration_files[@]}"; do
 
     echo -e "${BLUE}→ RUN:${NC}  $file"
 
-    if docker exec -i "$POSTGRES_CONTAINER" psql -U postgres -d postgres < "$file" 2>&1 | grep -v "^$"; then
-        record_migration "$migration_name"
-        echo -e "${GREEN}✓ DONE:${NC} $file"
-        ((success_count++))
-    else
+    # Run migration and capture output
+    output=$(docker exec -i "$POSTGRES_CONTAINER" psql -U postgres -d postgres < "$file" 2>&1)
+
+    # Show output, filtering empty lines and known non-critical warnings
+    echo "$output" | grep -v "^$" | \
+        grep -v "NOTICE:.*already exists, skipping" | \
+        grep -v "NOTICE:.*does not exist, skipping" || true
+
+    # Check for critical errors (exclude known storage policy issues on self-hosted)
+    critical_errors=$(echo "$output" | grep "ERROR" | \
+        grep -v "policy.*already exists" | \
+        grep -v "must be owner of table objects" | \
+        grep -v "does not exist, skipping" || true)
+
+    if [ -n "$critical_errors" ]; then
         echo -e "${RED}✗ FAIL:${NC} $file"
+        echo -e "${RED}Critical errors:${NC}"
+        echo "$critical_errors"
         ((error_count++))
         echo -e "${RED}Migration failed. Stopping.${NC}"
         exit 1
+    else
+        record_migration "$migration_name"
+        echo -e "${GREEN}✓ DONE:${NC} $file"
+        ((success_count++))
     fi
 
     echo ""
