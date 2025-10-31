@@ -37,6 +37,22 @@ Fixed multiple migration files to ensure they are fully idempotent (can be run m
 - 6 policies now have DROP statements
 - 1 trigger now has DROP statement
 
+### 5. **Incomplete Function Signatures in ALTER Statements** (20251028000000)
+**Problem:** ALTER FUNCTION statements didn't include parameter types, causing PostgreSQL to fail finding the functions.
+**Errors:** 22 functions reported as "does not exist" including:
+- `is_system_admin()` exists as `is_system_admin(user_id uuid)`
+- `get_business_role(uuid)` exists as `get_business_role(user_id uuid, business_id uuid)`
+- `check_rate_limit(text, text, int, interval)` exists with full parameter names
+
+**Root Cause:** PostgreSQL requires exact function signatures (name + parameter types) to identify functions.
+
+**Solution:**
+- Queried database to get exact signatures of all 54 SECURITY DEFINER functions
+- Replaced all ALTER FUNCTION statements with correct full signatures
+- Updated from incorrect signatures like `is_system_admin()` to `is_system_admin(user_id uuid)`
+- Updated from shorthand types like `int` to proper types like `integer`
+- Updated from missing parameters to complete signatures
+
 ## Verification Results
 
 All migrations now follow PostgreSQL best practices for idempotency:
@@ -61,6 +77,11 @@ All migrations now follow PostgreSQL best practices for idempotency:
    - Changed `admin = true` → `role = 'admin'` (7 occurrences)
    - Added DROP statements for 6 policies
    - Added DROP statement for 1 trigger
+
+4. `20251028000000_fix_database_security_warnings.sql`
+   - Fixed 54 ALTER FUNCTION statements with complete signatures
+   - Corrected parameter type names (int → integer, timestamptz → timestamp with time zone)
+   - Added full parameter names and types for all functions
 
 ## Testing
 
@@ -104,6 +125,24 @@ When creating overloaded functions where one calls another:
 2. Always verify column names exist in referenced tables
 3. Check enum types and their valid values
 4. Use `information_schema` or `pg_catalog` to verify before writing migrations
+
+### ALTER FUNCTION Requirements:
+When altering functions, you MUST include the complete function signature:
+```sql
+-- WRONG - Missing parameters
+ALTER FUNCTION is_system_admin() SET search_path = public;
+
+-- CORRECT - Full signature with parameter names and types
+ALTER FUNCTION is_system_admin(user_id uuid) SET search_path = public;
+
+-- Query to get correct signatures:
+SELECT
+  p.proname as function_name,
+  pg_get_function_identity_arguments(p.oid) as arguments
+FROM pg_proc p
+JOIN pg_namespace n ON p.pronamespace = n.oid
+WHERE n.nspname = 'public' AND p.prokind = 'f';
+```
 
 ## Related Documentation
 - `MASK_IP_OVERLOAD_ISSUE.md` - Detailed analysis of function overloading problem
