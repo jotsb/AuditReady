@@ -41,6 +41,10 @@
 DROP POLICY IF EXISTS "Anyone can upload receipts" ON storage.objects;
 DROP POLICY IF EXISTS "Anyone can view receipts" ON storage.objects;
 DROP POLICY IF EXISTS "Public read access" ON storage.objects;
+DROP POLICY IF EXISTS "Users can upload receipts to their collections" ON storage.objects;
+DROP POLICY IF EXISTS "Users can read receipts from their collections" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update their receipt files" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete their receipt files" ON storage.objects;
 
 -- Policy 1: Users can upload files to their accessible collections
 CREATE POLICY "Users can upload receipts to their collections"
@@ -227,8 +231,17 @@ $$;
 -- PII MASKING FUNCTIONS
 -- ============================================================================
 
+-- Drop views that depend on masking functions first
+DROP VIEW IF EXISTS system_logs_masked CASCADE;
+DROP VIEW IF EXISTS audit_logs_masked CASCADE;
+
+-- Drop existing masking functions if they exist
+DROP FUNCTION IF EXISTS mask_email(text) CASCADE;
+DROP FUNCTION IF EXISTS mask_phone(text) CASCADE;
+DROP FUNCTION IF EXISTS mask_sensitive_jsonb(jsonb) CASCADE;
+
 -- Function: Mask email addresses
-CREATE OR REPLACE FUNCTION mask_email(p_email text)
+CREATE FUNCTION mask_email(p_email text)
 RETURNS text
 LANGUAGE plpgsql
 IMMUTABLE
@@ -264,7 +277,7 @@ END;
 $$;
 
 -- Function: Mask phone numbers
-CREATE OR REPLACE FUNCTION mask_phone(p_phone text)
+CREATE FUNCTION mask_phone(p_phone text)
 RETURNS text
 LANGUAGE plpgsql
 IMMUTABLE
@@ -323,7 +336,7 @@ END;
 $$;
 
 -- Function: Mask sensitive JSONB fields
-CREATE OR REPLACE FUNCTION mask_sensitive_jsonb(p_metadata jsonb)
+CREATE FUNCTION mask_sensitive_jsonb(p_metadata jsonb)
 RETURNS jsonb
 LANGUAGE plpgsql
 IMMUTABLE
@@ -477,9 +490,9 @@ TO authenticated
 WITH CHECK (true);
 
 -- Create index for querying security events
-CREATE INDEX idx_security_events_created_at ON security_events(created_at DESC);
-CREATE INDEX idx_security_events_severity ON security_events(severity, created_at DESC);
-CREATE INDEX idx_security_events_type ON security_events(event_type, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_security_events_created_at ON security_events(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_security_events_severity ON security_events(severity, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_security_events_type ON security_events(event_type, created_at DESC);
 
 -- ============================================================================
 -- FUNCTION: Log security event

@@ -39,6 +39,22 @@ RETURNS jsonb
 ### Files Already Fixed
 - `20251006213000_phase1_rbac_system.sql` - All RBAC helper functions
 - `20251009201000_add_recovery_code_expiration.sql` - cleanup_expired_recovery_codes
+- `20251015120000_security_hardening_phase_a.sql` - All masking and security functions
+
+### Important: Views Depending on Functions
+
+When functions are used in views, you must drop the views BEFORE dropping the functions:
+
+```sql
+-- Drop views first
+DROP VIEW IF EXISTS system_logs_masked CASCADE;
+DROP VIEW IF EXISTS audit_logs_masked CASCADE;
+
+-- Then drop and recreate functions
+DROP FUNCTION IF EXISTS mask_ip(text) CASCADE;
+DROP FUNCTION IF EXISTS mask_ip(inet) CASCADE;
+CREATE FUNCTION mask_ip...
+```
 
 ---
 
@@ -161,6 +177,13 @@ SELECT id, user_id, action, resource_type, resource_id, details FROM audit_logs;
 
 ### "function name is not unique"
 **Fix**: Add `DROP FUNCTION IF EXISTS function_name(param_types) CASCADE;` before CREATE
+**Important**: If function is used in views, drop views first!
+
+### "index already exists"
+**Fix**: Use `CREATE INDEX IF NOT EXISTS index_name ON table_name(...);`
+
+### Storage policies - "must be owner of table objects"
+**Context**: This error appears but doesn't prevent migration from completing. The storage policies are created successfully. This is a permission warning related to the `storage.objects` system table.
 
 ---
 
