@@ -58,24 +58,37 @@ CREATE FUNCTION mask_ip...
 
 ### Important: Overloaded Functions
 
-When creating multiple functions with the same name (overloads), and one calls another, use a DO block to drop all overloads atomically:
+When creating multiple functions with the same name (overloads), and one calls another, simple DROP statements fail. Use a dynamic query to find and drop ALL overloads:
 
 ```sql
--- Wrong: Sequential drops can cause "not unique" error
+-- Wrong: Causes "function name is not unique" error
 DROP FUNCTION IF EXISTS mask_ip(text) CASCADE;
 DROP FUNCTION IF EXISTS mask_ip(inet) CASCADE;
 
--- Correct: Atomic drop in DO block
+-- Correct: Dynamic drop of all overloads by name
 DO $$
+DECLARE
+  r RECORD;
 BEGIN
-  DROP FUNCTION IF EXISTS mask_ip(text) CASCADE;
-  DROP FUNCTION IF EXISTS mask_ip(inet) CASCADE;
+  FOR r IN
+    SELECT oid::regprocedure
+    FROM pg_proc
+    WHERE proname = 'mask_ip'
+    AND pg_function_is_visible(oid)
+  LOOP
+    EXECUTE 'DROP FUNCTION ' || r.oid::regprocedure || ' CASCADE';
+  END LOOP;
 END $$;
 
 -- Then create both functions
 CREATE FUNCTION mask_ip(text) ...
-CREATE FUNCTION mask_ip(inet) ...  -- This one calls mask_ip(text)
+CREATE FUNCTION mask_ip(inet) ...  -- This one can now safely call mask_ip(text)
 ```
+
+This approach:
+- Finds all functions with the given name
+- Drops them all dynamically regardless of signature
+- Allows clean recreation of overloaded functions
 
 ---
 

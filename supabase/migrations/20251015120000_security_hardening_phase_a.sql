@@ -301,9 +301,17 @@ $$;
 -- Drop existing mask_ip functions if they exist (may have different signatures)
 -- Must drop both before creating either due to overload dependencies
 DO $$
+DECLARE
+  r RECORD;
 BEGIN
-  DROP FUNCTION IF EXISTS mask_ip(text) CASCADE;
-  DROP FUNCTION IF EXISTS mask_ip(inet) CASCADE;
+  FOR r IN
+    SELECT oid::regprocedure
+    FROM pg_proc
+    WHERE proname = 'mask_ip'
+    AND pg_function_is_visible(oid)
+  LOOP
+    EXECUTE 'DROP FUNCTION ' || r.oid::regprocedure || ' CASCADE';
+  END LOOP;
 END $$;
 
 -- Function: Mask IP addresses (keep first two octets) - accepts text
