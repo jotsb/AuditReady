@@ -155,7 +155,7 @@ CREATE POLICY "System admins can view all duplicates"
   USING (
     EXISTS (
       SELECT 1 FROM system_roles
-      WHERE user_id = auth.uid() AND admin = true
+      WHERE user_id = auth.uid() AND role = 'admin'
     )
   );
 
@@ -193,7 +193,7 @@ CREATE POLICY "Only system admins can manage impersonation sessions"
   USING (
     EXISTS (
       SELECT 1 FROM system_roles
-      WHERE user_id = auth.uid() AND admin = true
+      WHERE user_id = auth.uid() AND role = 'admin'
     )
   );
 
@@ -225,7 +225,7 @@ CREATE POLICY "Only system admins can view health metrics"
   USING (
     EXISTS (
       SELECT 1 FROM system_roles
-      WHERE user_id = auth.uid() AND admin = true
+      WHERE user_id = auth.uid() AND role = 'admin'
     )
   );
 
@@ -261,7 +261,7 @@ CREATE POLICY "Only system admins can view query logs"
   USING (
     EXISTS (
       SELECT 1 FROM system_roles
-      WHERE user_id = auth.uid() AND admin = true
+      WHERE user_id = auth.uid() AND role = 'admin'
     )
   );
 
@@ -282,7 +282,7 @@ DECLARE
 BEGIN
   -- Only system admins or business owners/managers can run this
   IF NOT EXISTS (
-    SELECT 1 FROM system_roles WHERE user_id = auth.uid() AND admin = true
+    SELECT 1 FROM system_roles WHERE user_id = auth.uid() AND role = 'admin'
   ) THEN
     RAISE EXCEPTION 'Only system administrators can detect duplicates';
   END IF;
@@ -433,7 +433,7 @@ DECLARE
 BEGIN
   -- Only system admins can access
   IF NOT EXISTS (
-    SELECT 1 FROM system_roles WHERE user_id = auth.uid() AND admin = true
+    SELECT 1 FROM system_roles WHERE user_id = auth.uid() AND role = 'admin'
   ) THEN
     RAISE EXCEPTION 'Only system administrators can view system health';
   END IF;
@@ -528,7 +528,7 @@ DECLARE
 BEGIN
   -- Only system admins can execute queries
   IF NOT EXISTS (
-    SELECT 1 FROM system_roles WHERE user_id = auth.uid() AND admin = true
+    SELECT 1 FROM system_roles WHERE user_id = auth.uid() AND role = 'admin'
   ) THEN
     RAISE EXCEPTION 'Only system administrators can execute queries';
   END IF;
