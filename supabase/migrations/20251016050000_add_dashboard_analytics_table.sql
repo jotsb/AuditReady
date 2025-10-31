@@ -70,7 +70,7 @@ CREATE POLICY "Users can read own analytics"
       user_id IS NULL
       AND business_id IN (
         SELECT business_id
-        FROM business_users
+        FROM business_members
         WHERE user_id = auth.uid()
       )
     )
@@ -155,7 +155,7 @@ BEGIN
     FROM receipts r
     INNER JOIN collections c ON r.collection_id = c.id
     WHERE c.business_id = p_business_id
-      AND c.user_id = p_user_id
+      AND c.created_by = p_user_id
       AND r.deleted_at IS NULL;
 
     -- Category breakdown (user-specific)
@@ -225,14 +225,14 @@ DECLARE
   v_business_id uuid;
   v_user_id uuid;
 BEGIN
-  -- Get business_id and user_id from the collection
+  -- Get business_id and created_by from the collection
   IF TG_OP = 'DELETE' THEN
-    SELECT c.business_id, c.user_id
+    SELECT c.business_id, c.created_by
     INTO v_business_id, v_user_id
     FROM collections c
     WHERE c.id = OLD.collection_id;
   ELSE
-    SELECT c.business_id, c.user_id
+    SELECT c.business_id, c.created_by
     INTO v_business_id, v_user_id
     FROM collections c
     WHERE c.id = NEW.collection_id;
@@ -274,9 +274,9 @@ BEGIN
 
   -- Calculate user-specific analytics for all users with collections
   FOR v_user IN
-    SELECT DISTINCT c.business_id, c.user_id
+    SELECT DISTINCT c.business_id, c.created_by as user_id
     FROM collections c
-    WHERE c.user_id IS NOT NULL
+    WHERE c.created_by IS NOT NULL
   LOOP
     PERFORM calculate_dashboard_analytics(v_user.business_id, v_user.user_id);
   END LOOP;
