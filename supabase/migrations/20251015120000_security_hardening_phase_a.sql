@@ -45,6 +45,8 @@ DROP POLICY IF EXISTS "Users can upload receipts to their collections" ON storag
 DROP POLICY IF EXISTS "Users can read receipts from their collections" ON storage.objects;
 DROP POLICY IF EXISTS "Users can update their receipt files" ON storage.objects;
 DROP POLICY IF EXISTS "Users can delete their receipt files" ON storage.objects;
+DROP POLICY IF EXISTS "Owners and managers can delete receipts" ON storage.objects;
+DROP POLICY IF EXISTS "Owners and managers can update receipts" ON storage.objects;
 
 -- Policy 1: Users can upload files to their accessible collections
 CREATE POLICY "Users can upload receipts to their collections"
@@ -297,8 +299,12 @@ END;
 $$;
 
 -- Drop existing mask_ip functions if they exist (may have different signatures)
-DROP FUNCTION IF EXISTS mask_ip(text) CASCADE;
-DROP FUNCTION IF EXISTS mask_ip(inet) CASCADE;
+-- Must drop both before creating either due to overload dependencies
+DO $$
+BEGIN
+  DROP FUNCTION IF EXISTS mask_ip(text) CASCADE;
+  DROP FUNCTION IF EXISTS mask_ip(inet) CASCADE;
+END $$;
 
 -- Function: Mask IP addresses (keep first two octets) - accepts text
 CREATE FUNCTION mask_ip(p_ip_address text)
@@ -499,6 +505,7 @@ CREATE INDEX IF NOT EXISTS idx_security_events_type ON security_events(event_typ
 -- ============================================================================
 
 -- Drop existing function if it exists (may have different signature)
+DROP FUNCTION IF EXISTS log_security_event(text, text, jsonb) CASCADE;
 DROP FUNCTION IF EXISTS log_security_event(text, text, uuid, text, text, jsonb) CASCADE;
 
 CREATE FUNCTION log_security_event(

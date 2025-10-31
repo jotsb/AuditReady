@@ -56,6 +56,27 @@ DROP FUNCTION IF EXISTS mask_ip(inet) CASCADE;
 CREATE FUNCTION mask_ip...
 ```
 
+### Important: Overloaded Functions
+
+When creating multiple functions with the same name (overloads), and one calls another, use a DO block to drop all overloads atomically:
+
+```sql
+-- Wrong: Sequential drops can cause "not unique" error
+DROP FUNCTION IF EXISTS mask_ip(text) CASCADE;
+DROP FUNCTION IF EXISTS mask_ip(inet) CASCADE;
+
+-- Correct: Atomic drop in DO block
+DO $$
+BEGIN
+  DROP FUNCTION IF EXISTS mask_ip(text) CASCADE;
+  DROP FUNCTION IF EXISTS mask_ip(inet) CASCADE;
+END $$;
+
+-- Then create both functions
+CREATE FUNCTION mask_ip(text) ...
+CREATE FUNCTION mask_ip(inet) ...  -- This one calls mask_ip(text)
+```
+
 ---
 
 ## 2. Non-Existent Column Errors
