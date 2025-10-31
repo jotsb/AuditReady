@@ -53,6 +53,19 @@ Fixed multiple migration files to ensure they are fully idempotent (can be run m
 - Updated from shorthand types like `int` to proper types like `integer`
 - Updated from missing parameters to complete signatures
 
+### 6. **Functions Not Created in Migrations** (20251028000000)
+**Problem:** Two functions (`get_receipts_with_thumbnails`, `log_security_event`) exist in the current database but are NOT created in any migration file.
+**Errors:**
+- `ERROR: function get_receipts_with_thumbnails(uuid, integer, integer) does not exist`
+- `ERROR: function log_security_event(text, text, jsonb) does not exist`
+
+**Root Cause:** Functions exist in production/current database but were never added to migration files, likely created manually or in deleted migrations.
+
+**Solution:**
+- Wrapped these two ALTER FUNCTION statements in conditional DO blocks
+- Check if function exists before attempting to ALTER
+- Migration now works both on fresh databases (skips these) and existing databases (alters them)
+
 ## Verification Results
 
 All migrations now follow PostgreSQL best practices for idempotency:

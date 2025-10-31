@@ -100,8 +100,18 @@ ALTER FUNCTION get_business_id_from_collection(collection_id_param uuid)
 ALTER FUNCTION get_business_role(user_id uuid, business_id uuid)
   SET search_path = public, extensions;
 
-ALTER FUNCTION get_receipts_with_thumbnails(p_collection_id uuid, p_offset integer, p_limit integer)
-  SET search_path = public, extensions;
+-- Conditionally alter if function exists (may not exist in fresh migrations)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p
+    JOIN pg_namespace n ON p.pronamespace = n.oid
+    WHERE n.nspname = 'public' AND p.proname = 'get_receipts_with_thumbnails'
+  ) THEN
+    ALTER FUNCTION get_receipts_with_thumbnails(p_collection_id uuid, p_offset integer, p_limit integer)
+      SET search_path = public, extensions;
+  END IF;
+END $$;
 
 ALTER FUNCTION get_system_config()
   SET search_path = public, extensions;
@@ -199,8 +209,18 @@ ALTER FUNCTION log_receipt_update()
 ALTER FUNCTION log_receipt_update_enhanced()
   SET search_path = public, extensions;
 
-ALTER FUNCTION log_security_event(p_event_type text, p_severity text, p_details jsonb)
-  SET search_path = public, extensions;
+-- Conditionally alter if function exists (may not exist in fresh migrations)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p
+    JOIN pg_namespace n ON p.pronamespace = n.oid
+    WHERE n.nspname = 'public' AND p.proname = 'log_security_event'
+  ) THEN
+    ALTER FUNCTION log_security_event(p_event_type text, p_severity text, p_details jsonb)
+      SET search_path = public, extensions;
+  END IF;
+END $$;
 
 ALTER FUNCTION log_system_event(p_level text, p_category text, p_message text, p_metadata jsonb, p_user_id uuid, p_session_id text, p_ip_address inet, p_user_agent text, p_stack_trace text, p_execution_time_ms integer)
   SET search_path = public, extensions;
