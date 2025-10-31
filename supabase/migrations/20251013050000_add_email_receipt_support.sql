@@ -90,13 +90,7 @@ CREATE POLICY "System admins can view all email inbox entries"
   ON email_receipts_inbox
   FOR SELECT
   TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.is_system_admin = true
-    )
-  );
+  USING (is_system_admin(auth.uid()));
 
 -- Business owners and managers can see their business's email inbox
 CREATE POLICY "Business members can view their business email inbox"
