@@ -66,7 +66,9 @@ END;
 $$;
 
 -- Function to delete expired recovery codes
-CREATE OR REPLACE FUNCTION cleanup_expired_recovery_codes()
+-- Drop first because return type changed from void to jsonb
+DROP FUNCTION IF EXISTS cleanup_expired_recovery_codes() CASCADE;
+CREATE FUNCTION cleanup_expired_recovery_codes()
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
