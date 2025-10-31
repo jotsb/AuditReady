@@ -102,6 +102,52 @@ The `CASCADE` keyword:
 
 ---
 
+## 3. View Referencing Non-Existent Columns
+
+### Symptom
+```
+ERROR: column table_name.column_name does not exist
+ERROR: relation "view_name" does not exist (when creating policies/grants)
+```
+
+### Cause
+Views created using columns that don't exist in the underlying table, or attempting to use columns added in later migrations.
+
+### Quick Fix Pattern
+
+1. Check what columns actually exist in the base table
+2. Remove references to non-existent columns from the view
+3. Ensure data types match (e.g., `inet` vs `text`)
+
+**Example - Type Mismatch:**
+```sql
+-- Wrong: ip_address is inet type, but mask_ip returns text
+CASE
+  WHEN is_admin THEN ip_address
+  ELSE mask_ip(ip_address)
+END AS ip_address
+
+-- Correct: Cast inet to text
+CASE
+  WHEN is_admin THEN host(ip_address)::text
+  ELSE mask_ip(ip_address)
+END AS ip_address
+```
+
+**Example - Missing Columns:**
+```sql
+-- Wrong: audit_logs doesn't have business_id, ip_address, status columns
+SELECT id, user_id, business_id, ip_address, status FROM audit_logs;
+
+-- Correct: Only use existing columns
+SELECT id, user_id, action, resource_type, resource_id, details FROM audit_logs;
+```
+
+### Files Already Fixed
+- `20251015120000_security_hardening_phase_a.sql` - Fixed view column references and type mismatches
+
+---
+
 ## Other Common Issues
 
 ### "policy already exists"
@@ -112,6 +158,9 @@ The `CASCADE` keyword:
 
 ### "table already exists"
 **Fix**: Use `CREATE TABLE IF NOT EXISTS table_name (...);`
+
+### "function name is not unique"
+**Fix**: Add `DROP FUNCTION IF EXISTS function_name(param_types) CASCADE;` before CREATE
 
 ---
 

@@ -283,8 +283,12 @@ BEGIN
 END;
 $$;
 
+-- Drop existing mask_ip functions if they exist (may have different signatures)
+DROP FUNCTION IF EXISTS mask_ip(text) CASCADE;
+DROP FUNCTION IF EXISTS mask_ip(inet) CASCADE;
+
 -- Function: Mask IP addresses (keep first two octets) - accepts text
-CREATE OR REPLACE FUNCTION mask_ip(p_ip_address text)
+CREATE FUNCTION mask_ip(p_ip_address text)
 RETURNS text
 LANGUAGE plpgsql
 IMMUTABLE
@@ -308,7 +312,7 @@ END;
 $$;
 
 -- Function: Mask IP addresses - accepts inet type
-CREATE OR REPLACE FUNCTION mask_ip(p_ip_address inet)
+CREATE FUNCTION mask_ip(p_ip_address inet)
 RETURNS text
 LANGUAGE plpgsql
 IMMUTABLE
@@ -382,10 +386,10 @@ SELECT
   END AS metadata,
   user_id,
   session_id,
-  -- Mask IP address for non-admins
+  -- Mask IP address for non-admins (cast to text since mask_ip returns text)
   CASE
     WHEN EXISTS (SELECT 1 FROM system_roles WHERE user_id = auth.uid() AND role = 'admin')
-    THEN ip_address
+    THEN host(ip_address)::text
     ELSE mask_ip(ip_address)
   END AS ip_address,
   user_agent,
@@ -398,6 +402,7 @@ FROM system_logs;
 GRANT SELECT ON system_logs_masked TO authenticated;
 
 -- View: Audit logs with PII masking for non-admins
+-- Note: audit_logs table only has: id, user_id, action, resource_type, resource_id, details, created_at
 CREATE OR REPLACE VIEW audit_logs_masked AS
 SELECT
   id,
@@ -405,24 +410,12 @@ SELECT
   action,
   resource_type,
   resource_id,
-  business_id,
   -- Mask details for non-admins
   CASE
     WHEN EXISTS (SELECT 1 FROM system_roles WHERE user_id = auth.uid() AND role = 'admin')
     THEN details
     ELSE mask_sensitive_jsonb(details)
   END AS details,
-  before_state,
-  after_state,
-  -- Mask IP address for non-admins
-  CASE
-    WHEN EXISTS (SELECT 1 FROM system_roles WHERE user_id = auth.uid() AND role = 'admin')
-    THEN ip_address
-    ELSE mask_ip(ip_address)
-  END AS ip_address,
-  user_agent,
-  status,
-  error_message,
   created_at
 FROM audit_logs;
 
@@ -492,7 +485,10 @@ CREATE INDEX idx_security_events_type ON security_events(event_type, created_at 
 -- FUNCTION: Log security event
 -- ============================================================================
 
-CREATE OR REPLACE FUNCTION log_security_event(
+-- Drop existing function if it exists (may have different signature)
+DROP FUNCTION IF EXISTS log_security_event(text, text, uuid, text, text, jsonb) CASCADE;
+
+CREATE FUNCTION log_security_event(
   p_event_type text,
   p_severity text,
   p_user_id uuid DEFAULT NULL,
