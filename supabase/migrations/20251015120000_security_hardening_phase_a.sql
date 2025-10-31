@@ -308,9 +308,9 @@ BEGIN
     SELECT oid::regprocedure
     FROM pg_proc
     WHERE proname = 'mask_ip'
-    AND pg_function_is_visible(oid)
+    AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
   LOOP
-    EXECUTE 'DROP FUNCTION ' || r.oid::regprocedure || ' CASCADE';
+    EXECUTE 'DROP FUNCTION IF EXISTS ' || r.oid::regprocedure || ' CASCADE';
   END LOOP;
 END $$;
 
@@ -345,7 +345,8 @@ LANGUAGE plpgsql
 IMMUTABLE
 AS $$
 BEGIN
-  RETURN mask_ip(host(p_ip_address));
+  -- Explicitly call the text version we just created
+  RETURN public.mask_ip(host(p_ip_address)::text);
 END;
 $$;
 
