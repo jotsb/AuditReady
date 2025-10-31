@@ -209,15 +209,29 @@ ALTER FUNCTION log_receipt_update()
 ALTER FUNCTION log_receipt_update_enhanced()
   SET search_path = public, extensions;
 
--- Conditionally alter if function exists (may not exist in fresh migrations)
+-- Conditionally alter log_security_event (signature changed in 20251015120000)
+-- Handle both old signature (3 params) and new signature (6 params)
 DO $$
 BEGIN
+  -- Try old signature first (3 params)
   IF EXISTS (
     SELECT 1 FROM pg_proc p
     JOIN pg_namespace n ON p.pronamespace = n.oid
     WHERE n.nspname = 'public' AND p.proname = 'log_security_event'
+    AND pg_get_function_identity_arguments(p.oid) = 'p_event_type text, p_severity text, p_details jsonb'
   ) THEN
     ALTER FUNCTION log_security_event(p_event_type text, p_severity text, p_details jsonb)
+      SET search_path = public, extensions;
+  END IF;
+
+  -- Try new signature (6 params)
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p
+    JOIN pg_namespace n ON p.pronamespace = n.oid
+    WHERE n.nspname = 'public' AND p.proname = 'log_security_event'
+    AND pg_get_function_identity_arguments(p.oid) = 'p_event_type text, p_severity text, p_user_id uuid, p_ip_address text, p_user_agent text, p_details jsonb'
+  ) THEN
+    ALTER FUNCTION log_security_event(p_event_type text, p_severity text, p_user_id uuid, p_ip_address text, p_user_agent text, p_details jsonb)
       SET search_path = public, extensions;
   END IF;
 END $$;
@@ -252,14 +266,23 @@ ALTER FUNCTION update_system_config(p_storage_settings jsonb, p_email_settings j
 
 -- The audit_logs_summary materialized view should only be accessible to system admins
 -- Let's ensure proper RLS-like protection via grants
+-- Note: This view is created in migration 20251009143715, so conditionally apply permissions
 
--- Revoke all default access
-REVOKE ALL ON public.audit_logs_summary FROM anon;
-REVOKE ALL ON public.audit_logs_summary FROM authenticated;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_matviews
+    WHERE schemaname = 'public' AND matviewname = 'audit_logs_summary'
+  ) THEN
+    -- Revoke all default access
+    REVOKE ALL ON public.audit_logs_summary FROM anon;
+    REVOKE ALL ON public.audit_logs_summary FROM authenticated;
 
--- Grant select only to postgres (superuser) and service_role
-GRANT SELECT ON public.audit_logs_summary TO postgres;
-GRANT SELECT ON public.audit_logs_summary TO service_role;
+    -- Grant select only to postgres (superuser) and service_role
+    GRANT SELECT ON public.audit_logs_summary TO postgres;
+    GRANT SELECT ON public.audit_logs_summary TO service_role;
+  END IF;
+END $$;
 
 -- Note: Materialized views don't support RLS directly
 -- Access should be controlled through the application layer
