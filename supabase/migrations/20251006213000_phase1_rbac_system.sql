@@ -256,12 +256,13 @@ ALTER TABLE receipt_approvals ENABLE ROW LEVEL SECURITY;
 -- ============================================================================
 
 -- Drop existing helper functions to avoid parameter name conflicts
-DROP FUNCTION IF EXISTS is_system_admin(uuid);
-DROP FUNCTION IF EXISTS is_technical_support(uuid);
-DROP FUNCTION IF EXISTS get_business_role(uuid, uuid);
-DROP FUNCTION IF EXISTS is_business_owner(uuid, uuid);
-DROP FUNCTION IF EXISTS is_business_owner_or_manager(uuid, uuid);
-DROP FUNCTION IF EXISTS is_business_member(uuid, uuid);
+-- CASCADE will drop dependent policies, which will be recreated by this migration
+DROP FUNCTION IF EXISTS is_system_admin(uuid) CASCADE;
+DROP FUNCTION IF EXISTS is_technical_support(uuid) CASCADE;
+DROP FUNCTION IF EXISTS get_business_role(uuid, uuid) CASCADE;
+DROP FUNCTION IF EXISTS is_business_owner(uuid, uuid) CASCADE;
+DROP FUNCTION IF EXISTS is_business_owner_or_manager(uuid, uuid) CASCADE;
+DROP FUNCTION IF EXISTS is_business_member(uuid, uuid) CASCADE;
 
 -- Check if user is a system admin
 CREATE FUNCTION is_system_admin(user_id uuid)
