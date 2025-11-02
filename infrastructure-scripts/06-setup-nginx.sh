@@ -8,11 +8,18 @@ events { worker_connections 1024; }
 http {
     include /etc/nginx/mime.types;
     default_type application/octet-stream;
+
+    # CRITICAL: Add .mjs MIME type for PDF.js worker
+    types {
+        application/javascript mjs;
+        text/javascript js mjs;
+    }
+
     sendfile on;
     keepalive_timeout 65;
     client_max_body_size 50M;
     gzip on;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+    gzip_types text/plain text/css application/json application/javascript text/javascript text/xml application/xml;
 
     server {
         listen 80;
