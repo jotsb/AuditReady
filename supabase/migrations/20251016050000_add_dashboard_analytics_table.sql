@@ -106,10 +106,10 @@ BEGIN
   IF p_user_id IS NULL THEN
     -- Business-wide stats
     SELECT
-      COALESCE(SUM(amount), 0),
+      COALESCE(SUM(total_amount), 0),
       COUNT(*),
-      COALESCE(SUM(CASE WHEN transaction_date >= v_start_of_month THEN amount ELSE 0 END), 0),
-      COALESCE(SUM(tax_amount), 0)
+      COALESCE(SUM(CASE WHEN transaction_date >= v_start_of_month THEN total_amount ELSE 0 END), 0),
+      COALESCE(SUM(gst_amount + pst_amount), 0)
     INTO
       v_total_expenses,
       v_receipt_count,
@@ -132,21 +132,21 @@ BEGIN
     FROM (
       SELECT
         r.category,
-        SUM(r.amount) as category_sum
+        SUM(r.total_amount) as category_sum
       FROM receipts r
       INNER JOIN collections c ON r.collection_id = c.id
       WHERE c.business_id = p_business_id
         AND r.deleted_at IS NULL
       GROUP BY r.category
     ) cat
-    LEFT JOIN expense_categories ec ON ec.id = cat.category AND ec.business_id = p_business_id;
+    LEFT JOIN expense_categories ec ON ec.name = cat.category;
   ELSE
     -- User-specific stats
     SELECT
-      COALESCE(SUM(amount), 0),
+      COALESCE(SUM(total_amount), 0),
       COUNT(*),
-      COALESCE(SUM(CASE WHEN transaction_date >= v_start_of_month THEN amount ELSE 0 END), 0),
-      COALESCE(SUM(tax_amount), 0)
+      COALESCE(SUM(CASE WHEN transaction_date >= v_start_of_month THEN total_amount ELSE 0 END), 0),
+      COALESCE(SUM(gst_amount + pst_amount), 0)
     INTO
       v_total_expenses,
       v_receipt_count,
@@ -170,15 +170,15 @@ BEGIN
     FROM (
       SELECT
         r.category,
-        SUM(r.amount) as category_sum
+        SUM(r.total_amount) as category_sum
       FROM receipts r
       INNER JOIN collections c ON r.collection_id = c.id
       WHERE c.business_id = p_business_id
-        AND c.user_id = p_user_id
+        AND c.created_by = p_user_id
         AND r.deleted_at IS NULL
       GROUP BY r.category
     ) cat
-    LEFT JOIN expense_categories ec ON ec.id = cat.category AND ec.business_id = p_business_id;
+    LEFT JOIN expense_categories ec ON ec.name = cat.category;
   END IF;
 
   -- Upsert analytics record
