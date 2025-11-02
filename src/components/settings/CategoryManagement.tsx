@@ -7,7 +7,7 @@ interface Category {
   id: string;
   name: string;
   description: string | null;
-  display_order: number;
+  sort_order: number;
 }
 
 export function CategoryManagement() {
@@ -45,7 +45,7 @@ export function CategoryManagement() {
       const { data, error } = await supabase
         .from('expense_categories')
         .select('*')
-        .order('display_order')
+        .order('sort_order')
         .range(startIndex, endIndex);
 
       if (error) throw error;
@@ -78,14 +78,14 @@ export function CategoryManagement() {
         return;
       }
 
-      const maxOrder = Math.max(...categories.map(c => c.display_order), 0);
+      const maxOrder = Math.max(...categories.map(c => c.sort_order), 0);
 
       const { error: insertError } = await supabase
         .from('expense_categories')
         .insert({
           name: trimmedName,
           description: newCategory.description.trim() || null,
-          display_order: maxOrder + 1,
+          sort_order: maxOrder + 1,
         });
 
       if (insertError) {
