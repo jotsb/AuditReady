@@ -93,6 +93,7 @@ export function SystemLogsPage() {
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [newLogsCount, setNewLogsCount] = useState(0);
+  const [realtimeStatus, setRealtimeStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -122,7 +123,13 @@ export function SystemLogsPage() {
   }, [isSystemAdmin]);
 
   useEffect(() => {
-    if (!autoRefresh || !isSystemAdmin) return;
+    if (!autoRefresh || !isSystemAdmin) {
+      setRealtimeStatus('disconnected');
+      return;
+    }
+
+    setRealtimeStatus('connecting');
+    logger.info('Initializing realtime subscription', { page: 'SystemLogsPage' }, 'CLIENT_ERROR');
 
     const channel = supabase
       .channel('system-logs-realtime')
@@ -133,6 +140,8 @@ export function SystemLogsPage() {
           table: 'system_logs'
         },
         async (payload) => {
+          logger.info('Received realtime log', { page: 'SystemLogsPage', logId: payload.new.id }, 'CLIENT_ERROR');
+
           if (isPaused) {
             setNewLogsCount(prev => prev + 1);
             return;
@@ -173,7 +182,26 @@ export function SystemLogsPage() {
           }, 300);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        logger.info('Realtime subscription status changed', {
+          page: 'SystemLogsPage',
+          status
+        }, 'CLIENT_ERROR');
+
+        if (status === 'SUBSCRIBED') {
+          setRealtimeStatus('connected');
+          logger.info('Realtime connected successfully', { page: 'SystemLogsPage' }, 'CLIENT_ERROR');
+        } else if (status === 'CHANNEL_ERROR') {
+          setRealtimeStatus('error');
+          logger.error('Realtime channel error', { page: 'SystemLogsPage' }, 'CLIENT_ERROR');
+        } else if (status === 'TIMED_OUT') {
+          setRealtimeStatus('error');
+          logger.error('Realtime connection timed out', { page: 'SystemLogsPage' }, 'CLIENT_ERROR');
+        } else if (status === 'CLOSED') {
+          setRealtimeStatus('disconnected');
+          logger.info('Realtime connection closed', { page: 'SystemLogsPage' }, 'CLIENT_ERROR');
+        }
+      });
 
     return () => {
       if (batchTimeoutRef.current) {
@@ -424,12 +452,21 @@ export function SystemLogsPage() {
               onClick={() => setAutoRefresh(!autoRefresh)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg transition font-medium ${
                 autoRefresh
-                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  ? realtimeStatus === 'connected'
+                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    : realtimeStatus === 'error'
+                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    : 'bg-yellow-600 text-white hover:bg-yellow-700'
                   : 'bg-slate-200 dark:bg-gray-700 text-slate-700 dark:text-gray-300 hover:bg-slate-300 dark:hover:bg-gray-600'
               }`}
+              title={autoRefresh ? `Status: ${realtimeStatus}` : 'Click to enable realtime'}
             >
-              <RefreshCw size={18} className={autoRefresh && !isPaused ? 'animate-spin' : ''} />
-              {autoRefresh ? 'Realtime ON' : 'Realtime OFF'}
+              <RefreshCw size={18} className={autoRefresh && !isPaused && realtimeStatus === 'connecting' ? 'animate-spin' : ''} />
+              {autoRefresh ? (
+                realtimeStatus === 'connected' ? 'Realtime ON' :
+                realtimeStatus === 'error' ? 'Connection Failed' :
+                realtimeStatus === 'connecting' ? 'Connecting...' : 'Disconnected'
+              ) : 'Realtime OFF'}
             </button>
           </div>
         </div>
