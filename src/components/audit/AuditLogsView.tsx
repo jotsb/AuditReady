@@ -142,7 +142,7 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
     if (scope === 'business' && !businessId) return;
 
     setRealtimeStatus('connecting');
-    logger.info('Initializing realtime subscription', { component: 'AuditLogsView', scope }, 'CLIENT_ERROR');
+    console.log('[Realtime Audit] Initializing subscription for audit_logs');
 
     const channel = supabase
       .channel('audit-logs-realtime')
@@ -153,7 +153,7 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
           table: 'audit_logs'
         },
         async (payload) => {
-          logger.info('Received realtime audit log', { component: 'AuditLogsView', logId: payload.new.id }, 'CLIENT_ERROR');
+          console.log('[Realtime Audit] Received log:', payload.new.id);
 
           if (isPaused) {
             setNewLogsCount(prev => prev + 1);
@@ -197,36 +197,32 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
             const logsToAdd = [...pendingLogsRef.current];
             pendingLogsRef.current = [];
 
-            if (isAtTopRef.current) {
-              setLogs(prev => [...logsToAdd, ...prev]);
-              setTotalCount(prev => prev + logsToAdd.length);
-            } else {
+            console.log('[Realtime Audit] Adding logs to UI:', logsToAdd.length, 'isAtTop:', isAtTopRef.current);
+
+            setLogs(prev => [...logsToAdd, ...prev]);
+            setTotalCount(prev => prev + logsToAdd.length);
+
+            if (!isAtTopRef.current) {
               setNewLogsCount(prev => prev + logsToAdd.length);
-              setLogs(prev => [...logsToAdd, ...prev]);
-              setTotalCount(prev => prev + logsToAdd.length);
             }
           }, 300);
         }
       )
       .subscribe((status) => {
-        logger.info('Realtime subscription status changed', {
-          component: 'AuditLogsView',
-          scope,
-          status
-        }, 'CLIENT_ERROR');
+        console.log('[Realtime Audit] Status changed:', status);
 
         if (status === 'SUBSCRIBED') {
           setRealtimeStatus('connected');
-          logger.info('Realtime connected successfully', { component: 'AuditLogsView' }, 'CLIENT_ERROR');
+          console.log('[Realtime Audit] Connected successfully');
         } else if (status === 'CHANNEL_ERROR') {
           setRealtimeStatus('error');
-          logger.error('Realtime channel error', { component: 'AuditLogsView' }, 'CLIENT_ERROR');
+          console.error('[Realtime Audit] Channel error');
         } else if (status === 'TIMED_OUT') {
           setRealtimeStatus('error');
-          logger.error('Realtime connection timed out', { component: 'AuditLogsView' }, 'CLIENT_ERROR');
+          console.error('[Realtime Audit] Connection timed out');
         } else if (status === 'CLOSED') {
           setRealtimeStatus('disconnected');
-          logger.info('Realtime connection closed', { component: 'AuditLogsView' }, 'CLIENT_ERROR');
+          console.log('[Realtime Audit] Connection closed');
         }
       });
 

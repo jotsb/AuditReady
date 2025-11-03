@@ -129,7 +129,7 @@ export function SystemLogsPage() {
     }
 
     setRealtimeStatus('connecting');
-    logger.info('Initializing realtime subscription', { page: 'SystemLogsPage' }, 'CLIENT_ERROR');
+    console.log('[Realtime] Initializing subscription for system_logs');
 
     const channel = supabase
       .channel('system-logs-realtime')
@@ -140,7 +140,7 @@ export function SystemLogsPage() {
           table: 'system_logs'
         },
         async (payload) => {
-          logger.info('Received realtime log', { page: 'SystemLogsPage', logId: payload.new.id }, 'CLIENT_ERROR');
+          console.log('[Realtime] Received log:', payload.new.id);
 
           if (isPaused) {
             setNewLogsCount(prev => prev + 1);
@@ -171,35 +171,32 @@ export function SystemLogsPage() {
             const logsToAdd = [...pendingLogsRef.current];
             pendingLogsRef.current = [];
 
-            if (isAtTopRef.current) {
-              setLogs(prev => [...logsToAdd, ...prev]);
-              setTotalCount(prev => prev + logsToAdd.length);
-            } else {
+            console.log('[Realtime] Adding logs to UI:', logsToAdd.length, 'isAtTop:', isAtTopRef.current);
+
+            setLogs(prev => [...logsToAdd, ...prev]);
+            setTotalCount(prev => prev + logsToAdd.length);
+
+            if (!isAtTopRef.current) {
               setNewLogsCount(prev => prev + logsToAdd.length);
-              setLogs(prev => [...logsToAdd, ...prev]);
-              setTotalCount(prev => prev + logsToAdd.length);
             }
           }, 300);
         }
       )
       .subscribe((status) => {
-        logger.info('Realtime subscription status changed', {
-          page: 'SystemLogsPage',
-          status
-        }, 'CLIENT_ERROR');
+        console.log('[Realtime] Status changed:', status);
 
         if (status === 'SUBSCRIBED') {
           setRealtimeStatus('connected');
-          logger.info('Realtime connected successfully', { page: 'SystemLogsPage' }, 'CLIENT_ERROR');
+          console.log('[Realtime] Connected successfully');
         } else if (status === 'CHANNEL_ERROR') {
           setRealtimeStatus('error');
-          logger.error('Realtime channel error', { page: 'SystemLogsPage' }, 'CLIENT_ERROR');
+          console.error('[Realtime] Channel error');
         } else if (status === 'TIMED_OUT') {
           setRealtimeStatus('error');
-          logger.error('Realtime connection timed out', { page: 'SystemLogsPage' }, 'CLIENT_ERROR');
+          console.error('[Realtime] Connection timed out');
         } else if (status === 'CLOSED') {
           setRealtimeStatus('disconnected');
-          logger.info('Realtime connection closed', { page: 'SystemLogsPage' }, 'CLIENT_ERROR');
+          console.log('[Realtime] Connection closed');
         }
       });
 
