@@ -14,6 +14,7 @@ import { BulkMoveModal } from '../components/receipts/BulkMoveModal';
 import { AdvancedFilterPanel } from '../components/receipts/AdvancedFilterPanel';
 import { ReceiptsHeader } from '../components/receipts/ReceiptsHeader';
 import { ReceiptThumbnail } from '../components/shared/ReceiptThumbnail';
+import { OnboardingWizard } from '../components/onboarding/OnboardingWizard';
 import { useReceiptsData, type Receipt } from '../hooks/useReceiptsData';
 import { useReceiptFilters } from '../hooks/useReceiptFilters';
 import { useReceiptSelection } from '../hooks/useReceiptSelection';
@@ -51,6 +52,7 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
   const [showBulkCategoryModal, setShowBulkCategoryModal] = useState(false);
   const [showBulkMoveModal, setShowBulkMoveModal] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   usePageTracking('Receipts', { section: 'receipts' });
 
@@ -1247,41 +1249,68 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
     );
   }
 
+  // Show onboarding wizard for new users without businesses or collections
   if (collections.length === 0 && !loading) {
     const hasBusiness = businesses.length > 0;
 
+    // If no business at all, show onboarding wizard
+    if (!hasBusiness && !showOnboarding) {
+      setShowOnboarding(true);
+    }
+
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-slate-200 dark:border-gray-700 p-8">
-          <div className="mb-4">
-            <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Receipt size={32} className="text-blue-600 dark:text-blue-400" />
-            </div>
-            <h3 className="text-xl font-semibold text-slate-800 dark:text-white mb-2">
-              {hasBusiness ? 'No Collections Found' : 'Getting Started'}
-            </h3>
-            <p className="text-slate-600 dark:text-gray-400 mb-6">
-              {hasBusiness
-                ? 'You need to create a collection before you can start managing receipts.'
-                : 'Before you can manage receipts, you need to set up your business and create a collection.'
-              }
-            </p>
-          </div>
-          <a
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              window.dispatchEvent(new CustomEvent('navigate-to-settings', {
-                detail: { section: hasBusiness ? 'collections' : 'business' }
-              }));
+      <>
+        {showOnboarding && (
+          <OnboardingWizard
+            onComplete={() => {
+              setShowOnboarding(false);
+              loadCollections();
             }}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
-          >
-            <Plus size={20} />
-            {hasBusiness ? 'Create Collection' : 'Set Up Business'}
-          </a>
+          />
+        )}
+
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-slate-200 dark:border-gray-700 p-8">
+            <div className="mb-4">
+              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Plus size={32} className="text-blue-600 dark:text-blue-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-slate-800 dark:text-white mb-2">
+                {hasBusiness ? 'No Collections Found' : 'Getting Started'}
+              </h3>
+              <p className="text-slate-600 dark:text-gray-400 mb-6">
+                {hasBusiness
+                  ? 'You need to create a collection before you can start managing receipts.'
+                  : 'Before you can manage receipts, you need to set up your business and create a collection.'
+                }
+              </p>
+            </div>
+            {hasBusiness ? (
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  window.dispatchEvent(new CustomEvent('navigate-to-settings', {
+                    detail: { section: 'collections' }
+                  }));
+                }}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+              >
+                <Plus size={20} />
+                Create Collection
+              </a>
+            ) : (
+              <button
+                onClick={() => setShowOnboarding(true)}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+              >
+                <Plus size={20} />
+                Start Setup
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
