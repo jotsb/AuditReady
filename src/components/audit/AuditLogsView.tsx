@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Activity, Filter, Download, AlertCircle, Sliders, Zap } from 'lucide-react';
+import { Activity, Filter, Download, AlertCircle, Sliders, Zap, Pause, Play, ArrowUp, RefreshCw } from 'lucide-react';
 import { SplunkLogEntry } from '../shared/SplunkLogEntry';
 import { logger } from '../../lib/logger';
 import { AdvancedLogFilterPanel, LogFilters } from './AdvancedLogFilterPanel';
@@ -97,10 +97,18 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
   const [filteredLogs, setFilteredLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [newLogsCount, setNewLogsCount] = useState(0);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const itemsPerPage = 50;
+
+  const logsContainerRef = useRef<HTMLDivElement>(null);
+  const pendingLogsRef = useRef<AuditLog[]>([]);
+  const batchTimeoutRef = useRef<NodeJS.Timeout>();
+  const isAtTopRef = useRef(true);
 
   const [filters, setFilters] = useState<LogFilters>({
     searchTerm: '',
@@ -124,6 +132,106 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
   useEffect(() => {
     applyFilters();
   }, [logs, filters]);
+
+  useEffect(() => {
+    if (!autoRefresh) return;
+    if (scope === 'business' && !businessId) return;
+
+    const channel = supabase
+      .channel('audit-logs-realtime')
+      .on('postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'audit_logs'
+        },
+        async (payload) => {
+          if (isPaused) {
+            setNewLogsCount(prev => prev + 1);
+            return;
+          }
+
+          const newLog = payload.new as AuditLog;
+
+          if (scope === 'business' && businessId) {
+            let includeLog = false;
+            if (newLog.resource_type === 'business' && newLog.resource_id === businessId) {
+              includeLog = true;
+            } else if (newLog.resource_type === 'collection' && newLog.details?.business_id === businessId) {
+              includeLog = true;
+            } else if (newLog.resource_type === 'receipt' && newLog.details?.collection_id) {
+              includeLog = true;
+            } else if (newLog.resource_type === 'business_member' && newLog.details?.business_id === businessId) {
+              includeLog = true;
+            }
+
+            if (!includeLog) return;
+          }
+
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name, email')
+            .eq('id', newLog.user_id)
+            .maybeSingle();
+
+          if (profile) {
+            newLog.profiles = profile;
+          }
+
+          pendingLogsRef.current.push(newLog);
+
+          if (batchTimeoutRef.current) {
+            clearTimeout(batchTimeoutRef.current);
+          }
+
+          batchTimeoutRef.current = setTimeout(() => {
+            const logsToAdd = [...pendingLogsRef.current];
+            pendingLogsRef.current = [];
+
+            if (isAtTopRef.current) {
+              setLogs(prev => [...logsToAdd, ...prev]);
+              setTotalCount(prev => prev + logsToAdd.length);
+            } else {
+              setNewLogsCount(prev => prev + logsToAdd.length);
+              setLogs(prev => [...logsToAdd, ...prev]);
+              setTotalCount(prev => prev + logsToAdd.length);
+            }
+          }, 300);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (batchTimeoutRef.current) {
+        clearTimeout(batchTimeoutRef.current);
+      }
+      supabase.removeChannel(channel);
+    };
+  }, [autoRefresh, scope, businessId, isPaused]);
+
+  useEffect(() => {
+    const container = logsContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      isAtTopRef.current = container.scrollTop < 100;
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    logsContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    setNewLogsCount(0);
+  };
+
+  const togglePause = () => {
+    setIsPaused(prev => !prev);
+    if (isPaused) {
+      setNewLogsCount(0);
+    }
+  };
 
   const loadAuditLogs = async () => {
     if (scope === 'business' && !businessId) return;
@@ -329,6 +437,33 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
                 : 'Activity log for this business'}
             </p>
           </div>
+          <div className="flex items-center gap-3">
+            {autoRefresh && (
+              <button
+                onClick={togglePause}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition font-medium ${
+                  isPaused
+                    ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+                title={isPaused ? 'Resume realtime updates' : 'Pause realtime updates'}
+              >
+                {isPaused ? <Play size={18} /> : <Pause size={18} />}
+                {isPaused ? 'Paused' : 'Live'}
+              </button>
+            )}
+            <button
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition font-medium ${
+                autoRefresh
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : 'bg-slate-200 dark:bg-gray-700 text-slate-700 dark:text-gray-300 hover:bg-slate-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              <RefreshCw size={18} className={autoRefresh && !isPaused ? 'animate-spin' : ''} />
+              {autoRefresh ? 'Realtime ON' : 'Realtime OFF'}
+            </button>
+          </div>
         </div>
       )}
 
@@ -429,7 +564,18 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
           </p>
         </div>
 
-        <div className="max-h-[600px] overflow-y-auto">
+        <div ref={logsContainerRef} className="max-h-[600px] overflow-y-auto relative">
+          {newLogsCount > 0 && (
+            <div className="sticky top-2 left-0 right-0 z-20 flex justify-center">
+              <button
+                onClick={scrollToTop}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all transform hover:scale-105 font-medium animate-bounce"
+              >
+                <ArrowUp size={18} />
+                {newLogsCount} New Log{newLogsCount !== 1 ? 's' : ''}
+              </button>
+            </div>
+          )}
           {loading ? (
             <div className="bg-white dark:bg-gray-800">
               <div className="hidden lg:grid lg:grid-cols-[auto_minmax(140px,1fr)_auto_minmax(120px,1fr)_minmax(100px,1fr)_minmax(120px,1.5fr)_auto] gap-2 px-4 py-2 bg-slate-100 dark:bg-gray-700 border-b border-slate-300 dark:border-gray-600 text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase sticky top-0 z-10">
