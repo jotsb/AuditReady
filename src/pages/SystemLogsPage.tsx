@@ -84,7 +84,8 @@ const SYSTEM_PRESETS = [
 
 export function SystemLogsPage() {
   const { isSystemAdmin } = useAuth();
-  usePageTracking('System Logs', { section: 'system_logs' });
+  // Disabled: Page tracking creates infinite loop with realtime logs
+  // usePageTracking('System Logs', { section: 'system_logs' });
 
   const [logs, setLogs] = useState<SystemLog[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<SystemLog[]>([]);
