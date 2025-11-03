@@ -25,21 +25,42 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
       return;
     }
 
+    if (!user?.id) {
+      setError('User session not found. Please log in again.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
+      logger.info('Creating business', {
+        userId: user.id,
+        businessName: businessName.trim(),
+        page: 'OnboardingWizard'
+      });
+
       const { data, error: businessError } = await supabase
         .from('businesses')
         .insert({
           name: businessName.trim(),
-          owner_id: user!.id,
+          owner_id: user.id,
           currency: 'CAD'
         })
         .select()
         .single();
 
-      if (businessError) throw businessError;
+      if (businessError) {
+        logger.error('Business creation error', businessError as Error, {
+          userId: user.id,
+          errorCode: businessError.code,
+          errorMessage: businessError.message,
+          errorDetails: businessError.details,
+          errorHint: businessError.hint,
+          page: 'OnboardingWizard'
+        });
+        throw businessError;
+      }
 
       setCreatedBusinessId(data.id);
       logger.userAction('business_created', 'business', {
@@ -52,7 +73,8 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
       setStep('create-collection');
     } catch (err: any) {
       logger.error('Failed to create business during onboarding', err as Error, {
-        page: 'OnboardingWizard'
+        page: 'OnboardingWizard',
+        errorDetails: JSON.stringify(err)
       });
       setError(err.message || 'Failed to create business');
     } finally {
@@ -66,20 +88,48 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
       return;
     }
 
+    if (!user?.id) {
+      setError('User session not found. Please log in again.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
+      const currentYear = new Date().getFullYear();
+
+      logger.info('Creating collection', {
+        userId: user.id,
+        businessId: createdBusinessId,
+        collectionName: collectionName.trim(),
+        year: currentYear,
+        page: 'OnboardingWizard'
+      });
+
       const { data, error: collectionError } = await supabase
         .from('collections')
         .insert({
           name: collectionName.trim(),
-          business_id: createdBusinessId
+          business_id: createdBusinessId,
+          year: currentYear,
+          created_by: user.id
         })
         .select()
         .single();
 
-      if (collectionError) throw collectionError;
+      if (collectionError) {
+        logger.error('Collection creation error', collectionError as Error, {
+          userId: user.id,
+          businessId: createdBusinessId,
+          errorCode: collectionError.code,
+          errorMessage: collectionError.message,
+          errorDetails: collectionError.details,
+          errorHint: collectionError.hint,
+          page: 'OnboardingWizard'
+        });
+        throw collectionError;
+      }
 
       logger.userAction('collection_created', 'collection', {
         collectionId: data.id,
@@ -95,7 +145,8 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
       }, 2000);
     } catch (err: any) {
       logger.error('Failed to create collection during onboarding', err as Error, {
-        page: 'OnboardingWizard'
+        page: 'OnboardingWizard',
+        errorDetails: JSON.stringify(err)
       });
       setError(err.message || 'Failed to create collection');
     } finally {
