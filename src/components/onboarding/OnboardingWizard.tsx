@@ -41,15 +41,10 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
       });
 
       const { data, error: businessError } = await supabase
-        .from('businesses')
-        .insert({
-          name: businessName.trim(),
-          owner_id: user.id,
-          created_by: user.id,
-          currency: 'CAD',
-          suspended: false
+        .rpc('create_business_for_user', {
+          p_name: businessName.trim(),
+          p_currency: 'CAD'
         })
-        .select()
         .single();
 
       if (businessError) {
