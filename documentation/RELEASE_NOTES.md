@@ -4,6 +4,134 @@
 
 ---
 
+## 🐛 Version 1.0.1 - "Production Bug Fixes" (2025-11-03)
+
+### 🎯 Overview
+Critical bug fixes for PDF functionality affecting both Bolt Cloud and self-hosted deployments. These fixes ensure consistent behavior across all deployment environments.
+
+### ✅ Bug Fixes
+
+#### 1. **Fixed PDF Upload Error on Self-Hosted Deployments**
+
+**Issue:**
+- PDF uploads failed with error: "Failed to load module script: Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of 'application/octet-stream'"
+- Affected only self-hosted deployments (Bolt Cloud worked fine)
+- Browser rejected PDF.js worker files served with incorrect MIME type
+
+**Root Cause:**
+- Nginx configuration didn't include MIME type mapping for `.mjs` files
+- Default MIME type `application/octet-stream` rejected by modern browsers for ES6 modules
+
+**Solution:**
+- Added MIME type mappings to Nginx configuration:
+  ```nginx
+  types {
+      application/javascript mjs;
+      text/javascript js mjs;
+  }
+  ```
+- Updated `infrastructure-scripts/06-setup-nginx.sh` for future deployments
+- Created quick fix script: `scripts/fix-pdf-worker-mime-type.sh`
+
+**Impact:**
+- ✅ PDF uploads now work on self-hosted deployments
+- ✅ Parity achieved between Bolt Cloud and self-hosted
+- ✅ Zero-downtime fix (Nginx reload only)
+
+**Files Changed:**
+- `infrastructure-scripts/06-setup-nginx.sh`
+- `scripts/fix-pdf-worker-mime-type.sh` (new)
+
+**Documentation:**
+- `FIX_PDF_UPLOAD_ERROR.md` - Detailed technical explanation
+- `QUICK_FIX_PDF_MIME.md` - Quick reference guide
+
+---
+
+#### 2. **Fixed Multipage Receipts Missing from PDF Exports**
+
+**Issue:**
+- Multipage receipts appeared in PDF export table but images were missing
+- Only the first page thumbnail showed in receipts list, no images in PDF
+- Affected both Bolt Cloud and self-hosted deployments
+
+**Root Cause:**
+- PDF export query only fetched parent receipts (`parent_receipt_id IS NULL`)
+- Parent receipts have no `file_path` (they're metadata containers)
+- Child receipts (pages) each have their own `file_path`
+- Export code tried to download from parent's null `file_path`
+
+**Solution:**
+- Enhanced `PDFExportReport.tsx` to detect multipage receipts
+- Query child receipts when parent has no `file_path`
+- Download all pages in order by `page_number`
+- Added clear page labeling: "Receipt #2 - Page 1 of 3"
+
+**Code Changes:**
+```typescript
+// Check if multipage receipt (no file_path on parent)
+if (!receipt.file_path) {
+  // Fetch all child pages
+  const { data: childPages } = await supabase
+    .from('receipts')
+    .select('file_path, page_number')
+    .eq('parent_receipt_id', receipt.id)
+    .order('page_number', { ascending: true });
+
+  // Download all pages
+  for (const page of childPages) {
+    // ... download and add to PDF
+  }
+}
+```
+
+**Impact:**
+- ✅ All receipt pages now appear in PDF exports
+- ✅ Clear labeling for multipage receipts
+- ✅ Pages appear in correct order
+- ✅ Works for both single and multipage receipts
+- ✅ Applies to both Bolt Cloud and self-hosted
+
+**Files Changed:**
+- `src/components/reports/PDFExportReport.tsx`
+
+**Documentation:**
+- `FIX_MULTIPAGE_PDF_EXPORT.md`
+
+---
+
+### 📊 Testing
+
+Both fixes have been tested and verified on:
+- ✅ Bolt Cloud deployment
+- ✅ Self-hosted Unraid deployment
+
+**Test Cases:**
+1. Upload scanned PDF files (single and multi-page)
+2. Create multipage receipts via camera capture
+3. Export receipts to PDF with images enabled
+4. Verify all pages appear with correct labels
+
+---
+
+### 🚀 Deployment
+
+**Self-Hosted Deployment:**
+1. Build frontend: `npm run build`
+2. Copy to server: Deploy `dist/` folder
+3. Restart Nginx: `docker restart auditproof-nginx`
+4. Hard refresh browser (Ctrl+Shift+R)
+
+**Nginx MIME Fix (Existing Deployments):**
+```bash
+bash /mnt/user/auditproof/scripts/fix-pdf-worker-mime-type.sh
+```
+
+**Bolt Cloud:**
+- Already deployed automatically
+
+---
+
 ## 📦 Version 1.0.0 - "Security & Protection" (2025-10-21)
 
 ### 🎯 Overview

@@ -1,21 +1,54 @@
 # Audit Proof - TODO & Implementation Status
 
-**Last Updated:** 2025-10-21 (Week 1: Security & Protection Complete)
+**Last Updated:** 2025-11-03 (Self-Hosted Migration & Production Fixes)
 **Priority Legend:** 🚨 Critical | 🔴 High | 🟡 Medium | 🟢 Nice to Have | ✅ Completed
+
+---
+
+## 🚀 Latest Updates (2025-11-03)
+
+### Self-Hosted Deployment & Critical Bug Fixes
+
+**Self-Hosted Migration Complete:**
+- ✅ **Unraid Deployment:** Successfully migrated application to self-hosted Unraid server
+- ✅ **Nginx Configuration:** Fixed PDF.js worker `.mjs` MIME type issue
+- ✅ **Infrastructure Scripts:** Updated `06-setup-nginx.sh` with proper MIME type mappings
+- ✅ **Quick Fix Script:** Created `scripts/fix-pdf-worker-mime-type.sh` for existing deployments
+- 🏗️ **Production Ready:** Self-hosted deployment now matches Bolt Cloud functionality
+- 📄 **Documentation:** `FIX_PDF_UPLOAD_ERROR.md`, `QUICK_FIX_PDF_MIME.md`
+
+**Critical Bug Fixes (Both Platforms):**
+- ✅ **PDF Upload Error:** Fixed "MIME type application/octet-stream" error on self-hosted
+  - 🐛 **Issue:** Nginx served `.mjs` files with wrong MIME type
+  - 🔧 **Solution:** Added `application/javascript mjs` and `text/javascript mjs` MIME mappings
+  - 📊 **Impact:** PDF uploads now work identically on Bolt Cloud and self-hosted
+
+- ✅ **Multipage Receipt Export:** Fixed missing images in PDF exports
+  - 🐛 **Issue:** Parent receipts have no `file_path`, only child pages do
+  - 🔧 **Solution:** Query child receipts and download all pages
+  - 📊 **Impact:** All pages now appear with labels "Receipt #2 - Page 1 of 3"
+  - 🌐 **Affected:** Both Bolt Cloud and self-hosted deployments
+
+**Technical Improvements:**
+- ✅ Enhanced `PDFExportReport.tsx` to handle multipage receipts properly
+- ✅ Added page number tracking and labeling in PDF exports
+- ✅ Nginx MIME type configuration automated for future deployments
+- ✅ Zero-downtime deployment process documented
+- 📊 Updated completion count: 169 → 173 tasks (+4 deployment/fixes)
 
 ---
 
 ## 📊 Overall Progress
 
-### **Total Progress: 54.5% Complete**
+### **Total Progress: 55.8% Complete**
 ```
-██████████████▓▓░░░░░░░░░░░░░░░░ 169/310 tasks completed
+██████████████▓▓░░░░░░░░░░░░░░░░ 173/310 tasks completed
 ```
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| ✅ **Completed** | **169** | **54.5%** |
-| ⏳ **Pending** | **141** | **45.5%** |
+| ✅ **Completed** | **173** | **55.8%** |
+| ⏳ **Pending** | **137** | **44.2%** |
 | **Total Tasks** | **310** | **100%** |
 
 **Week 1: Security & Protection Complete (2025-10-21):**
