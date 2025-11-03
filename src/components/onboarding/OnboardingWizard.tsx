@@ -45,7 +45,8 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
         .insert({
           name: businessName.trim(),
           owner_id: user.id,
-          currency: 'CAD'
+          currency: 'CAD',
+          suspended: false
         })
         .select()
         .single();
