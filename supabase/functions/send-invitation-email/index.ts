@@ -302,7 +302,7 @@ If you didn't expect this invitation, you can safely ignore this email.
 
       const apiTime = Date.now() - apiStartTime;
 
-      const executionTime = Date.now() - startTime;
+      const executionTime = Math.round(Date.now() - startTime);
       await supabase.rpc('log_system_event', {
         p_level: 'INFO',
         p_category: 'EXTERNAL_API',
@@ -331,7 +331,7 @@ If you didn't expect this invitation, you can safely ignore this email.
         }
       );
     } catch (emailError) {
-      const apiTime = Date.now() - apiStartTime;
+      const apiTime = Math.round(Date.now() - apiStartTime);
       const emailErrorMessage = emailError instanceof Error ? emailError.message : 'Unknown email error';
 
       await supabase.rpc('log_system_event', {
@@ -355,7 +355,7 @@ If you didn't expect this invitation, you can safely ignore this email.
       throw new Error(`Failed to send email: ${emailErrorMessage}`);
     }
   } catch (error) {
-    const executionTime = Date.now() - startTime;
+    const executionTime = Math.round(Date.now() - startTime);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const stackTrace = error instanceof Error ? error.stack : null;
 
