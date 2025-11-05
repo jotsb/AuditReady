@@ -25,6 +25,7 @@ function AppContent() {
 
     if (path === '/reset-password') return 'reset-password';
     if (path === '/accept-invite') return 'accept-invite';
+    if (path === '/auth' || path === '/login') return 'auth';
     if (path === '/receipts') return 'receipts';
     if (path === '/receipt-details') return 'receipt-details';
     if (path === '/reports') return 'reports';
@@ -63,6 +64,8 @@ function AppContent() {
         setCurrentView('reset-password');
       } else if (path === '/accept-invite') {
         setCurrentView('accept-invite');
+      } else if (path === '/auth' || path === '/login') {
+        setCurrentView('auth');
       } else if (path === '/receipts') {
         setCurrentView('receipts');
       } else if (path === '/receipt-details') {
@@ -108,6 +111,10 @@ function AppContent() {
 
   if (currentView === 'accept-invite') {
     return <AcceptInvitePage />;
+  }
+
+  if (currentView === 'auth') {
+    return <AuthPage />;
   }
 
   if (!user || mfaPending) {

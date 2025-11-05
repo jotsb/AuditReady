@@ -153,8 +153,9 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const baseUrl = Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", "") || "";
-    const inviteLink = `https://new-chat-5w59.bolt.host/accept-invite?token=${token}`;
+    // Use the frontend URL from environment or construct it from SUPABASE_URL
+    const frontendUrl = Deno.env.get("FRONTEND_URL") || Deno.env.get("SUPABASE_URL")?.replace("/rest/v1", "").replace("supabase.co", "auditproof.ca") || "";
+    const inviteLink = `${frontendUrl}/accept-invite?token=${token}`;
 
     const emailHtml = `
       <!DOCTYPE html>
