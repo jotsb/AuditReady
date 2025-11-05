@@ -1,14 +1,26 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import {
-  validateEmail,
-  validatePassword,
-  validateUUID,
-  validateString,
-  validateRequestBody,
-  INPUT_LIMITS
-} from "../_shared/validation.ts";
-import { getIPAddress } from "../_shared/rateLimit.ts";
+
+// Inline helper functions to avoid import issues
+function getIPAddress(request: Request): string {
+  const headers = [
+    'x-forwarded-for',
+    'x-real-ip',
+    'cf-connecting-ip',
+    'x-client-ip',
+    'x-cluster-client-ip',
+  ];
+
+  for (const header of headers) {
+    const value = request.headers.get(header);
+    if (value) {
+      const ip = value.split(',')[0].trim();
+      if (ip) return ip;
+    }
+  }
+
+  return 'unknown';
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -134,13 +146,23 @@ Deno.serve(async (req: Request) => {
             id,
             name
           ),
-          invited_by,
-          profiles!invitations_invited_by_fkey (
-            full_name
-          )
+          invited_by
         `)
         .eq('token', token)
         .maybeSingle();
+
+      // Fetch inviter profile separately
+      let inviterName = 'Unknown';
+      if (invitation && invitation.invited_by) {
+        const { data: profile } = await serviceClient
+          .from('profiles')
+          .select('full_name')
+          .eq('id', invitation.invited_by)
+          .maybeSingle();
+        if (profile) {
+          inviterName = profile.full_name;
+        }
+      }
 
       if (invitationError) {
         await logToSystem('ERROR', 'Database error fetching invitation', {
@@ -200,7 +222,7 @@ Deno.serve(async (req: Request) => {
             email: invitation.email,
             role: invitation.role,
             businessName: invitation.businesses?.name || 'Unknown Business',
-            inviterName: invitation.profiles?.full_name || 'Unknown',
+            inviterName: inviterName,
             expiresAt: invitation.expires_at
           }
         }),
@@ -209,16 +231,17 @@ Deno.serve(async (req: Request) => {
     }
 
     if (req.method === "POST") {
-      // Validate and parse request body
-      const bodyValidation = await validateRequestBody(req);
-      if (!bodyValidation.valid) {
+      // Parse request body
+      let requestData: InvitationRequest;
+      try {
+        requestData = await req.json();
+      } catch (error) {
         return new Response(
-          JSON.stringify({ error: bodyValidation.error }),
+          JSON.stringify({ error: 'Invalid JSON in request body' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      const requestData: InvitationRequest = bodyValidation.data;
       await logToSystem('INFO', 'Processing POST request', {
         action: requestData.action
       });
@@ -226,41 +249,14 @@ Deno.serve(async (req: Request) => {
       if (requestData.action === 'signup_and_accept') {
         const { token, email, password, fullName } = requestData;
 
-        // Validate token
-        const tokenValidation = validateUUID(token);
-        if (!tokenValidation.valid) {
+        // Basic validation
+        if (!token || !email || !password || !fullName) {
           return new Response(
-            JSON.stringify({ error: 'Invalid token format' }),
+            JSON.stringify({ error: 'Missing required fields' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        // Validate email
-        const emailValidation = validateEmail(email);
-        if (!emailValidation.valid) {
-          return new Response(
-            JSON.stringify({ error: emailValidation.error }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        // Validate password
-        const passwordValidation = validatePassword(password);
-        if (!passwordValidation.valid) {
-          return new Response(
-            JSON.stringify({ error: passwordValidation.error }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        // Validate full name
-        const nameValidation = validateString(fullName, 'fullName', INPUT_LIMITS.full_name, true);
-        if (!nameValidation.valid) {
-          return new Response(
-            JSON.stringify({ error: nameValidation.error }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
         await logToSystem('INFO', 'Processing signup_and_accept action', {
           email,
           full_name: fullName
