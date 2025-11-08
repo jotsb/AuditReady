@@ -459,7 +459,7 @@ export default function AcceptInvitePage() {
                 <button
                   onClick={() => {
                     sessionStorage.setItem('pendingInviteToken', token || '');
-                    navigate('/login');
+                    window.location.href = '/auth';
                   }}
                   className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                 >
