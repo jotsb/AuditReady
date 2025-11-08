@@ -70,6 +70,13 @@ export function LoginForm({ onToggleMode, onForgotPassword, onMFARequired }: Log
       setLoading(false);
     } else {
       logger.auth('login_success', true, { email });
+
+      const pendingToken = sessionStorage.getItem('pendingInviteToken');
+      if (pendingToken) {
+        sessionStorage.removeItem('pendingInviteToken');
+        window.location.href = `/accept-invite?token=${pendingToken}`;
+      }
+
       setLoading(false);
     }
   };
