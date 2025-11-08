@@ -217,14 +217,26 @@ If you didn't expect this invitation, you can safely ignore this email.
     const smtpPassword = Deno.env.get("SMTP_PASSWORD");
 
     if (!smtpHost || !smtpPort || !smtpUser || !smtpPassword) {
+      const missingVars = [];
+      if (!smtpHost) missingVars.push('SMTP_HOST');
+      if (!smtpPort) missingVars.push('SMTP_PORT');
+      if (!smtpUser) missingVars.push('SMTP_USER');
+      if (!smtpPassword) missingVars.push('SMTP_PASSWORD');
+
       await supabase.rpc('log_system_event', {
-        p_level: 'WARN',
+        p_level: 'ERROR',
         p_category: 'EDGE_FUNCTION',
-        p_message: 'SMTP credentials not configured',
-        p_metadata: { email, inviteLink, function: 'send-invitation-email' },
+        p_message: 'SMTP credentials not configured - emails cannot be sent',
+        p_metadata: {
+          email,
+          inviteLink,
+          function: 'send-invitation-email',
+          missingVariables: missingVars,
+          warning: 'Configure SMTP environment variables in edge functions to enable email sending'
+        },
         p_user_id: null,
         p_session_id: null,
-        p_ip_address: null,
+        p_ip_address: ipAddress,
         p_user_agent: req.headers.get('user-agent'),
         p_stack_trace: null,
         p_execution_time_ms: null
@@ -232,12 +244,13 @@ If you didn't expect this invitation, you can safely ignore this email.
 
       return new Response(
         JSON.stringify({
-          success: true,
-          message: "Email service not configured. Use the invitation link from the Team page.",
+          success: false,
+          error: "Email service not configured. Please contact your system administrator.",
+          missingVariables: missingVars,
           inviteLink
         }),
         {
-          status: 200,
+          status: 500,
           headers: {
             ...corsHeaders,
             "Content-Type": "application/json",
