@@ -38,12 +38,12 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // Rate limiting: 3 emails per hour per IP
+  // Rate limiting: 20 emails per hour per IP (reasonable for team invitations)
   const ipAddress = getIPAddress(req);
   const { data: rateLimitResult } = await supabase.rpc('check_rate_limit', {
     p_identifier: ipAddress,
     p_action_type: 'email',
-    p_max_attempts: 3,
+    p_max_attempts: 20,
     p_window_minutes: 60
   });
 
