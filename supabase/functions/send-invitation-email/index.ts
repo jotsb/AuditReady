@@ -281,9 +281,10 @@ If you didn't expect this invitation, you can safely ignore this email.
         host: smtpHost,
         port: parseInt(smtpPort),
         ssl: true,
+        tls: true,
       });
 
-      const message = {
+      await client.sendAsync({
         from: `Audit Proof <${smtpUser}>`,
         to: email,
         subject: `You've been invited to join ${businessName || "a team"} on Audit Proof`,
@@ -294,24 +295,6 @@ If you didn't expect this invitation, you can safely ignore this email.
             alternative: true,
           },
         ],
-      };
-
-      const headers: Record<string, string> = {
-        'X-Mailer': 'Audit Proof',
-        'X-Priority': '3',
-        'X-MSMail-Priority': 'Normal',
-        'Importance': 'Normal',
-        'MIME-Version': '1.0',
-        'Message-ID': `<${Date.now()}.${Math.random().toString(36).substring(2)}@auditproof.ca>`,
-        'Reply-To': smtpUser,
-        'From': `Audit Proof <noreply@auditproof.ca>`,
-        'Return-Path': smtpUser,
-        'Content-Type': 'multipart/alternative',
-      };
-
-      await client.sendAsync({
-        ...message,
-        headers,
       });
 
       const apiTime = Date.now() - apiStartTime;
