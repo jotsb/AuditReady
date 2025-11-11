@@ -214,14 +214,14 @@ If you didn't expect this invitation, you can safely ignore this email.
     const smtpHost = Deno.env.get("SMTP_HOST");
     const smtpPort = Deno.env.get("SMTP_PORT");
     const smtpUser = Deno.env.get("SMTP_USER");
-    const smtpPassword = Deno.env.get("SMTP_PASS");
+    const smtpPassword = Deno.env.get("SMTP_PASSWORD") || Deno.env.get("SMTP_PASS");
 
     if (!smtpHost || !smtpPort || !smtpUser || !smtpPassword) {
       const missingVars = [];
       if (!smtpHost) missingVars.push('SMTP_HOST');
       if (!smtpPort) missingVars.push('SMTP_PORT');
       if (!smtpUser) missingVars.push('SMTP_USER');
-      if (!smtpPassword) missingVars.push('SMTP_PASS');
+      if (!smtpPassword) missingVars.push('SMTP_PASSWORD or SMTP_PASS');
 
       await supabase.rpc('log_system_event', {
         p_level: 'ERROR',
