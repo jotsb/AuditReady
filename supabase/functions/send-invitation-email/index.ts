@@ -21,6 +21,7 @@ interface InvitationPayload {
   token: string;
   inviterName?: string;
   businessName?: string;
+  frontendUrl?: string;
 }
 
 Deno.serve(async (req: Request) => {
@@ -75,7 +76,7 @@ Deno.serve(async (req: Request) => {
     }
 
     payload = bodyValidation.data;
-    const { email, role, token, inviterName, businessName } = payload;
+    const { email, role, token, inviterName, businessName, frontendUrl } = payload;
 
     const emailValidation = validateEmail(email);
     if (!emailValidation.valid) {
@@ -152,9 +153,9 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Use the frontend URL from environment or construct it from SUPABASE_URL
-    const frontendUrl = Deno.env.get("FRONTEND_URL") || Deno.env.get("SUPABASE_URL")?.replace("/rest/v1", "").replace("supabase.co", "auditproof.ca") || "";
-    const inviteLink = `${frontendUrl}/accept-invite?token=${token}`;
+    // Use the frontend URL from the request payload, or fall back to environment variables
+    const baseUrl = frontendUrl || Deno.env.get("FRONTEND_URL") || Deno.env.get("SUPABASE_URL")?.replace("/rest/v1", "").replace("supabase.co", "auditproof.ca") || "";
+    const inviteLink = `${baseUrl}/accept-invite?token=${token}`;
 
     const emailHtml = `
       <!DOCTYPE html>
