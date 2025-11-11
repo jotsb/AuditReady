@@ -5,7 +5,33 @@
 
 ---
 
-## 🚀 Latest Updates (2025-11-03)
+## 🚀 Latest Updates (2025-11-11)
+
+### Team Invitation System Fixes
+
+**Email Invitation URL Fix:**
+- ✅ **Dynamic URL Generation:** Invitation emails now use correct URL based on environment
+  - 🐛 **Issue:** Emails always contained `localhost:5173` URLs regardless of deployment
+  - 🔧 **Solution:** Edge function now detects origin from request headers (`Origin` or `Referer`)
+  - 📊 **Impact:** Invitations work correctly for localhost, IP addresses, and domain names
+  - 🌐 **Environments:** Automatically adapts to Bolt Cloud, self-hosted, or local development
+
+**Navigation Fix for Invitation Flow:**
+- ✅ **Fixed Kong Authentication Error:** "Log In to Accept" button now works correctly
+  - 🐛 **Issue:** Clicking button redirected to `/auth` which hit Kong's Basic auth instead of React app
+  - 🔧 **Solution:** Changed navigation from `/auth` to `/` (root) which always serves React app
+  - 📊 **Impact:** Users can seamlessly accept invitations without authentication errors
+  - 🏗️ **Files Changed:** `src/pages/AcceptInvitePage.tsx`, `supabase/functions/send-invitation-email/index.ts`
+
+**Technical Improvements:**
+- ✅ Enhanced `send-invitation-email` edge function with dynamic origin detection
+- ✅ Updated all invitation navigation paths to avoid proxy conflicts
+- ✅ End-to-end invitation flow fully tested and working
+- 📊 Updated completion count: 173 → 175 tasks (+2 invitation fixes)
+
+---
+
+## 🚀 Previous Updates (2025-11-03)
 
 ### Self-Hosted Deployment & Critical Bug Fixes
 
@@ -40,15 +66,15 @@
 
 ## 📊 Overall Progress
 
-### **Total Progress: 55.8% Complete**
+### **Total Progress: 56.5% Complete**
 ```
-██████████████▓▓░░░░░░░░░░░░░░░░ 173/310 tasks completed
+██████████████▓▓░░░░░░░░░░░░░░░░ 175/310 tasks completed
 ```
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| ✅ **Completed** | **173** | **55.8%** |
-| ⏳ **Pending** | **137** | **44.2%** |
+| ✅ **Completed** | **175** | **56.5%** |
+| ⏳ **Pending** | **135** | **43.5%** |
 | **Total Tasks** | **310** | **100%** |
 
 **Week 1: Security & Protection Complete (2025-10-21):**

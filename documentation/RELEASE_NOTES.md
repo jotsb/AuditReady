@@ -4,6 +4,109 @@
 
 ---
 
+## 🐛 Version 1.0.2 - "Team Invitation Fixes" (2025-11-11)
+
+### 🎯 Overview
+Critical fixes for the team invitation system to ensure invitations work correctly across all deployment environments (localhost, self-hosted, and cloud).
+
+### ✅ Bug Fixes
+
+#### 1. **Fixed Dynamic Invitation URL Generation**
+
+**Issue:**
+- Invitation emails always contained `localhost:5173` URLs regardless of deployment environment
+- Users on production domains or IP addresses received unusable invitation links
+- Only worked for local development environment
+
+**Root Cause:**
+- Edge function hard-coded `http://localhost:5173` in invitation email template
+- No logic to detect the actual environment or origin of the request
+
+**Solution:**
+- Enhanced `send-invitation-email` edge function to detect origin dynamically:
+  ```typescript
+  // Detect the frontend URL from request headers
+  const origin = req.headers.get('Origin') || req.headers.get('Referer');
+  let frontendUrl = 'http://localhost:5173'; // fallback
+
+  if (origin) {
+    try {
+      const url = new URL(origin);
+      frontendUrl = `${url.protocol}//${url.host}`;
+    } catch (e) {
+      // Use fallback
+    }
+  }
+
+  const invitationUrl = `${frontendUrl}/accept-invite?token=${token}`;
+  ```
+
+**Impact:**
+- ✅ Invitations work correctly for localhost development
+- ✅ Invitations work correctly for IP-based deployments (e.g., `http://192.168.1.100`)
+- ✅ Invitations work correctly for domain-based deployments (e.g., `https://test.auditproof.ca`)
+- ✅ Automatic environment detection with sensible fallback
+
+**Files Changed:**
+- `supabase/functions/send-invitation-email/index.ts`
+
+---
+
+#### 2. **Fixed Kong Authentication Error on Invitation Acceptance**
+
+**Issue:**
+- Clicking "Log In to Accept" button showed Kong Basic authentication prompt
+- Error: "401 Unauthorized" with `WWW-Authenticate: Basic realm="kong"`
+- Users couldn't log in to accept invitations on self-hosted deployments
+
+**Root Cause:**
+- Button redirected to `/auth` path
+- Nginx proxy routed `/auth` to Kong (Supabase's internal API gateway) instead of React app
+- Kong requires Basic authentication for its endpoints
+
+**Solution:**
+- Changed all navigation from `/auth` to `/` (root path):
+  ```typescript
+  // Before: window.location.href = '/auth';
+  // After:  window.location.href = '/';
+  ```
+- Root path always serves React frontend app
+- React Router detects unauthenticated users and shows login page automatically
+
+**Impact:**
+- ✅ "Log In to Accept" button now works correctly
+- ✅ "Go to Login" button works on error pages
+- ✅ Account creation redirects work properly
+- ✅ No Kong authentication prompts
+- ✅ Seamless invitation acceptance flow
+
+**Files Changed:**
+- `src/pages/AcceptInvitePage.tsx` (3 navigation fixes)
+
+---
+
+### 📋 Testing Checklist
+
+To verify these fixes work correctly:
+
+1. **Test Invitation URL Generation:**
+   - [ ] Send invitation from localhost - check email contains `http://localhost:5173`
+   - [ ] Send invitation from IP address - check email contains IP address
+   - [ ] Send invitation from domain - check email contains domain name
+
+2. **Test Invitation Acceptance Flow:**
+   - [ ] Click invitation link from email - loads accept-invite page
+   - [ ] Click "Log In to Accept" - shows login page (not Kong auth)
+   - [ ] Log in with invited email - can accept invitation
+   - [ ] Create new account (if needed) - redirects to dashboard after acceptance
+
+3. **Test Edge Cases:**
+   - [ ] Expired invitation - shows clear error message
+   - [ ] Invalid token - shows clear error message
+   - [ ] Wrong user logged in - shows mismatch warning with logout option
+
+---
+
 ## 🐛 Version 1.0.1 - "Production Bug Fixes" (2025-11-03)
 
 ### 🎯 Overview
