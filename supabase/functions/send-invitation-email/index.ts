@@ -262,7 +262,13 @@ If you didn't expect this invitation, you can safely ignore this email.
       p_level: 'INFO',
       p_category: 'EXTERNAL_API',
       p_message: 'Sending invitation email via SMTP',
-      p_metadata: { email, businessName, smtpHost, function: 'send-invitation-email' },
+      p_metadata: {
+        email,
+        businessName,
+        smtpHost,
+        smtpPort,
+        function: 'send-invitation-email'
+      },
       p_user_id: null,
       p_session_id: null,
       p_ip_address: null,
@@ -276,18 +282,48 @@ If you didn't expect this invitation, you can safely ignore this email.
     try {
       const nodemailer = await import("npm:nodemailer@6.9.7");
 
-      const transporter = nodemailer.default.createTransport({
+      const port = parseInt(smtpPort);
+      const isSecurePort = port === 465;
+
+      const transportConfig = {
         host: smtpHost,
-        port: parseInt(smtpPort),
-        secure: true,
+        port: port,
+        secure: isSecurePort,
         auth: {
           user: smtpUser,
           pass: smtpPassword,
         },
+        tls: {
+          rejectUnauthorized: true,
+          minVersion: 'TLSv1.2',
+        },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+      };
+
+      await supabase.rpc('log_system_event', {
+        p_level: 'DEBUG',
+        p_category: 'EXTERNAL_API',
+        p_message: 'SMTP transport configuration',
+        p_metadata: {
+          host: smtpHost,
+          port: port,
+          secure: isSecurePort,
+          useSTARTTLS: !isSecurePort,
+          function: 'send-invitation-email'
+        },
+        p_user_id: null,
+        p_session_id: null,
+        p_ip_address: null,
+        p_user_agent: req.headers.get('user-agent'),
+        p_stack_trace: null,
+        p_execution_time_ms: null
       });
 
-      await transporter.sendMail({
-        from: `Audit Proof <${smtpUser}>`,
+      const transporter = nodemailer.default.createTransport(transportConfig);
+
+      const info = await transporter.sendMail({
+        from: `"Audit Proof" <${smtpUser}>`,
         to: email,
         subject: `You've been invited to join ${businessName || "a team"} on Audit Proof`,
         text: emailText,
@@ -295,8 +331,8 @@ If you didn't expect this invitation, you can safely ignore this email.
       });
 
       const apiTime = Date.now() - apiStartTime;
-
       const executionTime = Math.round(Date.now() - startTime);
+
       await supabase.rpc('log_system_event', {
         p_level: 'INFO',
         p_category: 'EXTERNAL_API',
@@ -304,6 +340,8 @@ If you didn't expect this invitation, you can safely ignore this email.
         p_metadata: {
           email,
           smtpHost,
+          messageId: info.messageId,
+          response: info.response,
           function: 'send-invitation-email'
         },
         p_user_id: null,
@@ -315,7 +353,11 @@ If you didn't expect this invitation, you can safely ignore this email.
       });
 
       return new Response(
-        JSON.stringify({ success: true, message: 'Email sent successfully' }),
+        JSON.stringify({
+          success: true,
+          message: 'Email sent successfully',
+          messageId: info.messageId
+        }),
         {
           status: 200,
           headers: {
@@ -327,6 +369,7 @@ If you didn't expect this invitation, you can safely ignore this email.
     } catch (emailError) {
       const apiTime = Math.round(Date.now() - apiStartTime);
       const emailErrorMessage = emailError instanceof Error ? emailError.message : 'Unknown email error';
+      const errorStack = emailError instanceof Error ? emailError.stack : null;
 
       await supabase.rpc('log_system_event', {
         p_level: 'ERROR',
@@ -335,14 +378,16 @@ If you didn't expect this invitation, you can safely ignore this email.
         p_metadata: {
           email,
           smtpHost,
+          smtpPort,
           error: emailErrorMessage,
+          errorName: emailError instanceof Error ? emailError.name : 'Unknown',
           function: 'send-invitation-email'
         },
         p_user_id: null,
         p_session_id: null,
         p_ip_address: null,
         p_user_agent: req.headers.get('user-agent'),
-        p_stack_trace: emailError instanceof Error ? emailError.stack : null,
+        p_stack_trace: errorStack,
         p_execution_time_ms: apiTime
       });
 
