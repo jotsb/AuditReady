@@ -253,7 +253,7 @@ export default function AcceptInvitePage() {
         logger.info('Account created, redirecting to login', {}, 'AUTH');
         setSuccess('Account created! Please log in to continue.');
         setTimeout(() => {
-          window.location.href = `/auth?email=${encodeURIComponent(invitation.email)}`;
+          window.location.href = `/?email=${encodeURIComponent(invitation.email)}`;
         }, 2000);
         return;
       } else {
@@ -323,7 +323,7 @@ export default function AcceptInvitePage() {
           </div>
           <p className="text-gray-600 dark:text-gray-400 mb-6">{error}</p>
           <button
-            onClick={() => navigate('/auth')}
+            onClick={() => window.location.href = '/'}
             className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             Go to Login
@@ -459,7 +459,7 @@ export default function AcceptInvitePage() {
                 <button
                   onClick={() => {
                     sessionStorage.setItem('pendingInviteToken', token || '');
-                    window.location.href = '/auth';
+                    window.location.href = '/';
                   }}
                   className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                 >
