@@ -1,6 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { SMTPClient } from "npm:emailjs@4.0.3";
 import {
   validateEmail,
   validateUUID,
@@ -275,26 +274,24 @@ If you didn't expect this invitation, you can safely ignore this email.
     const apiStartTime = Date.now();
 
     try {
-      const client = new SMTPClient({
-        user: smtpUser,
-        password: smtpPassword,
+      const nodemailer = await import("npm:nodemailer@6.9.7");
+
+      const transporter = nodemailer.default.createTransport({
         host: smtpHost,
         port: parseInt(smtpPort),
-        ssl: true,
-        tls: true,
+        secure: true,
+        auth: {
+          user: smtpUser,
+          pass: smtpPassword,
+        },
       });
 
-      await client.sendAsync({
+      await transporter.sendMail({
         from: `Audit Proof <${smtpUser}>`,
         to: email,
         subject: `You've been invited to join ${businessName || "a team"} on Audit Proof`,
         text: emailText,
-        attachment: [
-          {
-            data: emailHtml,
-            alternative: true,
-          },
-        ],
+        html: emailHtml,
       });
 
       const apiTime = Date.now() - apiStartTime;
