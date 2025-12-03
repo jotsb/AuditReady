@@ -2341,3 +2341,163 @@
 
 **Note**: Cannot be automated due to Supabase API limitations. Dashboard-only configuration required.
 
+
+---
+
+## 🚀 Planned Feature: Bank & Credit Card Reconciliation (2025-12-03)
+
+### Feature Overview
+Comprehensive transaction matching system to reconcile bank/credit card statements with receipts, eliminating duplicate expense tracking and simplifying accountant workflows.
+
+### Problem Statement
+**Current State:**
+- Clients upload receipts to Audit Proof (expense recorded)
+- Same expense appears on credit card statement (no link)
+- Same expense appears on bank statement (no link)
+- Accountants manually match transactions (10-20 hours per client)
+- Date mismatches (invoice Sept 4, payment Sept 10)
+- Amount mismatches (tips, foreign exchange, partial payments)
+
+**Solution:**
+Upload bank/CC statements → Auto-match transactions to receipts → Unified reconciliation view
+
+### Implementation Phases
+
+#### 🔴 Phase 1: Foundation (Weeks 1-2) - PLANNED
+- [ ] Create database tables (bank_statements, statement_transactions, transaction_matches, matching_rules)
+- [ ] Implement RLS policies for all new tables
+- [ ] Create statement upload UI
+- [ ] Build PDF parser service (basic text extraction)
+- [ ] Store parsed transactions in database
+- [ ] Display uploaded statements list
+
+**Deliverables:** Upload PDFs, extract transactions, view transaction list
+
+#### 🔴 Phase 2: Manual Matching (Weeks 3-4) - PLANNED
+- [ ] Create transaction list view (unmatched)
+- [ ] Create receipt list view (unmatched)
+- [ ] Build drag-and-drop matching interface
+- [ ] Store matches in transaction_matches table
+- [ ] Update receipt status when matched
+- [ ] Create match audit trail
+
+**Deliverables:** Manual matching interface, match tracking
+
+#### 🔴 Phase 3: Auto-Matching (Weeks 5-6) - PLANNED
+- [ ] Implement fuzzy matching algorithm (date ±7 days, amount ±$5 or 10%)
+- [ ] Calculate confidence scores (0-100%)
+- [ ] Auto-match high-confidence items (95%+)
+- [ ] Show suggested matches for review (70-94%)
+- [ ] Learn from user confirmations (matching_rules table)
+- [ ] Merchant name normalization
+
+**Deliverables:** Automatic matching engine, learning system
+
+#### 🟡 Phase 4: Reconciliation Dashboard (Weeks 7-8) - PLANNED
+- [ ] Create ReconciliationDashboard component
+- [ ] Show matched/unmatched summary statistics
+- [ ] Missing receipts report (transactions without receipts)
+- [ ] Unreconciled receipts report (receipts without transactions)
+- [ ] Export reconciliation report for accountants
+- [ ] Reconciliation status tracking
+
+**Deliverables:** Complete reconciliation view, accountant reports
+
+#### 🟢 Phase 5: Advanced Features (Weeks 9-12) - PLANNED
+- [ ] CSV statement import support
+- [ ] Bulk statement upload (multiple files)
+- [ ] Duplicate transaction detection
+- [ ] Partial payment handling (one invoice, multiple payments)
+- [ ] Foreign currency support with exchange rates
+- [ ] AI-powered matching using self-hosted LLM
+- [ ] Mobile app statement upload
+- [ ] Bulk match actions (match multiple at once)
+- [ ] Recurring transaction detection
+
+**Deliverables:** Production-ready feature with all enhancements
+
+### Database Schema Summary
+
+**New Tables (8 total):**
+1. `bank_statements` - Uploaded statement files
+2. `statement_transactions` - Individual transactions from statements
+3. `transaction_matches` - Links transactions to receipts
+4. `matching_rules` - Learned matching patterns
+5. `reconciliation_sessions` - Track reconciliation work
+6. `unmatched_items` - Items needing accountant review
+
+**Key Features:**
+- Full RLS policies for all tables
+- Audit trail for all matches
+- Learning system for improved matching
+- Support for bank statements, credit cards, PayPal, etc.
+
+### Technical Architecture
+
+**Components:**
+1. **Statement Parser Service** (Edge Function)
+   - Extract transactions from PDF/CSV
+   - Detect bank/CC provider
+   - Normalize transaction data
+
+2. **Matching Engine** (Edge Function)
+   - Fuzzy date/amount/merchant matching
+   - Confidence scoring
+   - Learning from user feedback
+
+3. **Frontend Components:**
+   - ReconciliationPage (upload statements)
+   - TransactionMatcher (review suggested matches)
+   - ReconciliationDashboard (overview)
+   - ManualMatchInterface (drag-and-drop)
+
+4. **AI Integration:**
+   - Use self-hosted LLM for intelligent matching
+   - OCR for image-based PDFs
+   - Merchant name normalization
+
+### Success Metrics
+
+**For Business Owners:**
+- Time saved: 10+ hours per year
+- Missing receipts identified
+- Duplicate expenses caught
+
+**For Accountants:**
+- Reconciliation time: 20 hours → 2 hours per client (90% reduction)
+- Matching accuracy: 99%+
+- Faster client turnaround
+
+**Revenue Potential:**
+- Premium feature: $10/month
+- 1,000 users = $120,000/year
+- ROI: 2.5x in first year
+
+### Questions to Answer Before Starting
+
+1. **CSV Support:** Support CSV from day 1, or PDF only initially?
+2. **Matching Tolerance:** Are ±7 days and ±$5 reasonable defaults?
+3. **Accountant Access:** Should accountants have separate role/permissions?
+4. **Historical Matching:** Match old receipts to new statements, or only forward-looking?
+5. **Mobile Support:** Is mobile app needed for statement upload?
+6. **AI Priority:** Use AI matching from day 1, or start with rule-based?
+
+### Documentation
+- 📄 Full implementation plan: `BANK_RECONCILIATION_IMPLEMENTATION_PLAN.md`
+- 📊 Database schema with 8 new tables
+- 🏗️ Complete UI mockups and component structure
+- 🤖 AI integration strategy
+- 📈 Cost/benefit analysis
+
+### Next Steps
+1. ✅ Review implementation plan
+2. ⏳ Answer clarifying questions
+3. ⏳ Prioritize features (MVP vs full implementation)
+4. ⏳ Approve database schema
+5. ⏳ Begin Phase 1 development
+
+**Estimated Timeline:** 12 weeks (full implementation) or 4 weeks (MVP - manual matching only)
+**Development Cost:** $48,000 (2 developers × 12 weeks)
+**Infrastructure Cost:** $0 (self-hosted on Unraid)
+
+---
