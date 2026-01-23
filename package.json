@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json"
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "reset-password": "node scripts/reset-admin-password.js"
   },
   "dependencies": {
     "@sentry/react": "^10.20.0",
