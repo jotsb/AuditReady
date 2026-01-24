@@ -89,13 +89,20 @@ Deno.serve(async (req: Request) => {
   };
 
   try {
-    // Rate limiting: 10 invitation actions per hour per IP
+    // Get configured rate limits from database
     const ipAddress = getIPAddress(req);
+    const { data: rateLimitConfig } = await serviceClient.rpc('get_rate_limit_config', {
+      p_action_type: 'api_call'
+    });
+    const maxAttempts = rateLimitConfig?.max_attempts || 10;
+    const windowMinutes = rateLimitConfig?.window_minutes || 60;
+
+    // Rate limiting using configured values
     const { data: rateLimitResult } = await serviceClient.rpc('check_rate_limit', {
       p_identifier: ipAddress,
       p_action_type: 'api_call',
-      p_max_attempts: 10,
-      p_window_minutes: 60
+      p_max_attempts: maxAttempts,
+      p_window_minutes: windowMinutes
     });
 
     if (rateLimitResult && !rateLimitResult.allowed) {

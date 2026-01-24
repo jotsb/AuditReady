@@ -52,12 +52,19 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Rate limiting: 5 exports per hour per user
+    // Get configured rate limits from database
+    const { data: rateLimitConfig } = await supabase.rpc('get_rate_limit_config', {
+      p_action_type: 'export'
+    });
+    const maxAttempts = rateLimitConfig?.max_attempts || 5;
+    const windowMinutes = rateLimitConfig?.window_minutes || 60;
+
+    // Rate limiting using configured values
     const { data: rateLimitResult } = await supabase.rpc('check_rate_limit', {
       p_identifier: user.id,
       p_action_type: 'export',
-      p_max_attempts: 5,
-      p_window_minutes: 60
+      p_max_attempts: maxAttempts,
+      p_window_minutes: windowMinutes
     });
 
     if (rateLimitResult && !rateLimitResult.allowed) {

@@ -16,6 +16,27 @@ interface RateLimitEntry {
   created_at: string;
 }
 
+interface RateLimitSetting {
+  max_attempts: number;
+  window_minutes: number;
+}
+
+interface RateLimitSettings {
+  upload: RateLimitSetting;
+  export: RateLimitSetting;
+  email: RateLimitSetting;
+  api_call: RateLimitSetting;
+  login: RateLimitSetting;
+}
+
+const DEFAULT_RATE_LIMITS: RateLimitSettings = {
+  upload: { max_attempts: 50, window_minutes: 60 },
+  export: { max_attempts: 5, window_minutes: 60 },
+  email: { max_attempts: 20, window_minutes: 60 },
+  api_call: { max_attempts: 10, window_minutes: 60 },
+  login: { max_attempts: 5, window_minutes: 15 },
+};
+
 interface SystemConfig {
   // Storage Settings
   max_file_size_mb: number;
@@ -71,6 +92,7 @@ export function SystemConfiguration() {
     blocked: 0,
     byType: {} as Record<string, number>,
   });
+  const [rateLimitSettings, setRateLimitSettings] = useState<RateLimitSettings>(DEFAULT_RATE_LIMITS);
 
   useEffect(() => {
     loadConfig();
@@ -88,7 +110,6 @@ export function SystemConfiguration() {
       if (fetchError) throw fetchError;
 
       if (data) {
-        // Map database format to component format
         setConfig({
           max_file_size_mb: data.storage_settings.max_file_size_mb,
           allowed_file_types: data.storage_settings.allowed_file_types,
@@ -104,6 +125,16 @@ export function SystemConfiguration() {
           ai_extraction_enabled: data.feature_flags.ai_extraction_enabled,
           multi_page_receipts_enabled: data.feature_flags.multi_page_receipts_enabled,
         });
+
+        if (data.rate_limit_settings) {
+          setRateLimitSettings({
+            upload: data.rate_limit_settings.upload || DEFAULT_RATE_LIMITS.upload,
+            export: data.rate_limit_settings.export || DEFAULT_RATE_LIMITS.export,
+            email: data.rate_limit_settings.email || DEFAULT_RATE_LIMITS.email,
+            api_call: data.rate_limit_settings.api_call || DEFAULT_RATE_LIMITS.api_call,
+            login: data.rate_limit_settings.login || DEFAULT_RATE_LIMITS.login,
+          });
+        }
       }
 
       setHasChanges(false);
@@ -153,6 +184,7 @@ export function SystemConfiguration() {
           ai_extraction_enabled: config.ai_extraction_enabled,
           multi_page_receipts_enabled: config.multi_page_receipts_enabled,
         },
+        p_rate_limit_settings: rateLimitSettings,
       });
 
       if (saveError) throw saveError;
@@ -180,6 +212,17 @@ export function SystemConfiguration() {
 
   const updateConfig = (updates: Partial<SystemConfig>) => {
     setConfig(prev => ({ ...prev, ...updates }));
+    setHasChanges(true);
+  };
+
+  const updateRateLimitSetting = (actionType: keyof RateLimitSettings, field: 'max_attempts' | 'window_minutes', value: number) => {
+    setRateLimitSettings(prev => ({
+      ...prev,
+      [actionType]: {
+        ...prev[actionType],
+        [field]: value,
+      },
+    }));
     setHasChanges(true);
   };
 
@@ -609,6 +652,194 @@ export function SystemConfiguration() {
                 }`}
               />
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Rate Limit Configuration */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <Clock className="w-5 h-5 text-blue-600" />
+          <h3 className="text-lg font-semibold text-gray-900">Rate Limit Configuration</h3>
+        </div>
+        <p className="text-sm text-gray-500 mb-6">
+          Configure how many requests users can make per time window. Changes apply to new requests immediately.
+        </p>
+
+        <div className="space-y-6">
+          {/* Upload Rate Limit */}
+          <div className="border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+              <h4 className="font-medium text-gray-900">Receipt Uploads</h4>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Max Uploads</label>
+                <input
+                  type="number"
+                  value={rateLimitSettings.upload.max_attempts}
+                  onChange={(e) => updateRateLimitSetting('upload', 'max_attempts', parseInt(e.target.value) || 0)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="1"
+                  max="1000"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Per Minutes</label>
+                <input
+                  type="number"
+                  value={rateLimitSettings.upload.window_minutes}
+                  onChange={(e) => updateRateLimitSetting('upload', 'window_minutes', parseInt(e.target.value) || 1)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="1"
+                  max="1440"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Currently: {rateLimitSettings.upload.max_attempts} uploads per {rateLimitSettings.upload.window_minutes} minutes
+            </p>
+          </div>
+
+          {/* Export Rate Limit */}
+          <div className="border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <h4 className="font-medium text-gray-900">Report Exports</h4>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Max Exports</label>
+                <input
+                  type="number"
+                  value={rateLimitSettings.export.max_attempts}
+                  onChange={(e) => updateRateLimitSetting('export', 'max_attempts', parseInt(e.target.value) || 0)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="1"
+                  max="100"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Per Minutes</label>
+                <input
+                  type="number"
+                  value={rateLimitSettings.export.window_minutes}
+                  onChange={(e) => updateRateLimitSetting('export', 'window_minutes', parseInt(e.target.value) || 1)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="1"
+                  max="1440"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Currently: {rateLimitSettings.export.max_attempts} exports per {rateLimitSettings.export.window_minutes} minutes
+            </p>
+          </div>
+
+          {/* Email Rate Limit */}
+          <div className="border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
+              <h4 className="font-medium text-gray-900">Email Operations</h4>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Max Emails</label>
+                <input
+                  type="number"
+                  value={rateLimitSettings.email.max_attempts}
+                  onChange={(e) => updateRateLimitSetting('email', 'max_attempts', parseInt(e.target.value) || 0)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="1"
+                  max="500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Per Minutes</label>
+                <input
+                  type="number"
+                  value={rateLimitSettings.email.window_minutes}
+                  onChange={(e) => updateRateLimitSetting('email', 'window_minutes', parseInt(e.target.value) || 1)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="1"
+                  max="1440"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Currently: {rateLimitSettings.email.max_attempts} emails per {rateLimitSettings.email.window_minutes} minutes
+            </p>
+          </div>
+
+          {/* Login Rate Limit */}
+          <div className="border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+              <h4 className="font-medium text-gray-900">Login Attempts</h4>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Max Attempts</label>
+                <input
+                  type="number"
+                  value={rateLimitSettings.login.max_attempts}
+                  onChange={(e) => updateRateLimitSetting('login', 'max_attempts', parseInt(e.target.value) || 0)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="1"
+                  max="20"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Per Minutes</label>
+                <input
+                  type="number"
+                  value={rateLimitSettings.login.window_minutes}
+                  onChange={(e) => updateRateLimitSetting('login', 'window_minutes', parseInt(e.target.value) || 1)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="1"
+                  max="60"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Currently: {rateLimitSettings.login.max_attempts} attempts per {rateLimitSettings.login.window_minutes} minutes
+            </p>
+          </div>
+
+          {/* API Rate Limit */}
+          <div className="border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
+              <h4 className="font-medium text-gray-900">API Calls</h4>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Max Requests</label>
+                <input
+                  type="number"
+                  value={rateLimitSettings.api_call.max_attempts}
+                  onChange={(e) => updateRateLimitSetting('api_call', 'max_attempts', parseInt(e.target.value) || 0)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="1"
+                  max="500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Per Minutes</label>
+                <input
+                  type="number"
+                  value={rateLimitSettings.api_call.window_minutes}
+                  onChange={(e) => updateRateLimitSetting('api_call', 'window_minutes', parseInt(e.target.value) || 1)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="1"
+                  max="1440"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Currently: {rateLimitSettings.api_call.max_attempts} requests per {rateLimitSettings.api_call.window_minutes} minutes
+            </p>
           </div>
         </div>
       </div>
