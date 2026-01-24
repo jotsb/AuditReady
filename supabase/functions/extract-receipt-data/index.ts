@@ -363,7 +363,18 @@ Deno.serve(async (req: Request) => {
 
     if (extractedData.vendor_name) {
       const vendorValidation = validateString(extractedData.vendor_name, 'vendor_name', INPUT_LIMITS.vendor_name, false);
-      validatedData.vendor_name = vendorValidation.valid ? vendorValidation.sanitized : null;
+      let vendorName = vendorValidation.valid ? vendorValidation.sanitized : null;
+
+      if (vendorName) {
+        const lowerVendor = vendorName.toLowerCase();
+        if (lowerVendor.includes('cardlock') || lowerVendor.includes('card lock') ||
+            lowerVendor.includes('petro canada cardlock') || lowerVendor.includes('esso cardlock') ||
+            lowerVendor.includes('shell cardlock') || lowerVendor.includes('husky cardlock')) {
+          vendorName = 'Cardlock Invoice';
+        }
+      }
+
+      validatedData.vendor_name = vendorName;
     } else {
       validatedData.vendor_name = null;
     }
