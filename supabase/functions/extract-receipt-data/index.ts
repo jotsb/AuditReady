@@ -68,11 +68,11 @@ Deno.serve(async (req: Request) => {
   // Create identifier: userId if available, otherwise IP
   const identifier = userId || ipAddress;
 
-  // Check rate limit: 10 uploads per hour
+  // Check rate limit: 50 uploads per hour (increased for batch processing)
   const { data: rateLimitResult } = await supabase.rpc('check_rate_limit', {
     p_identifier: identifier,
     p_action_type: 'upload',
-    p_max_attempts: 10,
+    p_max_attempts: 50,
     p_window_minutes: 60
   });
 
