@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, CreditCard as Edit2, Trash2, Users, FolderOpen } from 'lucide-react';
+import { Plus, Pencil, Trash2, Users, FolderOpen } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAlert } from '../../contexts/AlertContext';
@@ -264,8 +264,9 @@ export function CollectionManagement() {
                 <button
                   onClick={() => startEdit(collection)}
                   className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                  title="Edit / Rename"
                 >
-                  <Edit2 size={16} />
+                  <Pencil size={16} />
                 </button>
                 <button
                   onClick={() => handleDelete(collection.id)}
