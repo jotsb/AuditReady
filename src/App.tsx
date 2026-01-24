@@ -43,7 +43,7 @@ function AppContent() {
     return params.get('id');
   });
 
-  const [quickCaptureAction, setQuickCaptureAction] = useState<'photo' | 'upload' | 'manual' | null>(null);
+  const [quickCaptureAction, setQuickCaptureAction] = useState<'photo' | 'multipage' | 'upload' | 'manual' | null>(null);
 
   useEffect(() => {
     const handleNavigateToSettings = (event: CustomEvent) => {
@@ -134,7 +134,7 @@ function AppContent() {
     setQuickCaptureAction(null);
   };
 
-  const handleQuickCapture = (type: 'photo' | 'upload' | 'manual') => {
+  const handleQuickCapture = (type: 'photo' | 'multipage' | 'upload' | 'manual') => {
     setQuickCaptureAction(type);
     setCurrentView('receipts');
     window.history.pushState({}, '', '/receipts');

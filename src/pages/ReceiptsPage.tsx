@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Loader2, Eye, CreditCard as Edit2, CheckSquare, Square, Camera, Calendar, DollarSign, Trash2 } from 'lucide-react';
+import { Plus, Loader2, Eye, CreditCard as Edit2, CheckSquare, Square, Camera, Calendar, DollarSign, Trash2, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { ReceiptUpload } from '../components/receipts/ReceiptUpload';
@@ -25,7 +25,7 @@ import { convertLocalDateToUTC, formatDateForDisplay } from '../lib/dateUtils';
 import * as receiptService from '../services/receiptService';
 
 interface ReceiptsPageProps {
-  quickCaptureAction?: 'photo' | 'upload' | 'manual' | null;
+  quickCaptureAction?: 'photo' | 'multipage' | 'upload' | 'manual' | null;
   onQuickCaptureComplete?: () => void;
 }
 
@@ -113,14 +113,22 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
     if (quickCaptureAction === 'photo') {
       setShowUpload(true);
       setShowManualEntry(false);
+      setShowMultiPageCamera(false);
       setAutoTriggerPhoto(true);
+    } else if (quickCaptureAction === 'multipage') {
+      setShowMultiPageCamera(true);
+      setShowUpload(false);
+      setShowManualEntry(false);
+      setAutoTriggerPhoto(false);
     } else if (quickCaptureAction === 'upload') {
       setShowUpload(true);
       setShowManualEntry(false);
+      setShowMultiPageCamera(false);
       setAutoTriggerPhoto(false);
     } else if (quickCaptureAction === 'manual') {
       setShowManualEntry(true);
       setShowUpload(false);
+      setShowMultiPageCamera(false);
       setAutoTriggerPhoto(false);
     }
   }, [quickCaptureAction]);
