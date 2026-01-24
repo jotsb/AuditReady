@@ -1,8 +1,41 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Database, Mail, FileText, HardDrive, Shield, Settings, Save, RefreshCw, AlertCircle, Check, Info } from 'lucide-react';
+import { Database, Mail, FileText, HardDrive, Shield, Settings, Save, RefreshCw, AlertCircle, Check, Info, Clock, Trash2, Ban, Unlock } from 'lucide-react';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { useLogger } from '../../hooks/useLogger';
+
+interface RateLimitEntry {
+  id: string;
+  identifier: string;
+  action_type: string;
+  attempts: number;
+  window_start: string;
+  window_end: string;
+  is_blocked: boolean;
+  block_expires_at: string | null;
+  created_at: string;
+}
+
+interface RateLimitSetting {
+  max_attempts: number;
+  window_minutes: number;
+}
+
+interface RateLimitSettings {
+  upload: RateLimitSetting;
+  export: RateLimitSetting;
+  email: RateLimitSetting;
+  api_call: RateLimitSetting;
+  login: RateLimitSetting;
+}
+
+const DEFAULT_RATE_LIMITS: RateLimitSettings = {
+  upload: { max_attempts: 50, window_minutes: 60 },
+  export: { max_attempts: 5, window_minutes: 60 },
+  email: { max_attempts: 20, window_minutes: 60 },
+  api_call: { max_attempts: 10, window_minutes: 60 },
+  login: { max_attempts: 5, window_minutes: 15 },
+};
 
 interface SystemConfig {
   // Storage Settings
@@ -52,8 +85,18 @@ export function SystemConfiguration() {
   const [success, setSuccess] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
 
+  const [rateLimits, setRateLimits] = useState<RateLimitEntry[]>([]);
+  const [rateLimitLoading, setRateLimitLoading] = useState(false);
+  const [rateLimitStats, setRateLimitStats] = useState({
+    total: 0,
+    blocked: 0,
+    byType: {} as Record<string, number>,
+  });
+  const [rateLimitSettings, setRateLimitSettings] = useState<RateLimitSettings>(DEFAULT_RATE_LIMITS);
+
   useEffect(() => {
     loadConfig();
+    loadRateLimits();
   }, []);
 
   const loadConfig = async () => {
@@ -67,7 +110,6 @@ export function SystemConfiguration() {
       if (fetchError) throw fetchError;
 
       if (data) {
-        // Map database format to component format
         setConfig({
           max_file_size_mb: data.storage_settings.max_file_size_mb,
           allowed_file_types: data.storage_settings.allowed_file_types,
@@ -83,6 +125,16 @@ export function SystemConfiguration() {
           ai_extraction_enabled: data.feature_flags.ai_extraction_enabled,
           multi_page_receipts_enabled: data.feature_flags.multi_page_receipts_enabled,
         });
+
+        if (data.rate_limit_settings) {
+          setRateLimitSettings({
+            upload: data.rate_limit_settings.upload || DEFAULT_RATE_LIMITS.upload,
+            export: data.rate_limit_settings.export || DEFAULT_RATE_LIMITS.export,
+            email: data.rate_limit_settings.email || DEFAULT_RATE_LIMITS.email,
+            api_call: data.rate_limit_settings.api_call || DEFAULT_RATE_LIMITS.api_call,
+            login: data.rate_limit_settings.login || DEFAULT_RATE_LIMITS.login,
+          });
+        }
       }
 
       setHasChanges(false);
@@ -132,6 +184,7 @@ export function SystemConfiguration() {
           ai_extraction_enabled: config.ai_extraction_enabled,
           multi_page_receipts_enabled: config.multi_page_receipts_enabled,
         },
+        p_rate_limit_settings: rateLimitSettings,
       });
 
       if (saveError) throw saveError;
@@ -160,6 +213,143 @@ export function SystemConfiguration() {
   const updateConfig = (updates: Partial<SystemConfig>) => {
     setConfig(prev => ({ ...prev, ...updates }));
     setHasChanges(true);
+  };
+
+  const updateRateLimitSetting = (actionType: keyof RateLimitSettings, field: 'max_attempts' | 'window_minutes', value: number) => {
+    setRateLimitSettings(prev => ({
+      ...prev,
+      [actionType]: {
+        ...prev[actionType],
+        [field]: value,
+      },
+    }));
+    setHasChanges(true);
+  };
+
+  const loadRateLimits = async () => {
+    try {
+      setRateLimitLoading(true);
+      const { data, error: fetchError } = await supabase
+        .from('rate_limit_attempts')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (fetchError) throw fetchError;
+
+      const entries = data || [];
+      setRateLimits(entries);
+
+      const blocked = entries.filter(e => e.is_blocked && (!e.block_expires_at || new Date(e.block_expires_at) > new Date())).length;
+      const byType: Record<string, number> = {};
+      entries.forEach(e => {
+        byType[e.action_type] = (byType[e.action_type] || 0) + 1;
+      });
+
+      setRateLimitStats({
+        total: entries.length,
+        blocked,
+        byType,
+      });
+
+      logger.info('Loaded rate limits', {
+        page: 'AdminPage',
+        section: 'SystemConfiguration',
+        total: entries.length,
+      });
+    } catch (err) {
+      logger.error('Failed to load rate limits', err as Error, {
+        page: 'AdminPage',
+        section: 'SystemConfiguration',
+      });
+    } finally {
+      setRateLimitLoading(false);
+    }
+  };
+
+  const clearAllRateLimits = async () => {
+    if (!confirm('Clear all rate limit entries? This will unblock all users/IPs.')) return;
+
+    try {
+      setRateLimitLoading(true);
+      const { error: deleteError } = await supabase
+        .from('rate_limit_attempts')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+
+      if (deleteError) throw deleteError;
+
+      setSuccess('All rate limits cleared successfully');
+      setTimeout(() => setSuccess(''), 3000);
+      await loadRateLimits();
+
+      logger.info('Cleared all rate limits', {
+        page: 'AdminPage',
+        section: 'SystemConfiguration',
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to clear rate limits';
+      setError(message);
+      logger.error('Failed to clear rate limits', err as Error, {
+        page: 'AdminPage',
+        section: 'SystemConfiguration',
+      });
+    } finally {
+      setRateLimitLoading(false);
+    }
+  };
+
+  const clearRateLimitsByType = async (actionType: string) => {
+    if (!confirm(`Clear all ${actionType} rate limits?`)) return;
+
+    try {
+      setRateLimitLoading(true);
+      const { error: deleteError } = await supabase
+        .from('rate_limit_attempts')
+        .delete()
+        .eq('action_type', actionType);
+
+      if (deleteError) throw deleteError;
+
+      setSuccess(`${actionType} rate limits cleared`);
+      setTimeout(() => setSuccess(''), 3000);
+      await loadRateLimits();
+
+      logger.info(`Cleared ${actionType} rate limits`, {
+        page: 'AdminPage',
+        section: 'SystemConfiguration',
+        actionType,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to clear rate limits';
+      setError(message);
+    } finally {
+      setRateLimitLoading(false);
+    }
+  };
+
+  const unblockEntry = async (id: string) => {
+    try {
+      const { error: updateError } = await supabase
+        .from('rate_limit_attempts')
+        .delete()
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+
+      setSuccess('Entry unblocked');
+      setTimeout(() => setSuccess(''), 3000);
+      await loadRateLimits();
+
+      logger.info('Unblocked rate limit entry', {
+        page: 'AdminPage',
+        section: 'SystemConfiguration',
+        entryId: id,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to unblock entry';
+      setError(message);
+    }
   };
 
   if (loading) {
@@ -466,9 +656,340 @@ export function SystemConfiguration() {
         </div>
       </div>
 
+      {/* Rate Limit Configuration */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <Clock className="w-5 h-5 text-blue-600" />
+          <h3 className="text-lg font-semibold text-gray-900">Rate Limit Configuration</h3>
+        </div>
+        <p className="text-sm text-gray-500 mb-6">
+          Configure how many requests users can make per time window. Changes apply to new requests immediately.
+        </p>
+
+        <div className="space-y-6">
+          {/* Upload Rate Limit */}
+          <div className="border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+              <h4 className="font-medium text-gray-900">Receipt Uploads</h4>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Max Uploads</label>
+                <input
+                  type="number"
+                  value={rateLimitSettings.upload.max_attempts}
+                  onChange={(e) => updateRateLimitSetting('upload', 'max_attempts', parseInt(e.target.value) || 0)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="1"
+                  max="1000"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Per Minutes</label>
+                <input
+                  type="number"
+                  value={rateLimitSettings.upload.window_minutes}
+                  onChange={(e) => updateRateLimitSetting('upload', 'window_minutes', parseInt(e.target.value) || 1)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="1"
+                  max="1440"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Currently: {rateLimitSettings.upload.max_attempts} uploads per {rateLimitSettings.upload.window_minutes} minutes
+            </p>
+          </div>
+
+          {/* Export Rate Limit */}
+          <div className="border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <h4 className="font-medium text-gray-900">Report Exports</h4>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Max Exports</label>
+                <input
+                  type="number"
+                  value={rateLimitSettings.export.max_attempts}
+                  onChange={(e) => updateRateLimitSetting('export', 'max_attempts', parseInt(e.target.value) || 0)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="1"
+                  max="100"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Per Minutes</label>
+                <input
+                  type="number"
+                  value={rateLimitSettings.export.window_minutes}
+                  onChange={(e) => updateRateLimitSetting('export', 'window_minutes', parseInt(e.target.value) || 1)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="1"
+                  max="1440"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Currently: {rateLimitSettings.export.max_attempts} exports per {rateLimitSettings.export.window_minutes} minutes
+            </p>
+          </div>
+
+          {/* Email Rate Limit */}
+          <div className="border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
+              <h4 className="font-medium text-gray-900">Email Operations</h4>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Max Emails</label>
+                <input
+                  type="number"
+                  value={rateLimitSettings.email.max_attempts}
+                  onChange={(e) => updateRateLimitSetting('email', 'max_attempts', parseInt(e.target.value) || 0)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="1"
+                  max="500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Per Minutes</label>
+                <input
+                  type="number"
+                  value={rateLimitSettings.email.window_minutes}
+                  onChange={(e) => updateRateLimitSetting('email', 'window_minutes', parseInt(e.target.value) || 1)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="1"
+                  max="1440"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Currently: {rateLimitSettings.email.max_attempts} emails per {rateLimitSettings.email.window_minutes} minutes
+            </p>
+          </div>
+
+          {/* Login Rate Limit */}
+          <div className="border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+              <h4 className="font-medium text-gray-900">Login Attempts</h4>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Max Attempts</label>
+                <input
+                  type="number"
+                  value={rateLimitSettings.login.max_attempts}
+                  onChange={(e) => updateRateLimitSetting('login', 'max_attempts', parseInt(e.target.value) || 0)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="1"
+                  max="20"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Per Minutes</label>
+                <input
+                  type="number"
+                  value={rateLimitSettings.login.window_minutes}
+                  onChange={(e) => updateRateLimitSetting('login', 'window_minutes', parseInt(e.target.value) || 1)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="1"
+                  max="60"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Currently: {rateLimitSettings.login.max_attempts} attempts per {rateLimitSettings.login.window_minutes} minutes
+            </p>
+          </div>
+
+          {/* API Rate Limit */}
+          <div className="border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
+              <h4 className="font-medium text-gray-900">API Calls</h4>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Max Requests</label>
+                <input
+                  type="number"
+                  value={rateLimitSettings.api_call.max_attempts}
+                  onChange={(e) => updateRateLimitSetting('api_call', 'max_attempts', parseInt(e.target.value) || 0)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="1"
+                  max="500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Per Minutes</label>
+                <input
+                  type="number"
+                  value={rateLimitSettings.api_call.window_minutes}
+                  onChange={(e) => updateRateLimitSetting('api_call', 'window_minutes', parseInt(e.target.value) || 1)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="1"
+                  max="1440"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Currently: {rateLimitSettings.api_call.max_attempts} requests per {rateLimitSettings.api_call.window_minutes} minutes
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Rate Limit Management */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <Clock className="w-5 h-5 text-blue-600" />
+            <h3 className="text-lg font-semibold text-gray-900">Rate Limit Management</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={loadRateLimits}
+              disabled={rateLimitLoading}
+              className="inline-flex items-center px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 mr-1.5 ${rateLimitLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+            <button
+              onClick={clearAllRateLimits}
+              disabled={rateLimitLoading || rateLimits.length === 0}
+              className="inline-flex items-center px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+            >
+              <Trash2 className="w-4 h-4 mr-1.5" />
+              Clear All
+            </button>
+          </div>
+        </div>
+
+        {/* Stats Summary */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-gray-50 rounded-lg p-3">
+            <div className="text-2xl font-bold text-gray-900">{rateLimitStats.total}</div>
+            <div className="text-xs text-gray-500">Total Entries</div>
+          </div>
+          <div className="bg-red-50 rounded-lg p-3">
+            <div className="text-2xl font-bold text-red-700">{rateLimitStats.blocked}</div>
+            <div className="text-xs text-red-600">Currently Blocked</div>
+          </div>
+          {Object.entries(rateLimitStats.byType).slice(0, 2).map(([type, count]) => (
+            <div key={type} className="bg-blue-50 rounded-lg p-3">
+              <div className="text-2xl font-bold text-blue-700">{count}</div>
+              <div className="text-xs text-blue-600 capitalize">{type} entries</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Quick Clear by Type */}
+        {Object.keys(rateLimitStats.byType).length > 0 && (
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Clear by Action Type
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(rateLimitStats.byType).map(([type, count]) => (
+                <button
+                  key={type}
+                  onClick={() => clearRateLimitsByType(type)}
+                  className="inline-flex items-center px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  <span className="capitalize">{type}</span>
+                  <span className="ml-2 px-1.5 py-0.5 bg-gray-200 text-gray-600 rounded text-xs">{count}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Rate Limit Entries Table */}
+        {rateLimitLoading ? (
+          <div className="flex justify-center py-8">
+            <LoadingSpinner />
+          </div>
+        ) : rateLimits.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <Clock className="w-12 h-12 mx-auto mb-2 opacity-50" />
+            <p>No rate limit entries</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Identifier</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Attempts</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Expires</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {rateLimits.slice(0, 20).map((entry) => {
+                  const isBlocked = entry.is_blocked && (!entry.block_expires_at || new Date(entry.block_expires_at) > new Date());
+                  return (
+                    <tr key={entry.id} className={isBlocked ? 'bg-red-50' : ''}>
+                      <td className="px-4 py-2 font-mono text-xs text-gray-600 max-w-[200px] truncate" title={entry.identifier}>
+                        {entry.identifier}
+                      </td>
+                      <td className="px-4 py-2">
+                        <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs capitalize">
+                          {entry.action_type}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-gray-900">{entry.attempts}</td>
+                      <td className="px-4 py-2">
+                        {isBlocked ? (
+                          <span className="inline-flex items-center px-2 py-1 bg-red-100 text-red-700 rounded text-xs">
+                            <Ban className="w-3 h-3 mr-1" />
+                            Blocked
+                          </span>
+                        ) : (
+                          <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
+                            Active
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2 text-xs text-gray-500">
+                        {entry.block_expires_at
+                          ? new Date(entry.block_expires_at).toLocaleString()
+                          : new Date(entry.window_end).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-2">
+                        <button
+                          onClick={() => unblockEntry(entry.id)}
+                          className="inline-flex items-center px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Remove entry"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {rateLimits.length > 20 && (
+              <div className="text-center py-2 text-sm text-gray-500">
+                Showing 20 of {rateLimits.length} entries
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Implementation Status */}
       <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-        <h3 className="text-sm font-semibold text-green-900 mb-2">✅ Fully Functional</h3>
+        <h3 className="text-sm font-semibold text-green-900 mb-2">Fully Functional</h3>
         <ul className="text-sm text-green-800 space-y-1 list-disc list-inside">
           <li>System configuration persisted in <code className="bg-green-100 px-1 rounded">system_config</code> table</li>
           <li>RLS policies enforce system admin access only</li>

@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Camera, Plus, Upload, FileText, X } from 'lucide-react';
+import { Camera, Plus, Upload, FileText, X, Layers } from 'lucide-react';
 
 interface FloatingActionButtonProps {
   onTakePhotoClick: () => void;
+  onMultiPagePhotoClick: () => void;
   onUploadClick: () => void;
   onManualEntryClick: () => void;
 }
 
-export function FloatingActionButton({ onTakePhotoClick, onUploadClick, onManualEntryClick }: FloatingActionButtonProps) {
+export function FloatingActionButton({ onTakePhotoClick, onMultiPagePhotoClick, onUploadClick, onManualEntryClick }: FloatingActionButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -31,6 +32,11 @@ export function FloatingActionButton({ onTakePhotoClick, onUploadClick, onManual
   const handleTakePhoto = () => {
     setIsOpen(false);
     onTakePhotoClick();
+  };
+
+  const handleMultiPagePhoto = () => {
+    setIsOpen(false);
+    onMultiPagePhotoClick();
   };
 
   const handleUpload = () => {
@@ -61,6 +67,15 @@ export function FloatingActionButton({ onTakePhotoClick, onUploadClick, onManual
           >
             <Camera size={20} />
             <span className="font-medium">Take Photo</span>
+          </button>
+
+          <button
+            onClick={handleMultiPagePhoto}
+            className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-800 text-slate-800 dark:text-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 border border-slate-200 dark:border-gray-700 whitespace-nowrap"
+            title="Multi-Page Receipt Photo"
+          >
+            <Layers size={20} />
+            <span className="font-medium">Multi-Page Photo</span>
           </button>
 
           <button

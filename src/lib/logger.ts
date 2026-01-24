@@ -30,7 +30,7 @@ class Logger {
         p_ip_address: null,
         p_user_agent: navigator.userAgent,
         p_stack_trace: options.stackTrace || null,
-        p_execution_time_ms: options.executionTimeMs || null
+        p_execution_time_ms: options.executionTimeMs ? Math.round(options.executionTimeMs) : null
       });
     } catch (error) {
       // Silently fail if logging fails - don't interrupt app flow

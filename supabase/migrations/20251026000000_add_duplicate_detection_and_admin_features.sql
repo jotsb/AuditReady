@@ -107,6 +107,11 @@ CREATE INDEX IF NOT EXISTS idx_potential_duplicates_confidence ON potential_dupl
 -- Enable RLS
 ALTER TABLE potential_duplicates ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can view duplicates for their business receipts" ON potential_duplicates;
+DROP POLICY IF EXISTS "Users can update duplicate status for their receipts" ON potential_duplicates;
+DROP POLICY IF EXISTS "System admins can view all duplicates" ON potential_duplicates;
+
 -- RLS Policies: Only business owners/managers can see duplicates for their receipts
 CREATE POLICY "Users can view duplicates for their business receipts"
   ON potential_duplicates
@@ -155,7 +160,7 @@ CREATE POLICY "System admins can view all duplicates"
   USING (
     EXISTS (
       SELECT 1 FROM system_roles
-      WHERE user_id = auth.uid() AND admin = true
+      WHERE user_id = auth.uid() AND role = 'admin'
     )
   );
 
@@ -185,6 +190,9 @@ CREATE INDEX IF NOT EXISTS idx_impersonation_active ON admin_impersonation_sessi
 -- Enable RLS
 ALTER TABLE admin_impersonation_sessions ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Only system admins can manage impersonation sessions" ON admin_impersonation_sessions;
+
 -- Only system admins can access
 CREATE POLICY "Only system admins can manage impersonation sessions"
   ON admin_impersonation_sessions
@@ -193,7 +201,7 @@ CREATE POLICY "Only system admins can manage impersonation sessions"
   USING (
     EXISTS (
       SELECT 1 FROM system_roles
-      WHERE user_id = auth.uid() AND admin = true
+      WHERE user_id = auth.uid() AND role = 'admin'
     )
   );
 
@@ -217,6 +225,9 @@ CREATE INDEX IF NOT EXISTS idx_health_metrics_time ON system_health_metrics(meas
 -- Enable RLS
 ALTER TABLE system_health_metrics ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Only system admins can view health metrics" ON system_health_metrics;
+
 -- Only system admins can access
 CREATE POLICY "Only system admins can view health metrics"
   ON system_health_metrics
@@ -225,7 +236,7 @@ CREATE POLICY "Only system admins can view health metrics"
   USING (
     EXISTS (
       SELECT 1 FROM system_roles
-      WHERE user_id = auth.uid() AND admin = true
+      WHERE user_id = auth.uid() AND role = 'admin'
     )
   );
 
@@ -253,6 +264,9 @@ CREATE INDEX IF NOT EXISTS idx_queries_log_success ON database_queries_log(succe
 -- Enable RLS
 ALTER TABLE database_queries_log ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Only system admins can view query logs" ON database_queries_log;
+
 -- Only system admins can access
 CREATE POLICY "Only system admins can view query logs"
   ON database_queries_log
@@ -261,7 +275,7 @@ CREATE POLICY "Only system admins can view query logs"
   USING (
     EXISTS (
       SELECT 1 FROM system_roles
-      WHERE user_id = auth.uid() AND admin = true
+      WHERE user_id = auth.uid() AND role = 'admin'
     )
   );
 
@@ -282,7 +296,7 @@ DECLARE
 BEGIN
   -- Only system admins or business owners/managers can run this
   IF NOT EXISTS (
-    SELECT 1 FROM system_roles WHERE user_id = auth.uid() AND admin = true
+    SELECT 1 FROM system_roles WHERE user_id = auth.uid() AND role = 'admin'
   ) THEN
     RAISE EXCEPTION 'Only system administrators can detect duplicates';
   END IF;
@@ -433,7 +447,7 @@ DECLARE
 BEGIN
   -- Only system admins can access
   IF NOT EXISTS (
-    SELECT 1 FROM system_roles WHERE user_id = auth.uid() AND admin = true
+    SELECT 1 FROM system_roles WHERE user_id = auth.uid() AND role = 'admin'
   ) THEN
     RAISE EXCEPTION 'Only system administrators can view system health';
   END IF;
@@ -528,7 +542,7 @@ DECLARE
 BEGIN
   -- Only system admins can execute queries
   IF NOT EXISTS (
-    SELECT 1 FROM system_roles WHERE user_id = auth.uid() AND admin = true
+    SELECT 1 FROM system_roles WHERE user_id = auth.uid() AND role = 'admin'
   ) THEN
     RAISE EXCEPTION 'Only system administrators can execute queries';
   END IF;
@@ -659,6 +673,9 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+-- Drop trigger if exists
+DROP TRIGGER IF EXISTS audit_duplicate_review_trigger ON potential_duplicates;
 
 CREATE TRIGGER audit_duplicate_review_trigger
   AFTER UPDATE ON potential_duplicates

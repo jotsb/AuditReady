@@ -174,16 +174,42 @@ export function PDFExportReport() {
     const totalGST = receipts.reduce((sum, r) => sum + Number(r.gst_amount || 0), 0);
     const totalPST = receipts.reduce((sum, r) => sum + Number(r.pst_amount || 0), 0);
 
-    let imageDataUrls: { index: number; url: string; receipt: any }[] = [];
+    let imageDataUrls: { index: number; url: string; receipt: any; pageNumber?: number; totalPages?: number }[] = [];
 
     if (includeImages) {
       for (let i = 0; i < receipts.length; i++) {
         const receipt = receipts[i];
+
+        // For multipage receipts, fetch all pages (child receipts)
+        let pages: { filePath: string; pageNumber: number }[] = [];
+
         if (receipt.file_path) {
+          // Single page receipt - has its own file_path
+          pages.push({ filePath: receipt.file_path, pageNumber: 1 });
+        } else {
+          // Check if this is a multipage receipt (parent) - fetch child pages
+          const { data: childPages } = await supabase
+            .from('receipts')
+            .select('file_path, page_number')
+            .eq('parent_receipt_id', receipt.id)
+            .order('page_number', { ascending: true });
+
+          if (childPages && childPages.length > 0) {
+            pages = childPages
+              .filter(page => page.file_path)
+              .map(page => ({ filePath: page.file_path, pageNumber: page.page_number }));
+            logger.debug('Found multipage receipt', { receiptId: receipt.id, pageCount: pages.length }, 'PDF_EXPORT');
+          }
+        }
+
+        const totalPages = pages.length;
+
+        // Download and add all pages for this receipt
+        for (const page of pages) {
           try {
             const { data } = await supabase.storage
               .from('receipts')
-              .download(receipt.file_path);
+              .download(page.filePath);
 
             if (data) {
               const reader = new FileReader();
@@ -191,10 +217,16 @@ export function PDFExportReport() {
                 reader.onloadend = () => resolve(reader.result as string);
                 reader.readAsDataURL(data);
               });
-              imageDataUrls.push({ index: i + 1, url: dataUrl, receipt });
+              imageDataUrls.push({
+                index: i + 1,
+                url: dataUrl,
+                receipt,
+                pageNumber: page.pageNumber,
+                totalPages
+              });
             }
           } catch (error) {
-            logger.error('Error loading receipt image for PDF', error as Error, { receiptId: receipt.id, filePath: receipt.file_path });
+            logger.error('Error loading receipt image for PDF', error as Error, { receiptId: receipt.id, filePath: page.filePath });
           }
         }
       }
@@ -392,15 +424,17 @@ export function PDFExportReport() {
           Report generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}
         </div>
 
-        ${imageDataUrls.map(({ index, url, receipt }) => `
+        ${imageDataUrls.map(({ index, url, receipt, pageNumber, totalPages }) => `
           <div class="receipt-image-page">
-            <div class="receipt-image-header">Receipt #${index}</div>
+            <div class="receipt-image-header">
+              Receipt #${index}${totalPages && totalPages > 1 ? ` - Page ${pageNumber} of ${totalPages}` : ''}
+            </div>
             <div class="receipt-image-subheader">
               ${receipt.vendor_name || 'Unknown Vendor'} -
               ${receipt.transaction_date ? new Date(receipt.transaction_date).toLocaleDateString() : 'N/A'} -
               $${Number(receipt.total_amount || 0).toFixed(2)}
             </div>
-            <img src="${url}" alt="Receipt #${index}" class="receipt-image" />
+            <img src="${url}" alt="Receipt #${index}${totalPages && totalPages > 1 ? ` Page ${pageNumber}` : ''}" class="receipt-image" />
           </div>
         `).join('')}
       </body>

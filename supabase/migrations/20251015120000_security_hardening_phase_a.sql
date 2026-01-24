@@ -41,6 +41,12 @@
 DROP POLICY IF EXISTS "Anyone can upload receipts" ON storage.objects;
 DROP POLICY IF EXISTS "Anyone can view receipts" ON storage.objects;
 DROP POLICY IF EXISTS "Public read access" ON storage.objects;
+DROP POLICY IF EXISTS "Users can upload receipts to their collections" ON storage.objects;
+DROP POLICY IF EXISTS "Users can read receipts from their collections" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update their receipt files" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete their receipt files" ON storage.objects;
+DROP POLICY IF EXISTS "Owners and managers can delete receipts" ON storage.objects;
+DROP POLICY IF EXISTS "Owners and managers can update receipts" ON storage.objects;
 
 -- Policy 1: Users can upload files to their accessible collections
 CREATE POLICY "Users can upload receipts to their collections"
@@ -227,8 +233,17 @@ $$;
 -- PII MASKING FUNCTIONS
 -- ============================================================================
 
+-- Drop views that depend on masking functions first
+DROP VIEW IF EXISTS system_logs_masked CASCADE;
+DROP VIEW IF EXISTS audit_logs_masked CASCADE;
+
+-- Drop existing masking functions if they exist
+DROP FUNCTION IF EXISTS mask_email(text) CASCADE;
+DROP FUNCTION IF EXISTS mask_phone(text) CASCADE;
+DROP FUNCTION IF EXISTS mask_sensitive_jsonb(jsonb) CASCADE;
+
 -- Function: Mask email addresses
-CREATE OR REPLACE FUNCTION mask_email(p_email text)
+CREATE FUNCTION mask_email(p_email text)
 RETURNS text
 LANGUAGE plpgsql
 IMMUTABLE
@@ -264,7 +279,7 @@ END;
 $$;
 
 -- Function: Mask phone numbers
-CREATE OR REPLACE FUNCTION mask_phone(p_phone text)
+CREATE FUNCTION mask_phone(p_phone text)
 RETURNS text
 LANGUAGE plpgsql
 IMMUTABLE
@@ -283,8 +298,14 @@ BEGIN
 END;
 $$;
 
--- Function: Mask IP addresses (keep first two octets) - accepts text
-CREATE OR REPLACE FUNCTION mask_ip(p_ip_address text)
+-- Drop existing mask_ip functions if they exist
+DROP FUNCTION IF EXISTS mask_ip(text) CASCADE;
+DROP FUNCTION IF EXISTS mask_ip(inet) CASCADE;
+DROP FUNCTION IF EXISTS mask_ip_text(text) CASCADE;
+DROP FUNCTION IF EXISTS mask_ip_inet(inet) CASCADE;
+
+-- Function: Mask IP addresses (keep first two octets) - text version
+CREATE OR REPLACE FUNCTION mask_ip_text(p_ip_address text)
 RETURNS text
 LANGUAGE plpgsql
 IMMUTABLE
@@ -307,19 +328,41 @@ BEGIN
 END;
 $$;
 
--- Function: Mask IP addresses - accepts inet type
+-- Function: Mask IP addresses - inet version (wrapper)
+CREATE OR REPLACE FUNCTION mask_ip_inet(p_ip_address inet)
+RETURNS text
+LANGUAGE plpgsql
+IMMUTABLE
+STRICT
+AS $$
+BEGIN
+  RETURN mask_ip_text(host(p_ip_address));
+END;
+$$;
+
+-- Create convenience overloads with original names for backward compatibility
+CREATE OR REPLACE FUNCTION mask_ip(p_ip_address text)
+RETURNS text
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+BEGIN
+  RETURN mask_ip_text(p_ip_address);
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION mask_ip(p_ip_address inet)
 RETURNS text
 LANGUAGE plpgsql
 IMMUTABLE
 AS $$
 BEGIN
-  RETURN mask_ip(host(p_ip_address));
+  RETURN mask_ip_inet(p_ip_address);
 END;
 $$;
 
 -- Function: Mask sensitive JSONB fields
-CREATE OR REPLACE FUNCTION mask_sensitive_jsonb(p_metadata jsonb)
+CREATE FUNCTION mask_sensitive_jsonb(p_metadata jsonb)
 RETURNS jsonb
 LANGUAGE plpgsql
 IMMUTABLE
@@ -382,10 +425,10 @@ SELECT
   END AS metadata,
   user_id,
   session_id,
-  -- Mask IP address for non-admins
+  -- Mask IP address for non-admins (cast to text since mask_ip returns text)
   CASE
     WHEN EXISTS (SELECT 1 FROM system_roles WHERE user_id = auth.uid() AND role = 'admin')
-    THEN ip_address
+    THEN host(ip_address)::text
     ELSE mask_ip(ip_address)
   END AS ip_address,
   user_agent,
@@ -398,6 +441,7 @@ FROM system_logs;
 GRANT SELECT ON system_logs_masked TO authenticated;
 
 -- View: Audit logs with PII masking for non-admins
+-- Note: audit_logs table only has: id, user_id, action, resource_type, resource_id, details, created_at
 CREATE OR REPLACE VIEW audit_logs_masked AS
 SELECT
   id,
@@ -405,24 +449,12 @@ SELECT
   action,
   resource_type,
   resource_id,
-  business_id,
   -- Mask details for non-admins
   CASE
     WHEN EXISTS (SELECT 1 FROM system_roles WHERE user_id = auth.uid() AND role = 'admin')
     THEN details
     ELSE mask_sensitive_jsonb(details)
   END AS details,
-  before_state,
-  after_state,
-  -- Mask IP address for non-admins
-  CASE
-    WHEN EXISTS (SELECT 1 FROM system_roles WHERE user_id = auth.uid() AND role = 'admin')
-    THEN ip_address
-    ELSE mask_ip(ip_address)
-  END AS ip_address,
-  user_agent,
-  status,
-  error_message,
   created_at
 FROM audit_logs;
 
@@ -484,15 +516,19 @@ TO authenticated
 WITH CHECK (true);
 
 -- Create index for querying security events
-CREATE INDEX idx_security_events_created_at ON security_events(created_at DESC);
-CREATE INDEX idx_security_events_severity ON security_events(severity, created_at DESC);
-CREATE INDEX idx_security_events_type ON security_events(event_type, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_security_events_created_at ON security_events(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_security_events_severity ON security_events(severity, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_security_events_type ON security_events(event_type, created_at DESC);
 
 -- ============================================================================
 -- FUNCTION: Log security event
 -- ============================================================================
 
-CREATE OR REPLACE FUNCTION log_security_event(
+-- Drop existing function if it exists (may have different signature)
+DROP FUNCTION IF EXISTS log_security_event(text, text, jsonb) CASCADE;
+DROP FUNCTION IF EXISTS log_security_event(text, text, uuid, text, text, jsonb) CASCADE;
+
+CREATE FUNCTION log_security_event(
   p_event_type text,
   p_severity text,
   p_user_id uuid DEFAULT NULL,
@@ -559,7 +595,10 @@ $$;
 GRANT EXECUTE ON FUNCTION validate_file_upload(text, bigint, text, uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION mask_email(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION mask_phone(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION mask_ip_text(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION mask_ip_inet(inet) TO authenticated;
 GRANT EXECUTE ON FUNCTION mask_ip(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION mask_ip(inet) TO authenticated;
 GRANT EXECUTE ON FUNCTION mask_sensitive_jsonb(jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION log_security_event(text, text, uuid, text, text, jsonb) TO authenticated;
 
@@ -570,7 +609,8 @@ GRANT EXECUTE ON FUNCTION log_security_event(text, text, uuid, text, text, jsonb
 COMMENT ON FUNCTION validate_file_upload IS 'Validates file uploads with size, type, and permission checks';
 COMMENT ON FUNCTION mask_email IS 'Masks email addresses for PII protection (e***e@domain.com)';
 COMMENT ON FUNCTION mask_phone IS 'Masks phone numbers, showing only last 4 digits';
-COMMENT ON FUNCTION mask_ip IS 'Masks IP addresses, keeping only first two octets';
+COMMENT ON FUNCTION mask_ip_text IS 'Masks IP addresses (text), keeping only first two octets';
+COMMENT ON FUNCTION mask_ip_inet IS 'Masks IP addresses (inet), keeping only first two octets';
 COMMENT ON FUNCTION mask_sensitive_jsonb IS 'Masks sensitive fields in JSONB metadata';
 COMMENT ON FUNCTION log_security_event IS 'Logs security events with automatic escalation to system_logs';
 COMMENT ON VIEW system_logs_masked IS 'System logs with PII masking for non-admin users';

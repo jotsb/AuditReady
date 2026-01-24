@@ -2,7 +2,6 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import JSZip from "npm:jszip@3";
 import { SMTPClient } from "npm:emailjs@4.0.3";
-import { getIPAddress } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -53,12 +52,19 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Rate limiting: 5 exports per hour per user
+    // Get configured rate limits from database
+    const { data: rateLimitConfig } = await supabase.rpc('get_rate_limit_config', {
+      p_action_type: 'export'
+    });
+    const maxAttempts = rateLimitConfig?.max_attempts || 5;
+    const windowMinutes = rateLimitConfig?.window_minutes || 60;
+
+    // Rate limiting using configured values
     const { data: rateLimitResult } = await supabase.rpc('check_rate_limit', {
       p_identifier: user.id,
       p_action_type: 'export',
-      p_max_attempts: 5,
-      p_window_minutes: 60
+      p_max_attempts: maxAttempts,
+      p_window_minutes: windowMinutes
     });
 
     if (rateLimitResult && !rateLimitResult.allowed) {
@@ -217,15 +223,24 @@ async function processExport(supabase: any, jobId: string, businessId: string) {
       collections,
       receipts: receipts.map((r: any) => ({
         id: r.id,
-        merchant_name: r.merchant_name,
-        amount: r.amount,
-        currency: r.currency,
-        date: r.date,
+        merchant: r.vendor_name,
+        amount: r.total_amount,
+        currency: r.currency || business?.currency,
+        date: r.transaction_date,
         category: r.category,
         notes: r.notes,
-        verified: r.verified,
+        verified: r.is_edited || false,
         collection_id: r.collection_id,
         created_at: r.created_at,
+        // Include additional fields for completeness
+        vendor_address: r.vendor_address,
+        subtotal: r.subtotal,
+        gst_amount: r.gst_amount,
+        pst_amount: r.pst_amount,
+        payment_method: r.payment_method,
+        file_path: r.file_path,
+        parent_receipt_id: r.parent_receipt_id,
+        page_number: r.page_number,
       })),
       members: members.map((m: any) => ({
         role: m.role,
@@ -264,7 +279,7 @@ async function processExport(supabase: any, jobId: string, businessId: string) {
             .download(receipt.file_path);
 
           if (fileData) {
-            const fileName = `${receipt.id}_${(receipt.merchant_name || "receipt").replace(/[^a-z0-9]/gi, "_")}.jpg`;
+            const fileName = `${receipt.id}_${(receipt.vendor_name || "receipt").replace(/[^a-z0-9]/gi, "_")}.jpg`;
             const arrayBuffer = await fileData.arrayBuffer();
             receiptsFolder.file(fileName, arrayBuffer);
             downloadedCount++;
@@ -540,13 +555,13 @@ function generateCSV(receipts: any[]): string {
 
   const rows = receipts.map((r: any) => {
     const row = [
-      r.date || "",
-      r.merchant_name || "",
-      r.amount !== null && r.amount !== undefined ? String(r.amount) : "",
+      r.transaction_date || "",
+      r.vendor_name || "",
+      r.total_amount !== null && r.total_amount !== undefined ? String(r.total_amount) : "",
       r.currency || "",
       r.category || "",
       r.notes || "",
-      r.verified ? "Yes" : "No",
+      r.is_edited ? "Yes" : "No",
       r.created_at || "",
     ];
 

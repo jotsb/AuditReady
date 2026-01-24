@@ -240,6 +240,7 @@ export default function TeamPage() {
       try {
         logger.info('Calling send-invitation-email edge function', { email: inviteEmail }, 'EDGE_FUNCTION');
 
+        const frontendUrl = import.meta.env.VITE_PUBLIC_URL || window.location.origin;
         const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-invitation-email`;
         const response = await fetch(functionUrl, {
           method: 'POST',
@@ -252,7 +253,8 @@ export default function TeamPage() {
             role: invitationData.role,
             token: invitationData.token,
             inviterName: profileData?.full_name,
-            businessName: businessData?.name
+            businessName: businessData?.name,
+            frontendUrl: frontendUrl
           })
         });
 
@@ -435,6 +437,7 @@ export default function TeamPage() {
       try {
         logger.info('Calling send-invitation-email edge function for resend', { email: invitation.email }, 'EDGE_FUNCTION');
 
+        const frontendUrl = import.meta.env.VITE_PUBLIC_URL || window.location.origin;
         const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-invitation-email`;
         const response = await fetch(functionUrl, {
           method: 'POST',
@@ -447,7 +450,8 @@ export default function TeamPage() {
             role: invitation.role,
             token: invitation.token,
             inviterName: profileData?.full_name,
-            businessName: businessData?.name
+            businessName: businessData?.name,
+            frontendUrl: frontendUrl
           })
         });
 

@@ -62,194 +62,202 @@ END $$;
 
 -- Note: We only need to fix SECURITY DEFINER functions as they run with elevated privileges
 -- Regular functions inherit the caller's search_path which is safe
+-- Total: 54 SECURITY DEFINER functions
 
--- Helper functions
-ALTER FUNCTION check_user_exists(text)
-  SET search_path = public, extensions;
-
-ALTER FUNCTION update_saved_filter_updated_at()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION ensure_single_default_audit_filter()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION ensure_single_default_system_filter()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION update_email_inbox_updated_at()
-  SET search_path = public, extensions;
-
--- Permission check functions
-ALTER FUNCTION is_system_admin()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION is_technical_support()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION get_business_role(uuid)
-  SET search_path = public, extensions;
-
-ALTER FUNCTION is_business_owner(uuid)
-  SET search_path = public, extensions;
-
-ALTER FUNCTION is_business_owner_or_manager(uuid)
-  SET search_path = public, extensions;
-
-ALTER FUNCTION is_business_member(uuid)
-  SET search_path = public, extensions;
-
-ALTER FUNCTION create_business_owner_membership()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION is_business_suspended(uuid)
-  SET search_path = public, extensions;
-
-ALTER FUNCTION is_business_soft_deleted(uuid)
-  SET search_path = public, extensions;
-
-ALTER FUNCTION get_user_email(uuid)
-  SET search_path = public, extensions;
-
-ALTER FUNCTION get_business_id_from_collection(uuid)
-  SET search_path = public, extensions;
-
--- Audit logging functions
-ALTER FUNCTION log_receipt_insert()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_receipt_update()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_receipt_delete()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_business_action()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_collection_action()
+ALTER FUNCTION audit_account_lockouts()
   SET search_path = public, extensions;
 
 ALTER FUNCTION audit_email_receipt_changes()
   SET search_path = public, extensions;
 
-ALTER FUNCTION log_auth_event()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_performance_event()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_security_event()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_receipt_insert_enhanced()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_receipt_update_enhanced()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_business_member_changes()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_expense_category_changes()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_business_changes_enhanced()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_collection_changes_enhanced()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_invitation_changes()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_receipt_approval_changes()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_permission_denied()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_failed_operation()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION should_log_event(text, text)
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_system_event()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_profile_changes()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_system_role_changes()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_business_changes_with_delete()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_collection_member_changes()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION check_account_lockout()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_log_level_config_changes()
-  SET search_path = public, extensions;
-
 ALTER FUNCTION audit_receipt_soft_delete()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION get_receipts_with_thumbnails(uuid, int, int)
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_audit_event()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION search_audit_logs(text, text, text, uuid, text, timestamptz, timestamptz, int, int)
-  SET search_path = public, extensions;
-
-ALTER FUNCTION get_audit_stats()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION refresh_audit_logs_summary()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION update_saved_filters_updated_at()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION ensure_single_default_filter()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION audit_account_lockouts()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION log_receipt_delete_enhanced()
-  SET search_path = public, extensions;
-
-ALTER FUNCTION get_system_config(text)
   SET search_path = public, extensions;
 
 ALTER FUNCTION audit_system_config_changes()
   SET search_path = public, extensions;
 
-ALTER FUNCTION update_updated_at_column()
+ALTER FUNCTION check_account_lockout(p_email text)
   SET search_path = public, extensions;
 
-ALTER FUNCTION handle_receipt_deletion()
+ALTER FUNCTION check_rate_limit(p_identifier text, p_action_type text, p_max_attempts integer, p_window_minutes integer)
   SET search_path = public, extensions;
 
-ALTER FUNCTION update_system_config(text, jsonb)
-  SET search_path = public, extensions;
-
-ALTER FUNCTION check_rate_limit(text, text, int, interval)
-  SET search_path = public, extensions;
-
-ALTER FUNCTION record_failed_login(text)
-  SET search_path = public, extensions;
-
-ALTER FUNCTION unlock_account(uuid)
+ALTER FUNCTION check_user_exists(user_email text)
   SET search_path = public, extensions;
 
 ALTER FUNCTION cleanup_old_rate_limits()
+  SET search_path = public, extensions;
+
+ALTER FUNCTION create_business_owner_membership()
+  SET search_path = public, extensions;
+
+ALTER FUNCTION get_audit_stats(p_start_date timestamp with time zone, p_end_date timestamp with time zone)
+  SET search_path = public, extensions;
+
+ALTER FUNCTION get_business_id_from_collection(collection_id_param uuid)
+  SET search_path = public, extensions;
+
+ALTER FUNCTION get_business_role(user_id uuid, business_id uuid)
+  SET search_path = public, extensions;
+
+-- Conditionally alter if function exists (may not exist in fresh migrations)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p
+    JOIN pg_namespace n ON p.pronamespace = n.oid
+    WHERE n.nspname = 'public' AND p.proname = 'get_receipts_with_thumbnails'
+  ) THEN
+    ALTER FUNCTION get_receipts_with_thumbnails(p_collection_id uuid, p_offset integer, p_limit integer)
+      SET search_path = public, extensions;
+  END IF;
+END $$;
+
+ALTER FUNCTION get_system_config()
+  SET search_path = public, extensions;
+
+ALTER FUNCTION get_user_email(user_id uuid)
+  SET search_path = public, extensions;
+
+ALTER FUNCTION is_business_member(user_id uuid, business_id uuid)
+  SET search_path = public, extensions;
+
+ALTER FUNCTION is_business_owner(user_id uuid, business_id uuid)
+  SET search_path = public, extensions;
+
+ALTER FUNCTION is_business_owner_or_manager(user_id uuid, business_id uuid)
+  SET search_path = public, extensions;
+
+ALTER FUNCTION is_business_soft_deleted(business_id_param uuid)
+  SET search_path = public, extensions;
+
+ALTER FUNCTION is_business_suspended(business_id_param uuid)
+  SET search_path = public, extensions;
+
+ALTER FUNCTION is_system_admin(user_id uuid)
+  SET search_path = public, extensions;
+
+ALTER FUNCTION is_technical_support(user_id uuid)
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_audit_event(p_action text, p_resource_type text, p_resource_id uuid, p_details jsonb, p_snapshot_before jsonb, p_snapshot_after jsonb, p_status text, p_error_message text, p_execution_time_ms integer)
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_auth_event(p_event_type text, p_user_id uuid, p_success boolean, p_metadata jsonb)
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_business_action()
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_business_changes_enhanced()
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_business_changes_with_delete()
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_business_member_changes()
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_collection_action()
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_collection_changes_enhanced()
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_collection_member_changes()
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_expense_category_changes()
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_failed_operation(p_action text, p_resource_type text, p_resource_id uuid, p_error_message text, p_details jsonb)
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_invitation_changes()
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_log_level_config_changes()
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_performance_event(p_operation text, p_execution_time_ms integer, p_metadata jsonb)
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_permission_denied(p_action text, p_resource_type text, p_resource_id uuid, p_reason text)
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_profile_changes()
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_receipt_approval_changes()
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_receipt_delete()
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_receipt_delete_enhanced()
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_receipt_insert()
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_receipt_insert_enhanced()
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_receipt_update()
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_receipt_update_enhanced()
+  SET search_path = public, extensions;
+
+-- Conditionally alter log_security_event (signature changed in 20251015120000)
+-- Handle both old signature (3 params) and new signature (6 params)
+DO $$
+BEGIN
+  -- Try old signature first (3 params)
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p
+    JOIN pg_namespace n ON p.pronamespace = n.oid
+    WHERE n.nspname = 'public' AND p.proname = 'log_security_event'
+    AND pg_get_function_identity_arguments(p.oid) = 'p_event_type text, p_severity text, p_details jsonb'
+  ) THEN
+    ALTER FUNCTION log_security_event(p_event_type text, p_severity text, p_details jsonb)
+      SET search_path = public, extensions;
+  END IF;
+
+  -- Try new signature (6 params)
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p
+    JOIN pg_namespace n ON p.pronamespace = n.oid
+    WHERE n.nspname = 'public' AND p.proname = 'log_security_event'
+    AND pg_get_function_identity_arguments(p.oid) = 'p_event_type text, p_severity text, p_user_id uuid, p_ip_address text, p_user_agent text, p_details jsonb'
+  ) THEN
+    ALTER FUNCTION log_security_event(p_event_type text, p_severity text, p_user_id uuid, p_ip_address text, p_user_agent text, p_details jsonb)
+      SET search_path = public, extensions;
+  END IF;
+END $$;
+
+ALTER FUNCTION log_system_event(p_level text, p_category text, p_message text, p_metadata jsonb, p_user_id uuid, p_session_id text, p_ip_address inet, p_user_agent text, p_stack_trace text, p_execution_time_ms integer)
+  SET search_path = public, extensions;
+
+ALTER FUNCTION log_system_role_changes()
+  SET search_path = public, extensions;
+
+ALTER FUNCTION record_failed_login(p_email text, p_ip_address inet, p_user_agent text, p_failure_reason text)
+  SET search_path = public, extensions;
+
+ALTER FUNCTION refresh_audit_logs_summary()
+  SET search_path = public, extensions;
+
+ALTER FUNCTION search_audit_logs(p_search_query text, p_limit integer)
+  SET search_path = public, extensions;
+
+ALTER FUNCTION should_log_event(p_category text, p_level text)
+  SET search_path = public, extensions;
+
+ALTER FUNCTION unlock_account(p_email text, p_unlock_reason text)
+  SET search_path = public, extensions;
+
+ALTER FUNCTION update_system_config(p_storage_settings jsonb, p_email_settings jsonb, p_app_settings jsonb, p_feature_flags jsonb)
   SET search_path = public, extensions;
 
 -- ============================================================================
@@ -258,14 +266,23 @@ ALTER FUNCTION cleanup_old_rate_limits()
 
 -- The audit_logs_summary materialized view should only be accessible to system admins
 -- Let's ensure proper RLS-like protection via grants
+-- Note: This view is created in migration 20251009143715, so conditionally apply permissions
 
--- Revoke all default access
-REVOKE ALL ON public.audit_logs_summary FROM anon;
-REVOKE ALL ON public.audit_logs_summary FROM authenticated;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_matviews
+    WHERE schemaname = 'public' AND matviewname = 'audit_logs_summary'
+  ) THEN
+    -- Revoke all default access
+    REVOKE ALL ON public.audit_logs_summary FROM anon;
+    REVOKE ALL ON public.audit_logs_summary FROM authenticated;
 
--- Grant select only to postgres (superuser) and service_role
-GRANT SELECT ON public.audit_logs_summary TO postgres;
-GRANT SELECT ON public.audit_logs_summary TO service_role;
+    -- Grant select only to postgres (superuser) and service_role
+    GRANT SELECT ON public.audit_logs_summary TO postgres;
+    GRANT SELECT ON public.audit_logs_summary TO service_role;
+  END IF;
+END $$;
 
 -- Note: Materialized views don't support RLS directly
 -- Access should be controlled through the application layer
@@ -287,7 +304,7 @@ INSERT INTO system_logs (
   'Database security warnings resolved',
   jsonb_build_object(
     'fixes', jsonb_build_object(
-      'search_path_fixes', 64,
+      'search_path_fixes', 54,
       'extension_moved', true,
       'materialized_view_secured', true
     ),

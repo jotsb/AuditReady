@@ -33,7 +33,7 @@ export function ManualEntryForm({ onSubmit, onClose }: ManualEntryFormProps) {
     const { data } = await supabase
       .from('expense_categories')
       .select('id, name')
-      .order('display_order');
+      .order('sort_order');
     setCategories(data || []);
   };
 

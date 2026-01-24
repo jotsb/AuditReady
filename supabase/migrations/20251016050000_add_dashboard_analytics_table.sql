@@ -70,7 +70,7 @@ CREATE POLICY "Users can read own analytics"
       user_id IS NULL
       AND business_id IN (
         SELECT business_id
-        FROM business_users
+        FROM business_members
         WHERE user_id = auth.uid()
       )
     )
@@ -106,10 +106,10 @@ BEGIN
   IF p_user_id IS NULL THEN
     -- Business-wide stats
     SELECT
-      COALESCE(SUM(amount), 0),
+      COALESCE(SUM(total_amount), 0),
       COUNT(*),
-      COALESCE(SUM(CASE WHEN transaction_date >= v_start_of_month THEN amount ELSE 0 END), 0),
-      COALESCE(SUM(tax_amount), 0)
+      COALESCE(SUM(CASE WHEN transaction_date >= v_start_of_month THEN total_amount ELSE 0 END), 0),
+      COALESCE(SUM(gst_amount + pst_amount), 0)
     INTO
       v_total_expenses,
       v_receipt_count,
@@ -132,21 +132,21 @@ BEGIN
     FROM (
       SELECT
         r.category,
-        SUM(r.amount) as category_sum
+        SUM(r.total_amount) as category_sum
       FROM receipts r
       INNER JOIN collections c ON r.collection_id = c.id
       WHERE c.business_id = p_business_id
         AND r.deleted_at IS NULL
       GROUP BY r.category
     ) cat
-    LEFT JOIN expense_categories ec ON ec.id = cat.category AND ec.business_id = p_business_id;
+    LEFT JOIN expense_categories ec ON ec.name = cat.category;
   ELSE
     -- User-specific stats
     SELECT
-      COALESCE(SUM(amount), 0),
+      COALESCE(SUM(total_amount), 0),
       COUNT(*),
-      COALESCE(SUM(CASE WHEN transaction_date >= v_start_of_month THEN amount ELSE 0 END), 0),
-      COALESCE(SUM(tax_amount), 0)
+      COALESCE(SUM(CASE WHEN transaction_date >= v_start_of_month THEN total_amount ELSE 0 END), 0),
+      COALESCE(SUM(gst_amount + pst_amount), 0)
     INTO
       v_total_expenses,
       v_receipt_count,
@@ -155,7 +155,7 @@ BEGIN
     FROM receipts r
     INNER JOIN collections c ON r.collection_id = c.id
     WHERE c.business_id = p_business_id
-      AND c.user_id = p_user_id
+      AND c.created_by = p_user_id
       AND r.deleted_at IS NULL;
 
     -- Category breakdown (user-specific)
@@ -170,15 +170,15 @@ BEGIN
     FROM (
       SELECT
         r.category,
-        SUM(r.amount) as category_sum
+        SUM(r.total_amount) as category_sum
       FROM receipts r
       INNER JOIN collections c ON r.collection_id = c.id
       WHERE c.business_id = p_business_id
-        AND c.user_id = p_user_id
+        AND c.created_by = p_user_id
         AND r.deleted_at IS NULL
       GROUP BY r.category
     ) cat
-    LEFT JOIN expense_categories ec ON ec.id = cat.category AND ec.business_id = p_business_id;
+    LEFT JOIN expense_categories ec ON ec.name = cat.category;
   END IF;
 
   -- Upsert analytics record
@@ -225,14 +225,14 @@ DECLARE
   v_business_id uuid;
   v_user_id uuid;
 BEGIN
-  -- Get business_id and user_id from the collection
+  -- Get business_id and created_by from the collection
   IF TG_OP = 'DELETE' THEN
-    SELECT c.business_id, c.user_id
+    SELECT c.business_id, c.created_by
     INTO v_business_id, v_user_id
     FROM collections c
     WHERE c.id = OLD.collection_id;
   ELSE
-    SELECT c.business_id, c.user_id
+    SELECT c.business_id, c.created_by
     INTO v_business_id, v_user_id
     FROM collections c
     WHERE c.id = NEW.collection_id;
@@ -274,9 +274,9 @@ BEGIN
 
   -- Calculate user-specific analytics for all users with collections
   FOR v_user IN
-    SELECT DISTINCT c.business_id, c.user_id
+    SELECT DISTINCT c.business_id, c.created_by as user_id
     FROM collections c
-    WHERE c.user_id IS NOT NULL
+    WHERE c.created_by IS NOT NULL
   LOOP
     PERFORM calculate_dashboard_analytics(v_user.business_id, v_user.user_id);
   END LOOP;

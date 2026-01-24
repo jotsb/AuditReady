@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Database, Download, AlertCircle, RefreshCw, Sliders, Zap, Filter } from 'lucide-react';
+import { Database, Download, AlertCircle, RefreshCw, Sliders, Zap, Filter, Pause, Play, ArrowUp } from 'lucide-react';
 import { SplunkLogEntry } from '../components/shared/SplunkLogEntry';
 import { logger } from '../lib/logger';
 import { AdvancedLogFilterPanel, LogFilters } from '../components/audit/AdvancedLogFilterPanel';
@@ -84,17 +84,26 @@ const SYSTEM_PRESETS = [
 
 export function SystemLogsPage() {
   const { isSystemAdmin } = useAuth();
-  usePageTracking('System Logs', { section: 'system_logs' });
+  // Disabled: Page tracking creates infinite loop with realtime logs
+  // usePageTracking('System Logs', { section: 'system_logs' });
 
   const [logs, setLogs] = useState<SystemLog[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<SystemLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [newLogsCount, setNewLogsCount] = useState(0);
+  const [realtimeStatus, setRealtimeStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const itemsPerPage = 50;
+
+  const logsContainerRef = useRef<HTMLDivElement>(null);
+  const pendingLogsRef = useRef<SystemLog[]>([]);
+  const batchTimeoutRef = useRef<NodeJS.Timeout>();
+  const isAtTopRef = useRef(true);
 
   const [filters, setFilters] = useState<LogFilters>({
     searchTerm: '',
@@ -115,20 +124,118 @@ export function SystemLogsPage() {
   }, [isSystemAdmin]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (autoRefresh && isSystemAdmin) {
-      interval = setInterval(() => {
-        loadSystemLogs(true);
-      }, 5000);
+    if (!autoRefresh || !isSystemAdmin) {
+      setRealtimeStatus('disconnected');
+      return;
     }
+
+    setRealtimeStatus('connecting');
+    console.log('[Realtime] Initializing subscription for system_logs');
+
+    const channel = supabase
+      .channel('system-logs-realtime')
+      .on('postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'system_logs'
+        },
+        async (payload) => {
+          console.log('[Realtime] Received log:', payload.new.id);
+
+          if (isPaused) {
+            setNewLogsCount(prev => prev + 1);
+            return;
+          }
+
+          const newLog = payload.new as SystemLog;
+
+          if (newLog.user_id) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('id, full_name, email')
+              .eq('id', newLog.user_id)
+              .maybeSingle();
+
+            if (profile) {
+              newLog.profiles = profile;
+            }
+          }
+
+          pendingLogsRef.current.push(newLog);
+
+          if (batchTimeoutRef.current) {
+            clearTimeout(batchTimeoutRef.current);
+          }
+
+          batchTimeoutRef.current = setTimeout(() => {
+            const logsToAdd = [...pendingLogsRef.current];
+            pendingLogsRef.current = [];
+
+            console.log('[Realtime] Adding logs to UI:', logsToAdd.length, 'isAtTop:', isAtTopRef.current);
+
+            setLogs(prev => [...logsToAdd, ...prev]);
+            setTotalCount(prev => prev + logsToAdd.length);
+
+            if (!isAtTopRef.current) {
+              setNewLogsCount(prev => prev + logsToAdd.length);
+            }
+          }, 300);
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Realtime] Status changed:', status);
+
+        if (status === 'SUBSCRIBED') {
+          setRealtimeStatus('connected');
+          console.log('[Realtime] Connected successfully');
+        } else if (status === 'CHANNEL_ERROR') {
+          setRealtimeStatus('error');
+          console.error('[Realtime] Channel error');
+        } else if (status === 'TIMED_OUT') {
+          setRealtimeStatus('error');
+          console.error('[Realtime] Connection timed out');
+        } else if (status === 'CLOSED') {
+          setRealtimeStatus('disconnected');
+          console.log('[Realtime] Connection closed');
+        }
+      });
+
     return () => {
-      if (interval) clearInterval(interval);
+      if (batchTimeoutRef.current) {
+        clearTimeout(batchTimeoutRef.current);
+      }
+      supabase.removeChannel(channel);
     };
-  }, [autoRefresh, isSystemAdmin]);
+  }, [autoRefresh, isSystemAdmin, isPaused]);
 
   useEffect(() => {
     applyFilters();
   }, [logs, filters]);
+
+  useEffect(() => {
+    const container = logsContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      isAtTopRef.current = container.scrollTop < 100;
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    logsContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    setNewLogsCount(0);
+  };
+
+  const togglePause = () => {
+    setIsPaused(prev => !prev);
+    if (isPaused) {
+      setNewLogsCount(0);
+    }
+  };
 
   const loadSystemLogs = async (silent = false) => {
     const startTime = performance.now();
@@ -325,16 +432,39 @@ export function SystemLogsPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {autoRefresh && (
+              <button
+                onClick={togglePause}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition font-medium ${
+                  isPaused
+                    ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+                title={isPaused ? 'Resume realtime updates' : 'Pause realtime updates'}
+              >
+                {isPaused ? <Play size={18} /> : <Pause size={18} />}
+                {isPaused ? 'Paused' : 'Live'}
+              </button>
+            )}
             <button
               onClick={() => setAutoRefresh(!autoRefresh)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg transition font-medium ${
                 autoRefresh
-                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  ? realtimeStatus === 'connected'
+                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    : realtimeStatus === 'error'
+                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    : 'bg-yellow-600 text-white hover:bg-yellow-700'
                   : 'bg-slate-200 dark:bg-gray-700 text-slate-700 dark:text-gray-300 hover:bg-slate-300 dark:hover:bg-gray-600'
               }`}
+              title={autoRefresh ? `Status: ${realtimeStatus}` : 'Click to enable realtime'}
             >
-              <RefreshCw size={18} className={autoRefresh ? 'animate-spin' : ''} />
-              Auto Refresh
+              <RefreshCw size={18} className={autoRefresh && !isPaused && realtimeStatus === 'connecting' ? 'animate-spin' : ''} />
+              {autoRefresh ? (
+                realtimeStatus === 'connected' ? 'Realtime ON' :
+                realtimeStatus === 'error' ? 'Connection Failed' :
+                realtimeStatus === 'connecting' ? 'Connecting...' : 'Disconnected'
+              ) : 'Realtime OFF'}
             </button>
           </div>
         </div>
@@ -426,7 +556,18 @@ export function SystemLogsPage() {
             </p>
           </div>
 
-          <div className="max-h-[600px] overflow-y-auto">
+          <div ref={logsContainerRef} className="max-h-[600px] overflow-y-auto relative">
+            {newLogsCount > 0 && (
+              <div className="sticky top-2 left-0 right-0 z-20 flex justify-center">
+                <button
+                  onClick={scrollToTop}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all transform hover:scale-105 font-medium animate-bounce"
+                >
+                  <ArrowUp size={18} />
+                  {newLogsCount} New Log{newLogsCount !== 1 ? 's' : ''}
+                </button>
+              </div>
+            )}
             {loading ? (
               <div className="bg-white dark:bg-gray-800">
                 <div className="hidden lg:grid lg:grid-cols-[auto_minmax(140px,1fr)_auto_minmax(120px,1fr)_minmax(200px,2fr)_minmax(120px,1fr)_auto] gap-2 px-4 py-2 bg-slate-100 dark:bg-gray-700 border-b border-slate-300 dark:border-gray-600 text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase sticky top-0 z-10">

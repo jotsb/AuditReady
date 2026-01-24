@@ -255,8 +255,17 @@ ALTER TABLE receipt_approvals ENABLE ROW LEVEL SECURITY;
 -- 7. HELPER FUNCTIONS FOR RLS
 -- ============================================================================
 
+-- Drop existing helper functions to avoid parameter name conflicts
+-- CASCADE will drop dependent policies, which will be recreated by this migration
+DROP FUNCTION IF EXISTS is_system_admin(uuid) CASCADE;
+DROP FUNCTION IF EXISTS is_technical_support(uuid) CASCADE;
+DROP FUNCTION IF EXISTS get_business_role(uuid, uuid) CASCADE;
+DROP FUNCTION IF EXISTS is_business_owner(uuid, uuid) CASCADE;
+DROP FUNCTION IF EXISTS is_business_owner_or_manager(uuid, uuid) CASCADE;
+DROP FUNCTION IF EXISTS is_business_member(uuid, uuid) CASCADE;
+
 -- Check if user is a system admin
-CREATE OR REPLACE FUNCTION is_system_admin(user_id uuid)
+CREATE FUNCTION is_system_admin(user_id uuid)
 RETURNS boolean AS $$
   SELECT EXISTS (
     SELECT 1 FROM system_roles
@@ -266,7 +275,7 @@ RETURNS boolean AS $$
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
 -- Check if user is technical support
-CREATE OR REPLACE FUNCTION is_technical_support(user_id uuid)
+CREATE FUNCTION is_technical_support(user_id uuid)
 RETURNS boolean AS $$
   SELECT EXISTS (
     SELECT 1 FROM system_roles
@@ -276,7 +285,7 @@ RETURNS boolean AS $$
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
 -- Get user's role in a business
-CREATE OR REPLACE FUNCTION get_business_role(user_id uuid, business_id uuid)
+CREATE FUNCTION get_business_role(user_id uuid, business_id uuid)
 RETURNS business_role_type AS $$
   SELECT role FROM business_members
   WHERE business_members.user_id = $1
@@ -285,7 +294,7 @@ RETURNS business_role_type AS $$
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
 -- Check if user is business owner
-CREATE OR REPLACE FUNCTION is_business_owner(user_id uuid, business_id uuid)
+CREATE FUNCTION is_business_owner(user_id uuid, business_id uuid)
 RETURNS boolean AS $$
   SELECT EXISTS (
     SELECT 1 FROM business_members
@@ -296,7 +305,7 @@ RETURNS boolean AS $$
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
 -- Check if user is business owner or manager
-CREATE OR REPLACE FUNCTION is_business_owner_or_manager(user_id uuid, business_id uuid)
+CREATE FUNCTION is_business_owner_or_manager(user_id uuid, business_id uuid)
 RETURNS boolean AS $$
   SELECT EXISTS (
     SELECT 1 FROM business_members
@@ -307,7 +316,7 @@ RETURNS boolean AS $$
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
 -- Check if user is a member of a business
-CREATE OR REPLACE FUNCTION is_business_member(user_id uuid, business_id uuid)
+CREATE FUNCTION is_business_member(user_id uuid, business_id uuid)
 RETURNS boolean AS $$
   SELECT EXISTS (
     SELECT 1 FROM business_members

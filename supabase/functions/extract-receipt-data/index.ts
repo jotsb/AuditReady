@@ -68,12 +68,19 @@ Deno.serve(async (req: Request) => {
   // Create identifier: userId if available, otherwise IP
   const identifier = userId || ipAddress;
 
-  // Check rate limit: 10 uploads per hour
+  // Get configured rate limits from database
+  const { data: rateLimitConfig } = await supabase.rpc('get_rate_limit_config', {
+    p_action_type: 'upload'
+  });
+  const maxAttempts = rateLimitConfig?.max_attempts || 50;
+  const windowMinutes = rateLimitConfig?.window_minutes || 60;
+
+  // Check rate limit using configured values
   const { data: rateLimitResult } = await supabase.rpc('check_rate_limit', {
     p_identifier: identifier,
     p_action_type: 'upload',
-    p_max_attempts: 10,
-    p_window_minutes: 60
+    p_max_attempts: maxAttempts,
+    p_window_minutes: windowMinutes
   });
 
   if (rateLimitResult && !rateLimitResult.allowed) {
@@ -363,7 +370,18 @@ Deno.serve(async (req: Request) => {
 
     if (extractedData.vendor_name) {
       const vendorValidation = validateString(extractedData.vendor_name, 'vendor_name', INPUT_LIMITS.vendor_name, false);
-      validatedData.vendor_name = vendorValidation.valid ? vendorValidation.sanitized : null;
+      let vendorName = vendorValidation.valid ? vendorValidation.sanitized : null;
+
+      if (vendorName) {
+        const lowerVendor = vendorName.toLowerCase();
+        if (lowerVendor.includes('cardlock') || lowerVendor.includes('card lock') ||
+            lowerVendor.includes('petro canada cardlock') || lowerVendor.includes('esso cardlock') ||
+            lowerVendor.includes('shell cardlock') || lowerVendor.includes('husky cardlock')) {
+          vendorName = 'Cardlock Invoice';
+        }
+      }
+
+      validatedData.vendor_name = vendorName;
     } else {
       validatedData.vendor_name = null;
     }

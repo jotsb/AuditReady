@@ -1,6 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { SMTPClient } from "npm:emailjs@4.0.3";
 import {
   validateEmail,
   validateUUID,
@@ -22,6 +21,7 @@ interface InvitationPayload {
   token: string;
   inviterName?: string;
   businessName?: string;
+  frontendUrl?: string;
 }
 
 Deno.serve(async (req: Request) => {
@@ -38,13 +38,20 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // Rate limiting: 3 emails per hour per IP
+  // Get configured rate limits from database
   const ipAddress = getIPAddress(req);
+  const { data: rateLimitConfig } = await supabase.rpc('get_rate_limit_config', {
+    p_action_type: 'email'
+  });
+  const maxAttempts = rateLimitConfig?.max_attempts || 20;
+  const windowMinutes = rateLimitConfig?.window_minutes || 60;
+
+  // Rate limiting using configured values
   const { data: rateLimitResult } = await supabase.rpc('check_rate_limit', {
     p_identifier: ipAddress,
     p_action_type: 'email',
-    p_max_attempts: 3,
-    p_window_minutes: 60
+    p_max_attempts: maxAttempts,
+    p_window_minutes: windowMinutes
   });
 
   if (rateLimitResult && !rateLimitResult.allowed) {
@@ -76,7 +83,7 @@ Deno.serve(async (req: Request) => {
     }
 
     payload = bodyValidation.data;
-    const { email, role, token, inviterName, businessName } = payload;
+    const { email, role, token, inviterName, businessName, frontendUrl } = payload;
 
     const emailValidation = validateEmail(email);
     if (!emailValidation.valid) {
@@ -153,8 +160,9 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const baseUrl = Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", "") || "";
-    const inviteLink = `https://new-chat-5w59.bolt.host/accept-invite?token=${token}`;
+    // Use the frontend URL from the request payload, or fall back to environment variables
+    const baseUrl = frontendUrl || Deno.env.get("FRONTEND_URL") || Deno.env.get("SUPABASE_URL")?.replace("/rest/v1", "").replace("supabase.co", "auditproof.ca") || "";
+    const inviteLink = `${baseUrl}/accept-invite?token=${token}`;
 
     const emailHtml = `
       <!DOCTYPE html>
@@ -213,17 +221,29 @@ If you didn't expect this invitation, you can safely ignore this email.
     const smtpHost = Deno.env.get("SMTP_HOST");
     const smtpPort = Deno.env.get("SMTP_PORT");
     const smtpUser = Deno.env.get("SMTP_USER");
-    const smtpPassword = Deno.env.get("SMTP_PASSWORD");
+    const smtpPassword = Deno.env.get("SMTP_PASSWORD") || Deno.env.get("SMTP_PASS");
 
     if (!smtpHost || !smtpPort || !smtpUser || !smtpPassword) {
+      const missingVars = [];
+      if (!smtpHost) missingVars.push('SMTP_HOST');
+      if (!smtpPort) missingVars.push('SMTP_PORT');
+      if (!smtpUser) missingVars.push('SMTP_USER');
+      if (!smtpPassword) missingVars.push('SMTP_PASSWORD or SMTP_PASS');
+
       await supabase.rpc('log_system_event', {
-        p_level: 'WARN',
+        p_level: 'ERROR',
         p_category: 'EDGE_FUNCTION',
-        p_message: 'SMTP credentials not configured',
-        p_metadata: { email, inviteLink, function: 'send-invitation-email' },
+        p_message: 'SMTP credentials not configured - emails cannot be sent',
+        p_metadata: {
+          email,
+          inviteLink,
+          function: 'send-invitation-email',
+          missingVariables: missingVars,
+          warning: 'Configure SMTP environment variables in edge functions to enable email sending'
+        },
         p_user_id: null,
         p_session_id: null,
-        p_ip_address: null,
+        p_ip_address: ipAddress,
         p_user_agent: req.headers.get('user-agent'),
         p_stack_trace: null,
         p_execution_time_ms: null
@@ -231,12 +251,13 @@ If you didn't expect this invitation, you can safely ignore this email.
 
       return new Response(
         JSON.stringify({
-          success: true,
-          message: "Email service not configured. Use the invitation link from the Team page.",
+          success: false,
+          error: "Email service not configured. Please contact your system administrator.",
+          missingVariables: missingVars,
           inviteLink
         }),
         {
-          status: 200,
+          status: 500,
           headers: {
             ...corsHeaders,
             "Content-Type": "application/json",
@@ -249,7 +270,13 @@ If you didn't expect this invitation, you can safely ignore this email.
       p_level: 'INFO',
       p_category: 'EXTERNAL_API',
       p_message: 'Sending invitation email via SMTP',
-      p_metadata: { email, businessName, smtpHost, function: 'send-invitation-email' },
+      p_metadata: {
+        email,
+        businessName,
+        smtpHost,
+        smtpPort,
+        function: 'send-invitation-email'
+      },
       p_user_id: null,
       p_session_id: null,
       p_ip_address: null,
@@ -261,48 +288,59 @@ If you didn't expect this invitation, you can safely ignore this email.
     const apiStartTime = Date.now();
 
     try {
-      const client = new SMTPClient({
-        user: smtpUser,
-        password: smtpPassword,
+      const nodemailer = await import("npm:nodemailer@6.9.7");
+
+      const port = parseInt(smtpPort);
+      const isSecurePort = port === 465;
+
+      const transportConfig = {
         host: smtpHost,
-        port: parseInt(smtpPort),
-        ssl: true,
+        port: port,
+        secure: isSecurePort,
+        auth: {
+          user: smtpUser,
+          pass: smtpPassword,
+        },
+        tls: {
+          rejectUnauthorized: true,
+          minVersion: 'TLSv1.2',
+        },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+      };
+
+      await supabase.rpc('log_system_event', {
+        p_level: 'DEBUG',
+        p_category: 'EXTERNAL_API',
+        p_message: 'SMTP transport configuration',
+        p_metadata: {
+          host: smtpHost,
+          port: port,
+          secure: isSecurePort,
+          useSTARTTLS: !isSecurePort,
+          function: 'send-invitation-email'
+        },
+        p_user_id: null,
+        p_session_id: null,
+        p_ip_address: null,
+        p_user_agent: req.headers.get('user-agent'),
+        p_stack_trace: null,
+        p_execution_time_ms: null
       });
 
-      const message = {
-        from: `Audit Proof <${smtpUser}>`,
+      const transporter = nodemailer.default.createTransport(transportConfig);
+
+      const info = await transporter.sendMail({
+        from: `"Audit Proof" <${smtpUser}>`,
         to: email,
         subject: `You've been invited to join ${businessName || "a team"} on Audit Proof`,
         text: emailText,
-        attachment: [
-          {
-            data: emailHtml,
-            alternative: true,
-          },
-        ],
-      };
-
-      const headers: Record<string, string> = {
-        'X-Mailer': 'Audit Proof',
-        'X-Priority': '3',
-        'X-MSMail-Priority': 'Normal',
-        'Importance': 'Normal',
-        'MIME-Version': '1.0',
-        'Message-ID': `<${Date.now()}.${Math.random().toString(36).substring(2)}@auditproof.ca>`,
-        'Reply-To': smtpUser,
-        'From': `Audit Proof <noreply@auditproof.ca>`,
-        'Return-Path': smtpUser,
-        'Content-Type': 'multipart/alternative',
-      };
-
-      await client.sendAsync({
-        ...message,
-        headers,
+        html: emailHtml,
       });
 
       const apiTime = Date.now() - apiStartTime;
+      const executionTime = Math.round(Date.now() - startTime);
 
-      const executionTime = Date.now() - startTime;
       await supabase.rpc('log_system_event', {
         p_level: 'INFO',
         p_category: 'EXTERNAL_API',
@@ -310,6 +348,8 @@ If you didn't expect this invitation, you can safely ignore this email.
         p_metadata: {
           email,
           smtpHost,
+          messageId: info.messageId,
+          response: info.response,
           function: 'send-invitation-email'
         },
         p_user_id: null,
@@ -321,7 +361,11 @@ If you didn't expect this invitation, you can safely ignore this email.
       });
 
       return new Response(
-        JSON.stringify({ success: true, message: 'Email sent successfully' }),
+        JSON.stringify({
+          success: true,
+          message: 'Email sent successfully',
+          messageId: info.messageId
+        }),
         {
           status: 200,
           headers: {
@@ -331,8 +375,9 @@ If you didn't expect this invitation, you can safely ignore this email.
         }
       );
     } catch (emailError) {
-      const apiTime = Date.now() - apiStartTime;
+      const apiTime = Math.round(Date.now() - apiStartTime);
       const emailErrorMessage = emailError instanceof Error ? emailError.message : 'Unknown email error';
+      const errorStack = emailError instanceof Error ? emailError.stack : null;
 
       await supabase.rpc('log_system_event', {
         p_level: 'ERROR',
@@ -341,21 +386,23 @@ If you didn't expect this invitation, you can safely ignore this email.
         p_metadata: {
           email,
           smtpHost,
+          smtpPort,
           error: emailErrorMessage,
+          errorName: emailError instanceof Error ? emailError.name : 'Unknown',
           function: 'send-invitation-email'
         },
         p_user_id: null,
         p_session_id: null,
         p_ip_address: null,
         p_user_agent: req.headers.get('user-agent'),
-        p_stack_trace: emailError instanceof Error ? emailError.stack : null,
+        p_stack_trace: errorStack,
         p_execution_time_ms: apiTime
       });
 
       throw new Error(`Failed to send email: ${emailErrorMessage}`);
     }
   } catch (error) {
-    const executionTime = Date.now() - startTime;
+    const executionTime = Math.round(Date.now() - startTime);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const stackTrace = error instanceof Error ? error.stack : null;
 

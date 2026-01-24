@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Building2, FolderOpen, ChevronDown, ChevronRight, Users, Receipt, Calendar, Mail } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, FolderOpen, ChevronDown, ChevronRight, Users, Receipt, Calendar, Mail } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAlert } from '../../contexts/AlertContext';
@@ -194,16 +194,30 @@ export function BusinessCollectionManagement() {
       setError(null);
       setSuccess(null);
 
-      const { error: insertError } = await supabase.from('businesses').insert({
-        name: businessFormData.name,
-        tax_id: businessFormData.tax_id || null,
-        currency: businessFormData.currency,
-        owner_id: user.id,
-      });
+      if (editingBusiness) {
+        const { error: updateError } = await supabase
+          .from('businesses')
+          .update({
+            name: businessFormData.name,
+            tax_id: businessFormData.tax_id || null,
+            currency: businessFormData.currency,
+          })
+          .eq('id', editingBusiness.id);
 
-      if (insertError) throw insertError;
+        if (updateError) throw updateError;
+        setSuccess('Business updated successfully!');
+      } else {
+        const { error: insertError } = await supabase.from('businesses').insert({
+          name: businessFormData.name,
+          tax_id: businessFormData.tax_id || null,
+          currency: businessFormData.currency,
+          owner_id: user.id,
+        });
 
-      setSuccess('Business created successfully!');
+        if (insertError) throw insertError;
+        setSuccess('Business created successfully!');
+      }
+
       setShowCreateBusinessModal(false);
       resetBusinessForm();
       await loadBusinesses();
@@ -226,21 +240,35 @@ export function BusinessCollectionManagement() {
         return;
       }
 
-      const { error: insertError } = await supabase.from('collections').insert({
-        name: collectionFormData.name,
-        description: collectionFormData.description || null,
-        year: collectionFormData.year,
-        business_id: businessId,
-        created_by: user.id,
-      });
+      if (editingCollection) {
+        const { error: updateError } = await supabase
+          .from('collections')
+          .update({
+            name: collectionFormData.name,
+            description: collectionFormData.description || null,
+            year: collectionFormData.year,
+          })
+          .eq('id', editingCollection.id);
 
-      if (insertError) throw insertError;
+        if (updateError) throw updateError;
+        setSuccess('Collection updated successfully!');
+      } else {
+        const { error: insertError } = await supabase.from('collections').insert({
+          name: collectionFormData.name,
+          description: collectionFormData.description || null,
+          year: collectionFormData.year,
+          business_id: businessId,
+          created_by: user.id,
+        });
 
-      setSuccess('Collection created successfully!');
+        if (insertError) throw insertError;
+        setSuccess('Collection created successfully!');
+      }
+
       setShowCreateCollectionModal(false);
       setSelectedBusinessForCollection(null);
       resetCollectionForm();
-      
+
       delete businessCollections[businessId];
       await loadBusinesses();
     } catch (err: any) {
@@ -437,6 +465,22 @@ export function BusinessCollectionManagement() {
                       {isOwner && (
                         <>
                           <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingBusiness(business);
+                              setBusinessFormData({
+                                name: business.name,
+                                tax_id: business.tax_id || '',
+                                currency: business.currency,
+                              });
+                              setShowCreateBusinessModal(true);
+                            }}
+                            className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition"
+                            title="Edit Business"
+                          >
+                            <Pencil size={18} />
+                          </button>
+                          <button
                             onClick={() => handleDeleteBusiness(business.id)}
                             className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
                             title="Delete Business"
@@ -509,6 +553,23 @@ export function BusinessCollectionManagement() {
                               </div>
                               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
                                 <button
+                                  onClick={() => {
+                                    setEditingCollection(collection);
+                                    setCollectionFormData({
+                                      name: collection.name,
+                                      description: collection.description || '',
+                                      year: collection.year,
+                                      business_id: collection.business_id,
+                                    });
+                                    setSelectedBusinessForCollection(collection.business_id);
+                                    setShowCreateCollectionModal(true);
+                                  }}
+                                  className="p-1 text-slate-600 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                                  title="Edit"
+                                >
+                                  <Pencil size={14} />
+                                </button>
+                                <button
                                   onClick={() => handleDeleteCollection(collection.id, business.id)}
                                   className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
                                   title="Delete"
@@ -545,7 +606,9 @@ export function BusinessCollectionManagement() {
       {showCreateBusinessModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Create New Business</h3>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">
+              {editingBusiness ? 'Edit Business' : 'Create New Business'}
+            </h3>
             <form onSubmit={handleCreateBusiness} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">
@@ -601,7 +664,7 @@ export function BusinessCollectionManagement() {
                   type="submit"
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
                 >
-                  Create
+                  {editingBusiness ? 'Save Changes' : 'Create'}
                 </button>
               </div>
             </form>
@@ -612,7 +675,9 @@ export function BusinessCollectionManagement() {
       {showCreateCollectionModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Create New Collection</h3>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">
+              {editingCollection ? 'Edit Collection' : 'Create New Collection'}
+            </h3>
             <form onSubmit={handleCreateCollection} className="space-y-4">
               {!selectedBusinessForCollection && (
                 <div>
@@ -685,9 +750,9 @@ export function BusinessCollectionManagement() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
                 >
-                  Create
+                  {editingCollection ? 'Save Changes' : 'Create'}
                 </button>
               </div>
             </form>

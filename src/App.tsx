@@ -25,6 +25,7 @@ function AppContent() {
 
     if (path === '/reset-password') return 'reset-password';
     if (path === '/accept-invite') return 'accept-invite';
+    if (path === '/auth' || path === '/login') return 'auth';
     if (path === '/receipts') return 'receipts';
     if (path === '/receipt-details') return 'receipt-details';
     if (path === '/reports') return 'reports';
@@ -42,7 +43,7 @@ function AppContent() {
     return params.get('id');
   });
 
-  const [quickCaptureAction, setQuickCaptureAction] = useState<'photo' | 'upload' | 'manual' | null>(null);
+  const [quickCaptureAction, setQuickCaptureAction] = useState<'photo' | 'multipage' | 'upload' | 'manual' | null>(null);
 
   useEffect(() => {
     const handleNavigateToSettings = (event: CustomEvent) => {
@@ -63,6 +64,8 @@ function AppContent() {
         setCurrentView('reset-password');
       } else if (path === '/accept-invite') {
         setCurrentView('accept-invite');
+      } else if (path === '/auth' || path === '/login') {
+        setCurrentView('auth');
       } else if (path === '/receipts') {
         setCurrentView('receipts');
       } else if (path === '/receipt-details') {
@@ -110,6 +113,10 @@ function AppContent() {
     return <AcceptInvitePage />;
   }
 
+  if (currentView === 'auth') {
+    return <AuthPage />;
+  }
+
   if (!user || mfaPending) {
     return <AuthPage />;
   }
@@ -127,7 +134,7 @@ function AppContent() {
     setQuickCaptureAction(null);
   };
 
-  const handleQuickCapture = (type: 'photo' | 'upload' | 'manual') => {
+  const handleQuickCapture = (type: 'photo' | 'multipage' | 'upload' | 'manual') => {
     setQuickCaptureAction(type);
     setCurrentView('receipts');
     window.history.pushState({}, '', '/receipts');
