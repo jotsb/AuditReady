@@ -45,7 +45,17 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [showMultiPageCamera, setShowMultiPageCamera] = useState(false);
   const [autoTriggerPhoto, setAutoTriggerPhoto] = useState(false);
-  const [verifyReceipt, setVerifyReceipt] = useState<{filePath: string, thumbnailPath: string, data: any} | null>(null);
+  const [verifyReceipt, setVerifyReceipt] = useState<{
+    filePath: string;
+    thumbnailPath: string;
+    data: any;
+    isMultiPage?: boolean;
+    multiPageData?: {
+      parentReceiptId: string;
+      uploadedPaths: Array<{ filePath: string; thumbnailPath: string }>;
+      pageCount: number;
+    };
+  } | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
   const [editingReceipt, setEditingReceipt] = useState<Receipt | null>(null);
@@ -143,8 +153,6 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
     setExtracting(true);
     setShowUpload(false);
     setShowMultiPageCamera(false);
-
-    const uploadStartTime = Date.now();
 
     try {
       const parentReceiptId = crypto.randomUUID();
@@ -245,12 +253,6 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
       }
 
       const responseText = await response.text();
-      logger.info('Edge function response text received', {
-        responseLength: responseText.length,
-        parentReceiptId,
-        page: 'ReceiptsPage'
-      });
-
       let result;
       try {
         result = JSON.parse(responseText);
@@ -279,145 +281,25 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
         throw new Error(result.error || 'Extraction failed');
       }
 
-      const transactionDateUTC = result.data.transaction_date
-        ? convertLocalDateToUTC(result.data.transaction_date)
-        : null;
-
-      // Ensure numeric values are valid
-      const totalAmount = result.data.total_amount
-        ? parseFloat(result.data.total_amount)
-        : 0;
-      const subtotal = result.data.subtotal
-        ? parseFloat(result.data.subtotal)
-        : null;
-      const gstAmount = result.data.gst_amount
-        ? parseFloat(result.data.gst_amount)
-        : null;
-      const pstAmount = result.data.pst_amount
-        ? parseFloat(result.data.pst_amount)
-        : null;
-
-      // Validate total_amount is a valid number
-      if (isNaN(totalAmount)) {
-        logger.error('Invalid total amount', new Error('Invalid total amount extracted from receipt'), {
-          rawAmount: result.data.total_amount,
-          parsedAmount: totalAmount,
-          parentReceiptId,
-          page: 'ReceiptsPage'
-        });
-        throw new Error('Invalid total amount extracted from receipt');
-      }
-
-      logger.info('Creating parent receipt record', {
-        parentReceiptId,
-        totalAmount,
-        vendor: result.data.vendor_name,
-        page: 'ReceiptsPage'
-      });
-
-      const { data: parentReceipt, error: parentError } = await supabase
-        .from('receipts')
-        .insert({
-          id: parentReceiptId,
-          collection_id: selectedCollection,
-          uploaded_by: user.id,
-          file_path: null,
-          vendor_name: result.data.vendor_name || null,
-          vendor_address: result.data.vendor_address || null,
-          transaction_date: transactionDateUTC,
-          total_amount: totalAmount,
-          subtotal: subtotal,
-          gst_amount: gstAmount,
-          pst_amount: pstAmount,
-          category: result.data.category || 'Miscellaneous',
-          payment_method: result.data.payment_method || 'Unknown',
-          extraction_status: 'completed',
-          is_parent: true,
-          total_pages: files.length,
-          page_number: 1,
-          extraction_data: {
-            transaction_time: result.data.transaction_time || null,
-            gst_percent: result.data.gst_percent || null,
-            pst_percent: result.data.pst_percent || null,
-            card_last_digits: result.data.card_last_digits || null,
-            customer_name: result.data.customer_name || null,
-          },
-        })
-        .select()
-        .single();
-
-      if (parentError) {
-        logger.error('Failed to create parent receipt', parentError as Error, {
-          parentReceiptId,
-          totalAmount,
-          vendor: result.data.vendor_name,
-          page: 'ReceiptsPage'
-        });
-        throw parentError;
-      }
-
-      logger.info('Parent receipt created successfully', {
-        parentReceiptId,
-        receiptData: parentReceipt,
-        page: 'ReceiptsPage'
-      });
-
-      const childRecords = uploadedPaths.map((paths, index) => ({
-        collection_id: selectedCollection,
-        uploaded_by: user.id,
-        parent_receipt_id: parentReceiptId,
-        page_number: index + 1,
-        file_path: paths.filePath,
-        thumbnail_path: paths.thumbnailPath,
-        is_parent: false,
-        total_pages: files.length,
-        extraction_status: 'completed',
-        total_amount: 0, // Child pages don't have individual amounts
-      }));
-
-      logger.info('Creating child page records', {
-        parentReceiptId,
-        childCount: childRecords.length,
-        page: 'ReceiptsPage'
-      });
-
-      const { error: childError } = await supabase
-        .from('receipts')
-        .insert(childRecords);
-
-      if (childError) {
-        logger.error('Failed to create child page records', childError as Error, {
-          parentReceiptId,
-          childCount: childRecords.length,
-          page: 'ReceiptsPage'
-        });
-        throw childError;
-      }
-
-      logger.info('Child page records created successfully', {
-        parentReceiptId,
-        childCount: childRecords.length,
-        page: 'ReceiptsPage'
-      });
-
-      const uploadDuration = Date.now() - uploadStartTime;
-
-      logger.info('Multi-page upload completed successfully', {
+      logger.info('Opening verification modal with multi-page extracted data', {
+        vendor: result.data?.vendor_name,
+        amount: result.data?.total_amount,
         parentReceiptId,
         pageCount: files.length,
-        duration: uploadDuration,
-        vendor: result.data?.vendor_name,
-        totalAmount,
         page: 'ReceiptsPage'
       });
 
-      actionTracker.uploadCompleted('multi-page-receipt', `${files.length} pages`, uploadDuration, {
-        collectionId: selectedCollection,
-        vendor: result.data?.vendor_name,
-        pageCount: files.length
+      setVerifyReceipt({
+        filePath: uploadedPaths[0].filePath,
+        thumbnailPath: uploadedPaths[0].thumbnailPath,
+        data: result.data,
+        isMultiPage: true,
+        multiPageData: {
+          parentReceiptId,
+          uploadedPaths,
+          pageCount: files.length,
+        },
       });
-
-      await loadReceipts();
     } catch (error) {
       let errorMessage = 'Unknown error';
       if (error instanceof Error) {
@@ -762,7 +644,95 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
     if (!user || !selectedCollection) return;
 
     try {
-      await receiptService.createReceipt(selectedCollection, user.id, filePath, thumbnailPath, data);
+      if (verifyReceipt?.isMultiPage && verifyReceipt.multiPageData) {
+        const { parentReceiptId, uploadedPaths, pageCount } = verifyReceipt.multiPageData;
+
+        const transactionDateUTC = data.transaction_date
+          ? convertLocalDateToUTC(data.transaction_date)
+          : null;
+
+        const totalAmount = data.total_amount ? parseFloat(data.total_amount) : 0;
+        const subtotal = data.subtotal ? parseFloat(data.subtotal) : null;
+        const gstAmount = data.gst_amount ? parseFloat(data.gst_amount) : null;
+        const pstAmount = data.pst_amount ? parseFloat(data.pst_amount) : null;
+
+        if (isNaN(totalAmount)) {
+          throw new Error('Invalid total amount');
+        }
+
+        logger.info('Creating multi-page parent receipt from verification', {
+          parentReceiptId,
+          totalAmount,
+          vendor: data.vendor_name,
+          pageCount,
+          page: 'ReceiptsPage'
+        });
+
+        const { error: parentError } = await supabase
+          .from('receipts')
+          .insert({
+            id: parentReceiptId,
+            collection_id: selectedCollection,
+            uploaded_by: user.id,
+            file_path: null,
+            vendor_name: data.vendor_name || null,
+            vendor_address: data.vendor_address || null,
+            transaction_date: transactionDateUTC,
+            total_amount: totalAmount,
+            subtotal: subtotal,
+            gst_amount: gstAmount,
+            pst_amount: pstAmount,
+            category: data.category || 'Miscellaneous',
+            payment_method: data.payment_method || 'Unknown',
+            extraction_status: 'completed',
+            is_parent: true,
+            total_pages: pageCount,
+            page_number: 1,
+            extraction_data: {
+              transaction_time: data.transaction_time || null,
+              gst_percent: data.gst_percent || null,
+              pst_percent: data.pst_percent || null,
+              card_last_digits: data.card_last_digits || null,
+              customer_name: data.customer_name || null,
+            },
+          });
+
+        if (parentError) throw parentError;
+
+        const childRecords = uploadedPaths.map((paths, index) => ({
+          collection_id: selectedCollection,
+          uploaded_by: user.id,
+          parent_receipt_id: parentReceiptId,
+          page_number: index + 1,
+          file_path: paths.filePath,
+          thumbnail_path: paths.thumbnailPath,
+          is_parent: false,
+          total_pages: pageCount,
+          extraction_status: 'completed',
+          total_amount: 0,
+        }));
+
+        const { error: childError } = await supabase
+          .from('receipts')
+          .insert(childRecords);
+
+        if (childError) throw childError;
+
+        logger.info('Multi-page receipt created successfully from verification', {
+          parentReceiptId,
+          pageCount,
+          page: 'ReceiptsPage'
+        });
+
+        actionTracker.uploadCompleted('multi-page-receipt', `${pageCount} pages`, 0, {
+          collectionId: selectedCollection,
+          vendor: data.vendor_name,
+          pageCount
+        });
+      } else {
+        await receiptService.createReceipt(selectedCollection, user.id, filePath, thumbnailPath, data);
+      }
+
       setVerifyReceipt(null);
       await reloadReceipts();
     } catch (error) {
@@ -772,7 +742,16 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
   };
 
   const handleCancelExtraction = async (filePath: string) => {
-    await receiptService.deleteStorageFile(filePath);
+    if (verifyReceipt?.isMultiPage && verifyReceipt.multiPageData) {
+      const allPaths = verifyReceipt.multiPageData.uploadedPaths.flatMap(p => [p.filePath, p.thumbnailPath]);
+      try {
+        await supabase.storage.from('receipts').remove(allPaths);
+      } catch (error) {
+        logger.error('Failed to clean up multi-page files', error as Error);
+      }
+    } else {
+      await receiptService.deleteStorageFile(filePath);
+    }
     setVerifyReceipt(null);
   };
 
