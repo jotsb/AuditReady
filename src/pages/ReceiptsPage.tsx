@@ -25,7 +25,7 @@ import { convertLocalDateToUTC, formatDateForDisplay } from '../lib/dateUtils';
 import * as receiptService from '../services/receiptService';
 
 interface ReceiptsPageProps {
-  quickCaptureAction?: 'photo' | 'multipage' | 'upload' | 'manual' | null;
+  quickCaptureAction?: 'photo' | 'upload' | 'manual' | null;
   onQuickCaptureComplete?: () => void;
 }
 
@@ -111,11 +111,6 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
     });
 
     if (quickCaptureAction === 'photo') {
-      setShowUpload(true);
-      setShowManualEntry(false);
-      setShowMultiPageCamera(false);
-      setAutoTriggerPhoto(true);
-    } else if (quickCaptureAction === 'multipage') {
       setShowMultiPageCamera(true);
       setShowUpload(false);
       setShowManualEntry(false);
