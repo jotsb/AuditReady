@@ -167,11 +167,37 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const { data: collectionData } = await supabase
+      .from("collections")
+      .select("business_id")
+      .eq("id", collectionId)
+      .single();
+
+    const businessId = collectionData?.business_id;
+
+    let learnedMappings: { vendor_corrections: any[], category_mappings: any[] } = {
+      vendor_corrections: [],
+      category_mappings: []
+    };
+
+    if (businessId) {
+      const { data: mappingsData } = await supabase.rpc('get_learned_mappings', {
+        p_business_id: businessId
+      });
+
+      if (mappingsData && mappingsData.length > 0) {
+        learnedMappings = {
+          vendor_corrections: mappingsData[0].vendor_corrections || [],
+          category_mappings: mappingsData[0].category_mappings || []
+        };
+      }
+    }
+
     await supabase.rpc('log_system_event', {
       p_level: 'INFO',
       p_category: 'EDGE_FUNCTION',
       p_message: isMultiPage ? 'Multi-page receipt extraction started' : 'Receipt extraction started',
-      p_metadata: { filePath, filePaths, collectionId, isMultiPage, pageCount: pathsToProcess.length, function: 'extract-receipt-data' },
+      p_metadata: { filePath, filePaths, collectionId, isMultiPage, pageCount: pathsToProcess.length, function: 'extract-receipt-data', businessId, learnedMappingsCount: learnedMappings.vendor_corrections.length + learnedMappings.category_mappings.length },
       p_user_id: null,
       p_session_id: null,
       p_ip_address: null,
@@ -230,7 +256,14 @@ Deno.serve(async (req: Request) => {
     const categoryNamesForOutput = categoryNames.join(", ");
     const jsonFormat = `{\n  "vendor_name": "business name",\n  "vendor_address": "full address if visible",\n  "transaction_date": "YYYY-MM-DD format",\n  "transaction_time": "HH:MM format if visible",\n  "total_amount": "numeric value only",\n  "subtotal": "numeric value only",\n  "gst_amount": "GST/tax amount if visible",\n  "pst_amount": "PST amount if visible",\n  "gst_percent": "GST percentage if visible (just number)",\n  "pst_percent": "PST percentage if visible (just number)",\n  "card_last_digits": "last 4 digits of card if visible",\n  "customer_name": "customer name if visible",\n  "category": "REQUIRED - must be one of: ${categoryNamesForOutput}",\n  "payment_method": "Cash, Credit Card, Debit Card, or Unknown"\n}`;
 
-    const rules = `\\n\\nAvailable Categories (with descriptions to help you choose):\\n${categoryList}\\n\\nRules:\\n- Return ONLY the JSON object, no other text\\n- Use null for missing string values (EXCEPT category - category must NEVER be null)\\n- Use 0 for missing amounts\\n- CATEGORY IS REQUIRED: You MUST select the most appropriate category from the list above based on the receipt content. Use the descriptions to guide your choice. The category value must be the exact category name (not the description).\\n- If truly uncertain, use "Miscellaneous" but try to match based on the descriptions first\\n- Extract amounts without currency symbols or percentage signs`;
+    let learnedContext = "";
+    if (learnedMappings.category_mappings.length > 0) {
+      const topMappings = learnedMappings.category_mappings.slice(0, 20);
+      const mappingsList = topMappings.map((m: any) => `"${m.vendor}" -> "${m.category}"`).join("; ");
+      learnedContext = `\\n\\nLEARNED VENDOR-CATEGORY MAPPINGS (use these as guidance for similar vendors):\\n${mappingsList}`;
+    }
+
+    const rules = `\\n\\nAvailable Categories (with descriptions to help you choose):\\n${categoryList}${learnedContext}\\n\\nRules:\\n- Return ONLY the JSON object, no other text\\n- Use null for missing string values (EXCEPT category - category must NEVER be null)\\n- Use 0 for missing amounts\\n- CATEGORY IS REQUIRED: You MUST select the most appropriate category from the list above based on the receipt content. Use the descriptions to guide your choice. The category value must be the exact category name (not the description).\\n- If the vendor matches or is similar to one in the learned mappings, use the same category\\n- If truly uncertain, use "Miscellaneous" but try to match based on the descriptions first\\n- Extract amounts without currency symbols or percentage signs`;
 
     const promptText = isMultiPage
       ? `Analyze this multi-page receipt (${pathsToProcess.length} pages) and extract the following information. The images are in order (page 1, 2, 3...). Consider all pages together as ONE receipt. Combine information from all pages - for example, if the vendor name is on page 1 and the total is on page 3, extract both. Return ONLY a valid JSON object with no additional text:\\n\\n${jsonFormat}${rules}`
@@ -382,11 +415,20 @@ Deno.serve(async (req: Request) => {
             lowerVendor.includes('shell cardlock') || lowerVendor.includes('husky cardlock')) {
           vendorName = 'Cardlock Invoice';
         }
+
+        const vendorCorrection = learnedMappings.vendor_corrections.find(
+          (vc: any) => vc.extracted === lowerVendor
+        );
+        if (vendorCorrection) {
+          vendorName = vendorCorrection.corrected;
+        }
       }
 
       validatedData.vendor_name = vendorName;
+      validatedData._original_vendor_name = extractedData.vendor_name;
     } else {
       validatedData.vendor_name = null;
+      validatedData._original_vendor_name = null;
     }
 
     if (extractedData.vendor_address) {
@@ -418,6 +460,20 @@ Deno.serve(async (req: Request) => {
       validatedData.category = categoryValidation.valid ? categoryValidation.sanitized : 'Miscellaneous';
     } else {
       validatedData.category = 'Miscellaneous';
+    }
+
+    if (validatedData.vendor_name && learnedMappings.category_mappings.length > 0) {
+      const lowerVendor = validatedData.vendor_name.toLowerCase();
+      const categoryMapping = learnedMappings.category_mappings.find(
+        (cm: any) => lowerVendor.includes(cm.vendor) || cm.vendor.includes(lowerVendor)
+      );
+      if (categoryMapping && categoryMapping.confidence >= 2.0) {
+        validatedData._suggested_category = categoryMapping.category;
+        validatedData._category_confidence = categoryMapping.confidence;
+        if (validatedData.category === 'Miscellaneous' || !validatedData.category) {
+          validatedData.category = categoryMapping.category;
+        }
+      }
     }
 
     if (extractedData.payment_method) {

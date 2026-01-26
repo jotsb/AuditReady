@@ -640,10 +640,12 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
     }
   };
 
-  const handleConfirmExtraction = async (filePath: string, thumbnailPath: string, data: any) => {
+  const handleConfirmExtraction = async (filePath: string, thumbnailPath: string, data: any, originalData?: any) => {
     if (!user || !selectedCollection) return;
 
     try {
+      const businessId = await receiptService.getBusinessIdFromCollection(selectedCollection);
+
       if (verifyReceipt?.isMultiPage && verifyReceipt.multiPageData) {
         const { parentReceiptId, uploadedPaths, pageCount } = verifyReceipt.multiPageData;
 
@@ -731,6 +733,17 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
         });
       } else {
         await receiptService.createReceipt(selectedCollection, user.id, filePath, thumbnailPath, data);
+      }
+
+      if (businessId) {
+        const origVendor = originalData?._original_vendor_name || originalData?.vendor_name;
+        await receiptService.recordLearning(
+          businessId,
+          origVendor,
+          data.vendor_name,
+          data.vendor_name,
+          data.category
+        );
       }
 
       setVerifyReceipt(null);
@@ -1629,7 +1642,7 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
         <VerifyReceiptModal
           receiptId={verifyReceipt.filePath}
           extractedData={verifyReceipt.data}
-          onConfirm={(filePath, data) => handleConfirmExtraction(verifyReceipt.filePath, verifyReceipt.thumbnailPath, data)}
+          onConfirm={(filePath, data, originalData) => handleConfirmExtraction(verifyReceipt.filePath, verifyReceipt.thumbnailPath, data, originalData)}
           onClose={() => handleCancelExtraction(verifyReceipt.filePath)}
         />
       )}

@@ -9,12 +9,36 @@ import { DeletedReceiptsManagement } from '../components/admin/DeletedReceiptsMa
 import { usePageTracking } from '../hooks/usePageTracking';
 import { actionTracker } from '../lib/actionTracker';
 import { captureException, captureMessage } from '../lib/sentry';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 type SettingsTab = 'profile' | '2fa' | 'business' | 'businesses' | 'categories' | 'theme' | 'notifications' | 'deleted-receipts';
 
 export function SettingsPage() {
   usePageTracking('Settings', { section: 'settings' });
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
+  const [businessId, setBusinessId] = useState<string | undefined>();
+
+  useEffect(() => {
+    if (user) {
+      loadUserBusiness();
+    }
+  }, [user]);
+
+  const loadUserBusiness = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('business_members')
+      .select('business_id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .single();
+
+    if (data) {
+      setBusinessId(data.business_id);
+    }
+  };
 
   useEffect(() => {
     const handleTabChange = (event: CustomEvent) => {
@@ -139,7 +163,7 @@ export function SettingsPage() {
 
           {activeTab === 'businesses' && <BusinessCollectionManagement />}
 
-          {activeTab === 'categories' && <CategoryManagement />}
+          {activeTab === 'categories' && <CategoryManagement businessId={businessId} />}
 
           {activeTab === 'theme' && <ThemeSettings />}
 

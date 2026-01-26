@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, Loader2, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAlert } from '../../contexts/AlertContext';
+import { CategorySuggestions } from './CategorySuggestions';
+import { logger } from '../../lib/logger';
 
 interface Category {
   id: string;
@@ -10,7 +12,11 @@ interface Category {
   sort_order: number;
 }
 
-export function CategoryManagement() {
+interface CategoryManagementProps {
+  businessId?: string;
+}
+
+export function CategoryManagement({ businessId }: CategoryManagementProps) {
   const { showConfirm } = useAlert();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,6 +26,8 @@ export function CategoryManagement() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCategories, setTotalCategories] = useState(0);
+  const [reevaluating, setReevaluating] = useState(false);
+  const [suggestionKey, setSuggestionKey] = useState(0);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -95,14 +103,60 @@ export function CategoryManagement() {
           throw insertError;
         }
       } else {
+        const addedName = trimmedName;
+        const addedDesc = newCategory.description.trim();
         setNewCategory({ name: '', description: '' });
         setShowAddForm(false);
         await loadCategories();
+
+        if (businessId) {
+          await triggerCategoryReevaluation(addedName, addedDesc);
+        }
       }
     } catch (err: any) {
       setError(err.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const triggerCategoryReevaluation = async (categoryName: string, categoryDescription: string) => {
+    if (!businessId) return;
+
+    try {
+      setReevaluating(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reevaluate-categories`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            businessId,
+            newCategoryName: categoryName,
+            categoryDescription: categoryDescription || categoryName
+          })
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success && result.suggestionsCount > 0) {
+        setSuggestionKey(prev => prev + 1);
+      }
+    } catch (err) {
+      logger.warn('Failed to trigger category re-evaluation', {
+        categoryName,
+        businessId,
+        error: err instanceof Error ? err.message : 'Unknown error'
+      });
+    } finally {
+      setReevaluating(false);
     }
   };
 
@@ -144,22 +198,39 @@ export function CategoryManagement() {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Expense Categories</h3>
-          <p className="text-sm text-slate-600 mt-1">
-            Manage global expense categories for all receipts
-          </p>
+    <div className="space-y-6">
+      {businessId && (
+        <CategorySuggestions
+          key={suggestionKey}
+          businessId={businessId}
+          onSuggestionsChange={() => setSuggestionKey(prev => prev + 1)}
+        />
+      )}
+
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Expense Categories</h3>
+            <p className="text-sm text-slate-600 mt-1">
+              Manage global expense categories for all receipts
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {reevaluating && (
+              <div className="flex items-center gap-2 text-sm text-slate-500">
+                <RefreshCw size={14} className="animate-spin" />
+                <span>Checking receipts...</span>
+              </div>
+            )}
+            <button
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            >
+              <Plus size={16} />
+              <span>Add Category</span>
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-        >
-          <Plus size={16} />
-          <span>Add Category</span>
-        </button>
-      </div>
 
       {showAddForm && (
         <form onSubmit={handleAddCategory} className="mb-6 p-4 bg-slate-50 dark:bg-gray-800 rounded-lg border border-slate-200">
@@ -256,28 +327,29 @@ export function CategoryManagement() {
       </div>
 
       {totalCategories > itemsPerPage && (
-        <div className="flex flex-col items-center gap-3 mt-6 pt-6 border-t border-slate-200">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalCategories / itemsPerPage), p + 1))}
-              disabled={currentPage >= Math.ceil(totalCategories / itemsPerPage)}
-              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              Next
-            </button>
+          <div className="flex flex-col items-center gap-3 mt-6 pt-6 border-t border-slate-200">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalCategories / itemsPerPage), p + 1))}
+                disabled={currentPage >= Math.ceil(totalCategories / itemsPerPage)}
+                className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                Next
+              </button>
+            </div>
+            <div className="text-sm text-slate-600 dark:text-gray-400">
+              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCategories)} of {totalCategories} categories
+            </div>
           </div>
-          <div className="text-sm text-slate-600 dark:text-gray-400">
-            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCategories)} of {totalCategories} categories
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

@@ -216,3 +216,133 @@ export async function bulkMoveReceipts(receiptIds: string[], targetCollectionId:
 export async function deleteStorageFile(filePath: string) {
   await supabase.storage.from('receipts').remove([filePath]);
 }
+
+export async function recordLearning(
+  businessId: string,
+  originalVendorName: string | null,
+  correctedVendorName: string | null,
+  vendorName: string | null,
+  category: string | null
+) {
+  try {
+    if (originalVendorName && correctedVendorName &&
+        originalVendorName.toLowerCase().trim() !== correctedVendorName.toLowerCase().trim()) {
+      await supabase.rpc('record_vendor_correction', {
+        p_business_id: businessId,
+        p_extracted_name: originalVendorName,
+        p_corrected_name: correctedVendorName
+      });
+    }
+
+    if (vendorName && category) {
+      await supabase.rpc('record_category_selection', {
+        p_business_id: businessId,
+        p_vendor_name: vendorName,
+        p_category_name: category
+      });
+    }
+  } catch (err) {
+    logger.warn('Failed to record learning data', {
+      businessId,
+      originalVendorName,
+      correctedVendorName,
+      category,
+      error: err instanceof Error ? err.message : 'Unknown error'
+    });
+  }
+}
+
+export async function getBusinessIdFromCollection(collectionId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('collections')
+    .select('business_id')
+    .eq('id', collectionId)
+    .single();
+
+  return data?.business_id || null;
+}
+
+export async function getPendingCategorySuggestions(businessId: string) {
+  const { data, error } = await supabase
+    .from('category_suggestions')
+    .select(`
+      id,
+      receipt_id,
+      current_category,
+      suggested_category,
+      reason,
+      created_at,
+      receipts!inner (
+        id,
+        vendor_name,
+        total_amount,
+        transaction_date
+      )
+    `)
+    .eq('business_id', businessId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function acceptCategorySuggestion(suggestionId: string, userId: string) {
+  const { data: suggestion, error: fetchError } = await supabase
+    .from('category_suggestions')
+    .select('receipt_id, suggested_category')
+    .eq('id', suggestionId)
+    .single();
+
+  if (fetchError || !suggestion) throw fetchError || new Error('Suggestion not found');
+
+  const { error: updateReceiptError } = await supabase
+    .from('receipts')
+    .update({ category: suggestion.suggested_category })
+    .eq('id', suggestion.receipt_id);
+
+  if (updateReceiptError) throw updateReceiptError;
+
+  const { error: updateSuggestionError } = await supabase
+    .from('category_suggestions')
+    .update({
+      status: 'accepted',
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: userId
+    })
+    .eq('id', suggestionId);
+
+  if (updateSuggestionError) throw updateSuggestionError;
+}
+
+export async function rejectCategorySuggestion(suggestionId: string, userId: string) {
+  const { error } = await supabase
+    .from('category_suggestions')
+    .update({
+      status: 'rejected',
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: userId
+    })
+    .eq('id', suggestionId);
+
+  if (error) throw error;
+}
+
+export async function bulkAcceptSuggestions(suggestionIds: string[], userId: string) {
+  for (const id of suggestionIds) {
+    await acceptCategorySuggestion(id, userId);
+  }
+}
+
+export async function bulkRejectSuggestions(suggestionIds: string[], userId: string) {
+  const { error } = await supabase
+    .from('category_suggestions')
+    .update({
+      status: 'rejected',
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: userId
+    })
+    .in('id', suggestionIds);
+
+  if (error) throw error;
+}

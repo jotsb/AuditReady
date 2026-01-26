@@ -8,25 +8,28 @@ interface Category {
   name: string;
 }
 
+interface ExtractedData {
+  vendor_name: string | null;
+  vendor_address: string | null;
+  transaction_date: string | null;
+  transaction_time: string | null;
+  total_amount: string | number;
+  subtotal: string | number;
+  gst_amount: string | number;
+  pst_amount: string | number;
+  gst_percent: string | number;
+  pst_percent: string | number;
+  category: string | null;
+  payment_method: string | null;
+  card_last_digits: string | null;
+  customer_name: string | null;
+  _original_vendor_name?: string | null;
+}
+
 interface VerifyReceiptModalProps {
   receiptId: string;
-  extractedData: {
-    vendor_name: string | null;
-    vendor_address: string | null;
-    transaction_date: string | null;
-    transaction_time: string | null;
-    total_amount: string | number;
-    subtotal: string | number;
-    gst_amount: string | number;
-    pst_amount: string | number;
-    gst_percent: string | number;
-    pst_percent: string | number;
-    category: string | null;
-    payment_method: string | null;
-    card_last_digits: string | null;
-    customer_name: string | null;
-  };
-  onConfirm: (filePath: string, data: any) => Promise<void>;
+  extractedData: ExtractedData;
+  onConfirm: (filePath: string, data: any, originalData?: ExtractedData) => Promise<void>;
   onClose: () => void;
 }
 
@@ -75,7 +78,7 @@ export function VerifyReceiptModal({ receiptId, extractedData, onConfirm, onClos
     e.preventDefault();
     setLoading(true);
     try {
-      await onConfirm(receiptId, formData);
+      await onConfirm(receiptId, formData, extractedData);
     } catch (error) {
       logger.error('Confirmation error', error as Error, {
         receiptId,
