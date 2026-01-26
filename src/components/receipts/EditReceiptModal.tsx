@@ -72,7 +72,7 @@ export function EditReceiptModal({ receipt, onClose, onSave }: EditReceiptModalP
       const { data, error } = await supabase
         .from('expense_categories')
         .select('*')
-        .order('sort_order');
+        .order('name');
 
       if (error) throw error;
       setCategories(data || []);

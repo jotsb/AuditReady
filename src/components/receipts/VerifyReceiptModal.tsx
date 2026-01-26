@@ -59,7 +59,7 @@ export function VerifyReceiptModal({ receiptId, extractedData, onConfirm, onClos
       const { data, error } = await supabase
         .from('expense_categories')
         .select('*')
-        .order('sort_order');
+        .order('name');
 
       if (error) throw error;
       setCategories(data || []);

@@ -181,13 +181,15 @@ Deno.serve(async (req: Request) => {
     });
 
     let categoryList = "Miscellaneous";
+    let categoryNames: string[] = ["Miscellaneous"];
     const { data: categories } = await supabase
       .from("expense_categories")
-      .select("name")
-      .order("display_order");
+      .select("name, description")
+      .order("name");
 
     if (categories && categories.length > 0) {
-      categoryList = categories.map(c => c.name).join(", ");
+      categoryNames = categories.map(c => c.name);
+      categoryList = categories.map(c => c.description ? `${c.name} (${c.description})` : c.name).join("; ");
     }
 
     const imageUrls: Array<{ type: string; image_url: { url: string } }> = [];
@@ -225,9 +227,10 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const jsonFormat = `{\n  "vendor_name": "business name",\n  "vendor_address": "full address if visible",\n  "transaction_date": "YYYY-MM-DD format",\n  "transaction_time": "HH:MM format if visible",\n  "total_amount": "numeric value only",\n  "subtotal": "numeric value only",\n  "gst_amount": "GST/tax amount if visible",\n  "pst_amount": "PST amount if visible",\n  "gst_percent": "GST percentage if visible (just number)",\n  "pst_percent": "PST percentage if visible (just number)",\n  "card_last_digits": "last 4 digits of card if visible",\n  "customer_name": "customer name if visible",\n  "category": "REQUIRED - Choose from: ${categoryList}",\n  "payment_method": "Cash, Credit Card, Debit Card, or Unknown"\n}`;
+    const categoryNamesForOutput = categoryNames.join(", ");
+    const jsonFormat = `{\n  "vendor_name": "business name",\n  "vendor_address": "full address if visible",\n  "transaction_date": "YYYY-MM-DD format",\n  "transaction_time": "HH:MM format if visible",\n  "total_amount": "numeric value only",\n  "subtotal": "numeric value only",\n  "gst_amount": "GST/tax amount if visible",\n  "pst_amount": "PST amount if visible",\n  "gst_percent": "GST percentage if visible (just number)",\n  "pst_percent": "PST percentage if visible (just number)",\n  "card_last_digits": "last 4 digits of card if visible",\n  "customer_name": "customer name if visible",\n  "category": "REQUIRED - must be one of: ${categoryNamesForOutput}",\n  "payment_method": "Cash, Credit Card, Debit Card, or Unknown"\n}`;
 
-    const rules = `\\nRules:\\n- Return ONLY the JSON object, no other text\\n- Use null for missing string values (EXCEPT category - category must NEVER be null)\\n- Use 0 for missing amounts\\n- CATEGORY IS REQUIRED: You MUST select a category from the list. Analyze the receipt type:\\n  * Water/sewer/gas/electric bills = "Utilities"\\n  * Restaurant/food = "Meals & Entertainment"\\n  * Gas station/fuel = "Vehicle Expenses" or "Fuel"\\n  * Office supplies/stationery = "Office Supplies"\\n  * Phone/internet bills = "Telecommunications" or "Office Expenses"\\n  * If truly uncertain, use "Miscellaneous" but try to match first\\n- Extract amounts without currency symbols or percentage signs`;
+    const rules = `\\n\\nAvailable Categories (with descriptions to help you choose):\\n${categoryList}\\n\\nRules:\\n- Return ONLY the JSON object, no other text\\n- Use null for missing string values (EXCEPT category - category must NEVER be null)\\n- Use 0 for missing amounts\\n- CATEGORY IS REQUIRED: You MUST select the most appropriate category from the list above based on the receipt content. Use the descriptions to guide your choice. The category value must be the exact category name (not the description).\\n- If truly uncertain, use "Miscellaneous" but try to match based on the descriptions first\\n- Extract amounts without currency symbols or percentage signs`;
 
     const promptText = isMultiPage
       ? `Analyze this multi-page receipt (${pathsToProcess.length} pages) and extract the following information. The images are in order (page 1, 2, 3...). Consider all pages together as ONE receipt. Combine information from all pages - for example, if the vendor name is on page 1 and the total is on page 3, extract both. Return ONLY a valid JSON object with no additional text:\\n\\n${jsonFormat}${rules}`
