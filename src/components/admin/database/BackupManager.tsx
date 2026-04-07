@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import {
   Download, Trash2, RefreshCw, Archive, Clock, CheckCircle,
-  XCircle, Loader, AlertCircle, HardDrive, Plus
+  XCircle, Loader, AlertCircle, HardDrive, Plus, RotateCcw, Upload, Shield
 } from 'lucide-react';
 import {
   getBackups, createBackup, downloadBackup, deleteBackup, getTableInfo,
   type BackupRecord, type TableInfo
 } from '../../../lib/dbManagementService';
 import { LoadingSpinner } from '../../shared/LoadingSpinner';
+import RestoreModal from './RestoreModal';
 
 export default function BackupManager() {
   const [backups, setBackups] = useState<BackupRecord[]>([]);
@@ -15,6 +16,9 @@ export default function BackupManager() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [restoreTarget, setRestoreTarget] = useState<BackupRecord | null>(null);
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [showUploadRestore, setShowUploadRestore] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -82,6 +86,13 @@ export default function BackupManager() {
             Refresh
           </button>
           <button
+            onClick={() => setShowUploadRestore(true)}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition"
+          >
+            <Upload className="w-4 h-4" />
+            Upload & Restore
+          </button>
+          <button
             onClick={() => setShowCreateModal(true)}
             className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
           >
@@ -122,6 +133,10 @@ export default function BackupManager() {
                 backup={backup}
                 onDownload={() => handleDownload(backup)}
                 onDelete={() => handleDelete(backup.id)}
+                onRestore={() => {
+                  setRestoreTarget(backup);
+                  setShowRestoreModal(true);
+                }}
               />
             ))}
           </div>
@@ -138,6 +153,25 @@ export default function BackupManager() {
           }}
         />
       )}
+
+      {showRestoreModal && restoreTarget && (
+        <RestoreModal
+          backup={restoreTarget}
+          onClose={() => {
+            setShowRestoreModal(false);
+            setRestoreTarget(null);
+          }}
+          onRestored={loadData}
+        />
+      )}
+
+      {showUploadRestore && (
+        <RestoreModal
+          backup={null}
+          onClose={() => setShowUploadRestore(false)}
+          onRestored={loadData}
+        />
+      )}
     </div>
   );
 }
@@ -146,10 +180,12 @@ function BackupRow({
   backup,
   onDownload,
   onDelete,
+  onRestore,
 }: {
   backup: BackupRecord;
   onDownload: () => void;
   onDelete: () => void;
+  onRestore: () => void;
 }) {
   const statusConfig = {
     completed: { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' },
@@ -158,24 +194,47 @@ function BackupRow({
     pending: { icon: Clock, color: 'text-gray-400', bg: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300' },
   };
 
+  const typeConfig: Record<string, { label: string; bg: string }> = {
+    manual: { label: 'manual', bg: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400' },
+    scheduled: { label: 'scheduled', bg: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400' },
+    pre_migration: { label: 'pre-migration', bg: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400' },
+    restore: { label: 'restore', bg: 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300' },
+    pre_restore: { label: 'safety snapshot', bg: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' },
+  };
+
   const config = statusConfig[backup.status as keyof typeof statusConfig] || statusConfig.pending;
   const StatusIcon = config.icon;
+  const typeInfo = typeConfig[backup.backup_type] || typeConfig.manual;
+
+  const isRestorable = backup.status === 'completed'
+    && backup.backup_type !== 'restore';
 
   return (
     <div className="px-4 py-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
-      <div className={`p-2 rounded-lg ${config.bg.split(' ')[0]} dark:${config.bg.split(' ')[1]}`}>
-        <StatusIcon className={`w-5 h-5 ${config.color}`} />
+      <div className={`p-2 rounded-lg ${backup.backup_type === 'pre_restore' ? 'bg-amber-100 dark:bg-amber-900/30' : backup.backup_type === 'restore' ? 'bg-teal-100 dark:bg-teal-900/30' : config.bg.split(' ')[0] + ' dark:' + config.bg.split(' ')[1]}`}>
+        {backup.backup_type === 'pre_restore' ? (
+          <Shield className="w-5 h-5 text-amber-500" />
+        ) : backup.backup_type === 'restore' ? (
+          <RotateCcw className="w-5 h-5 text-teal-500" />
+        ) : (
+          <StatusIcon className={`w-5 h-5 ${config.color}`} />
+        )}
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="font-medium text-sm text-gray-900 dark:text-white">{backup.name}</span>
           <span className={`px-2 py-0.5 text-[10px] font-medium rounded ${config.bg}`}>
             {backup.status}
           </span>
-          <span className="px-2 py-0.5 text-[10px] font-medium rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
-            {backup.backup_type}
+          <span className={`px-2 py-0.5 text-[10px] font-medium rounded ${typeInfo.bg}`}>
+            {typeInfo.label}
           </span>
+          {backup.restore_strategy && (
+            <span className="px-2 py-0.5 text-[10px] font-medium rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+              {backup.restore_strategy}
+            </span>
+          )}
         </div>
         {backup.description && (
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{backup.description}</p>
@@ -196,6 +255,15 @@ function BackupRow({
       </div>
 
       <div className="flex items-center gap-1">
+        {isRestorable && (
+          <button
+            onClick={onRestore}
+            className="p-2 text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+            title="Restore from this backup"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </button>
+        )}
         {backup.status === 'completed' && (
           <button
             onClick={onDownload}

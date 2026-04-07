@@ -98,6 +98,25 @@ export interface BackupRecord {
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
+  restored_from_backup_id: string | null;
+  restore_strategy: string | null;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface RestoreResult {
+  restore_id: string;
+  pre_restore_backup_id: string | null;
+  status: string;
+  tables_restored: string[];
+  row_counts: Record<string, number>;
+  errors?: Record<string, string>;
+}
+
+export interface ParsedBackupFile {
+  metadata: Record<string, unknown>;
+  tables: string[];
+  rowCounts: Record<string, number>;
+  rawData: Record<string, unknown>;
 }
 
 export async function getTableInfo(): Promise<TableInfo[]> {
@@ -236,4 +255,97 @@ export async function deleteBackup(backupId: string): Promise<void> {
     .eq('id', backupId);
 
   if (error) throw new Error(error.message);
+}
+
+const SYSTEM_TABLES = new Set([
+  'database_backups', 'audit_logs', 'system_roles', 'system_logs',
+  'log_level_config', 'system_config', 'rate_limit_attempts',
+  'failed_login_attempts', 'account_lockouts',
+]);
+
+export function parseBackupFile(file: File): Promise<ParsedBackupFile> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const raw = JSON.parse(reader.result as string);
+        if (!raw._metadata || typeof raw._metadata !== 'object') {
+          reject(new Error('Invalid backup file: missing _metadata'));
+          return;
+        }
+        const tables: string[] = [];
+        const rowCounts: Record<string, number> = {};
+        for (const key of Object.keys(raw)) {
+          if (key === '_metadata' || SYSTEM_TABLES.has(key)) continue;
+          if (Array.isArray(raw[key])) {
+            tables.push(key);
+            rowCounts[key] = raw[key].length;
+          }
+        }
+        resolve({ metadata: raw._metadata, tables, rowCounts, rawData: raw });
+      } catch {
+        reject(new Error('Invalid JSON file'));
+      }
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsText(file);
+  });
+}
+
+export { SYSTEM_TABLES };
+
+export async function restoreFromBackup(
+  backupId: string,
+  strategy: 'merge' | 'replace',
+  tables?: string[]
+): Promise<RestoreResult> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('No active session');
+
+  const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/database-backup`;
+  const response = await fetch(functionUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'restore',
+      backup_id: backupId,
+      strategy,
+      tables: tables || undefined,
+    }),
+  });
+
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || 'Restore failed');
+  return result as RestoreResult;
+}
+
+export async function restoreFromUpload(
+  backupData: Record<string, unknown>,
+  strategy: 'merge' | 'replace',
+  tables?: string[]
+): Promise<RestoreResult> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('No active session');
+
+  const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/database-backup`;
+  const response = await fetch(functionUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'restore',
+      backup_data: backupData,
+      strategy,
+      tables: tables || undefined,
+    }),
+  });
+
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || 'Restore failed');
+  return result as RestoreResult;
 }
