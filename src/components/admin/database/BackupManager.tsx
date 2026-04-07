@@ -189,6 +189,7 @@ function BackupRow({
 }) {
   const statusConfig = {
     completed: { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' },
+    completed_with_errors: { icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' },
     failed: { icon: XCircle, color: 'text-red-500', bg: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' },
     in_progress: { icon: Loader, color: 'text-blue-500 animate-spin', bg: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' },
     pending: { icon: Clock, color: 'text-gray-400', bg: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300' },

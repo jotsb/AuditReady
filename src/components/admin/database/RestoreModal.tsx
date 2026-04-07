@@ -100,6 +100,8 @@ export default function RestoreModal({ backup, onClose, onRestored }: RestoreMod
   };
 
   const restoreSucceeded = result && result.status === 'completed';
+  const restorePartial = result && result.status === 'completed_with_errors';
+  const restoreFailed = phase === 'done' && !restoreSucceeded && !restorePartial;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -293,17 +295,71 @@ export default function RestoreModal({ backup, onClose, onRestored }: RestoreMod
             </div>
           )}
 
-          {phase === 'done' && !restoreSucceeded && (
+          {phase === 'done' && restorePartial && result && (
+            <div className="space-y-4">
+              <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                  <span className="font-semibold text-amber-800 dark:text-amber-300">Restore Completed with Warnings</span>
+                </div>
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  Most tables were restored successfully, but some had errors. Check the details below.
+                </p>
+              </div>
+
+              {result.errors && Object.keys(result.errors).length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Table errors</h4>
+                  <div className="border border-red-200 dark:border-red-700 rounded-lg divide-y divide-red-100 dark:divide-red-800/50 max-h-40 overflow-y-auto">
+                    {Object.entries(result.errors).map(([t, msg]) => (
+                      <div key={t} className="px-3 py-2 text-sm">
+                        <span className="font-mono font-medium text-red-800 dark:text-red-300">{t}</span>
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">{msg}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Successfully restored</h4>
+                <div className="border border-gray-200 dark:border-gray-600 rounded-lg divide-y divide-gray-100 dark:divide-gray-700/50 max-h-40 overflow-y-auto">
+                  {result.tables_restored
+                    .filter((t) => !result.errors?.[t])
+                    .map((t) => (
+                      <div key={t} className="flex items-center justify-between px-3 py-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+                          <span className="font-mono text-gray-900 dark:text-white">{t}</span>
+                        </div>
+                        <span className="text-gray-500 dark:text-gray-400">
+                          {(result.row_counts[t] || 0).toLocaleString()} rows
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              {result.pre_restore_backup_id && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg flex items-start gap-2">
+                  <Shield className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    A pre-restore safety snapshot was saved. You can restore from it to undo any changes.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {phase === 'done' && restoreFailed && (
             <div className="space-y-4">
               <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
                   <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
-                  <span className="font-semibold text-red-800 dark:text-red-300">
-                    {result ? 'Restore Completed with Errors' : 'Restore Failed'}
-                  </span>
+                  <span className="font-semibold text-red-800 dark:text-red-300">Restore Failed</span>
                 </div>
                 <p className="text-sm text-red-700 dark:text-red-300">
-                  {error || 'Some tables failed to restore. Check the details below.'}
+                  {error || 'The restore could not be completed. Check the details below.'}
                 </p>
               </div>
 

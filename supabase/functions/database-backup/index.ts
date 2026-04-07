@@ -28,6 +28,30 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
   });
 }
 
+async function fetchAllRows(
+  client: ReturnType<typeof createClient>,
+  table: string
+): Promise<{ rows: Record<string, unknown>[]; error: string | null }> {
+  const allRows: Record<string, unknown>[] = [];
+  let from = 0;
+  const pageSize = 1000;
+
+  while (true) {
+    const { data: rows, error } = await client
+      .from(table)
+      .select("*")
+      .range(from, from + pageSize - 1);
+
+    if (error) return { rows: [], error: error.message };
+    if (!rows || rows.length === 0) break;
+    allRows.push(...rows);
+    from += pageSize;
+    if (rows.length < pageSize) break;
+  }
+
+  return { rows: allRows, error: null };
+}
+
 async function createBackupForTables(
   adminClient: ReturnType<typeof createClient>,
   userId: string,
@@ -68,17 +92,14 @@ async function createBackupForTables(
 
   for (const table of tables) {
     const safeName = table.replace(/[^a-zA-Z0-9_]/g, "");
-    const { data: rows, error: qErr } = await adminClient
-      .from(safeName)
-      .select("*")
-      .limit(10000);
+    const { rows, error: fetchErr } = await fetchAllRows(adminClient, safeName);
 
-    if (qErr) {
-      backupData[safeName] = { error: qErr.message, rows: [] };
+    if (fetchErr) {
+      backupData[safeName] = { error: fetchErr, rows: [] };
       rowCounts[safeName] = 0;
     } else {
-      backupData[safeName] = rows || [];
-      rowCounts[safeName] = (rows || []).length;
+      backupData[safeName] = rows;
+      rowCounts[safeName] = rows.length;
     }
   }
 
@@ -272,13 +293,21 @@ Deno.serve(async (req: Request) => {
         return jsonResponse({ error: "No valid tables selected for restore" }, 400);
       }
 
-      const { data: fkRows } = await adminClient.rpc("admin_get_foreign_keys");
+      const { data: fkRows } = await userClient.rpc("admin_get_foreign_keys");
       const fkDeps = new Map<string, Set<string>>();
+      const selfRefCols = new Map<string, string[]>();
+
       if (fkRows && Array.isArray(fkRows)) {
         for (const fk of fkRows) {
           if (!fkDeps.has(fk.source_table)) fkDeps.set(fk.source_table, new Set());
           if (fk.source_table !== fk.target_table) {
             fkDeps.get(fk.source_table)!.add(fk.target_table);
+          } else {
+            if (!selfRefCols.has(fk.source_table)) selfRefCols.set(fk.source_table, []);
+            const existing = selfRefCols.get(fk.source_table)!;
+            if (!existing.includes(fk.source_column)) {
+              existing.push(fk.source_column);
+            }
           }
         }
       }
@@ -286,13 +315,9 @@ Deno.serve(async (req: Request) => {
       const insertOrder = topologicalSort(tablesToRestore, fkDeps);
       const deleteOrder = [...insertOrder].reverse();
 
-      const { data: pkRows } = await adminClient.rpc("admin_get_table_columns", {
-        p_table_name: tablesToRestore[0],
-      });
-
       const pkMap = new Map<string, string>();
       for (const table of tablesToRestore) {
-        const { data: cols } = await adminClient.rpc("admin_get_table_columns", {
+        const { data: cols } = await userClient.rpc("admin_get_table_columns", {
           p_table_name: table,
         });
         if (cols && Array.isArray(cols)) {
@@ -341,15 +366,17 @@ Deno.serve(async (req: Request) => {
       const restoreId = restoreRecord.id;
       const restoreRowCounts: Record<string, number> = {};
       const tableErrors: Record<string, string> = {};
+      const batchSize = 500;
 
       try {
         if (strategy === "replace") {
           for (const table of deleteOrder) {
-            const { error: delErr } = await adminClient
-              .from(table)
-              .delete()
-              .gte("created_at", "1970-01-01T00:00:00Z");
+            const pk = pkMap.get(table);
+            const delQuery = pk
+              ? adminClient.from(table).delete().not(pk, "is", null)
+              : adminClient.from(table).delete().gte("created_at", "1970-01-01T00:00:00Z");
 
+            const { error: delErr } = await delQuery;
             if (delErr) {
               tableErrors[table] = `Delete failed: ${delErr.message}`;
             }
@@ -367,44 +394,58 @@ Deno.serve(async (req: Request) => {
 
           const pk = pkMap.get(table);
           const useMerge = strategy === "merge" && pk;
+          const selfRefs = selfRefCols.get(table) || [];
+          const hasSelfRefs = selfRefs.length > 0 && pk;
 
-          if (useMerge) {
-            const batchSize = 500;
-            let restored = 0;
-            for (let i = 0; i < rows.length; i += batchSize) {
-              const batch = rows.slice(i, i + batchSize);
-              const { error: upsertErr } = await adminClient
+          const insertRows = hasSelfRefs
+            ? rows.map((row: any) => {
+                const modified = { ...row };
+                for (const col of selfRefs) modified[col] = null;
+                return modified;
+              })
+            : rows;
+
+          let restored = 0;
+          for (let i = 0; i < insertRows.length; i += batchSize) {
+            const batch = insertRows.slice(i, i + batchSize);
+
+            const { error: batchErr } = useMerge
+              ? await adminClient.from(table).upsert(batch, { onConflict: pk })
+              : await adminClient.from(table).insert(batch);
+
+            if (batchErr) {
+              tableErrors[table] = `${useMerge ? "Upsert" : "Insert"} failed at batch ${Math.floor(i / batchSize)}: ${batchErr.message}`;
+              break;
+            }
+            restored += batch.length;
+          }
+          restoreRowCounts[table] = restored;
+
+          if (hasSelfRefs && !tableErrors[table]) {
+            const deferredRows = rows.filter((row: any) =>
+              selfRefs.some((col) => row[col] != null)
+            );
+            for (let i = 0; i < deferredRows.length; i += batchSize) {
+              const batch = deferredRows.slice(i, i + batchSize);
+              const updateBatch = batch.map((row: any) => {
+                const update: Record<string, unknown> = { [pk!]: row[pk!] };
+                for (const col of selfRefs) update[col] = row[col];
+                return update;
+              });
+              const { error: updateErr } = await adminClient
                 .from(table)
-                .upsert(batch, { onConflict: pk });
+                .upsert(updateBatch, { onConflict: pk! });
 
-              if (upsertErr) {
-                tableErrors[table] = `Upsert failed at batch ${Math.floor(i / batchSize)}: ${upsertErr.message}`;
+              if (updateErr) {
+                tableErrors[table] = `Self-reference update failed: ${updateErr.message}`;
                 break;
               }
-              restored += batch.length;
             }
-            restoreRowCounts[table] = restored;
-          } else {
-            const batchSize = 500;
-            let restored = 0;
-            for (let i = 0; i < rows.length; i += batchSize) {
-              const batch = rows.slice(i, i + batchSize);
-              const { error: insertErr } = await adminClient
-                .from(table)
-                .insert(batch);
-
-              if (insertErr) {
-                tableErrors[table] = `Insert failed at batch ${Math.floor(i / batchSize)}: ${insertErr.message}`;
-                break;
-              }
-              restored += batch.length;
-            }
-            restoreRowCounts[table] = restored;
           }
         }
 
         const hasErrors = Object.keys(tableErrors).length > 0;
-        const finalStatus = hasErrors ? "failed" : "completed";
+        const finalStatus = hasErrors ? "completed_with_errors" : "completed";
 
         await adminClient
           .from("database_backups")
