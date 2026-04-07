@@ -258,8 +258,8 @@ export async function deleteBackup(backupId: string): Promise<void> {
 }
 
 const SYSTEM_TABLES = new Set([
-  'database_backups', 'audit_logs', 'system_roles', 'system_logs',
-  'log_level_config', 'system_config', 'rate_limit_attempts',
+  'database_backups', 'audit_logs', 'audit_logs_summary', 'system_roles',
+  'system_logs', 'log_level_config', 'system_config', 'rate_limit_attempts',
   'failed_login_attempts', 'account_lockouts',
 ]);
 

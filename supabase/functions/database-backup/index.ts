@@ -11,6 +11,7 @@ const corsHeaders = {
 const SYSTEM_TABLES = new Set([
   "database_backups",
   "audit_logs",
+  "audit_logs_summary",
   "system_roles",
   "system_logs",
   "log_level_config",
@@ -364,9 +365,10 @@ Deno.serve(async (req: Request) => {
 
           if (tableErrors[table]) continue;
 
-          const pk = pkMap.get(table) || "id";
+          const pk = pkMap.get(table);
+          const useMerge = strategy === "merge" && pk;
 
-          if (strategy === "merge") {
+          if (useMerge) {
             const batchSize = 500;
             let restored = 0;
             for (let i = 0; i < rows.length; i += batchSize) {
