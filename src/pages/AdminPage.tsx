@@ -16,6 +16,7 @@ import SystemHealthMonitor from '../components/admin/SystemHealthMonitor';
 import DatabaseQueryBrowser from '../components/admin/DatabaseQueryBrowser';
 import DuplicateDetectionManager from '../components/admin/DuplicateDetectionManager';
 import EnhancedErrorLogViewer from '../components/admin/EnhancedErrorLogViewer';
+import DatabaseManagementHub from '../components/admin/database/DatabaseManagementHub';
 
 interface AdminStats {
   totalUsers: number;
@@ -634,7 +635,7 @@ export function AdminPage() {
           <SystemHealthMonitor />
         )}
         {activeTab === 'database' && (
-          <DatabaseQueryBrowser />
+          <DatabaseManagementHub />
         )}
         {activeTab === 'duplicates' && (
           <DuplicateDetectionManager />
