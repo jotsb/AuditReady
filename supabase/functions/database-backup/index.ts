@@ -425,16 +425,14 @@ Deno.serve(async (req: Request) => {
             const deferredRows = rows.filter((row: any) =>
               selfRefs.some((col) => row[col] != null)
             );
-            for (let i = 0; i < deferredRows.length; i += batchSize) {
-              const batch = deferredRows.slice(i, i + batchSize);
-              const updateBatch = batch.map((row: any) => {
-                const update: Record<string, unknown> = { [pk!]: row[pk!] };
-                for (const col of selfRefs) update[col] = row[col];
-                return update;
-              });
+            for (const row of deferredRows) {
+              const updateData: Record<string, unknown> = {};
+              for (const col of selfRefs) updateData[col] = row[col];
+
               const { error: updateErr } = await adminClient
                 .from(table)
-                .upsert(updateBatch, { onConflict: pk! });
+                .update(updateData)
+                .eq(pk!, (row as any)[pk!]);
 
               if (updateErr) {
                 tableErrors[table] = `Self-reference update failed: ${updateErr.message}`;
