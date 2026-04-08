@@ -208,13 +208,19 @@ export async function createBackup(
     body: JSON.stringify({ action: 'create', name, description, tables }),
   });
 
-  if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error || 'Failed to create backup');
+  const text = await response.text();
+  let result: Record<string, unknown>;
+  try {
+    result = JSON.parse(text);
+  } catch {
+    throw new Error(`Backup failed (HTTP ${response.status}): ${text.slice(0, 200)}`);
   }
 
-  const result = await response.json();
-  return result.backup_id;
+  if (!response.ok) {
+    throw new Error((result.error as string) || `Backup failed with status ${response.status}`);
+  }
+
+  return result.backup_id as string;
 }
 
 export async function downloadBackup(backupId: string): Promise<Blob> {

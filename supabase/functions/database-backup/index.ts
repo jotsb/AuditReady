@@ -104,12 +104,13 @@ async function createBackupForTables(
   }
 
   const jsonStr = JSON.stringify(backupData, null, 2);
-  const blob = new Blob([jsonStr], { type: "application/json" });
+  const encoder = new TextEncoder();
+  const body = encoder.encode(jsonStr);
   const storagePath = `${backupId}/${backupName.replace(/\s+/g, "_")}.json`;
 
   const { error: uploadErr } = await adminClient.storage
     .from("database-backups")
-    .upload(storagePath, blob, { contentType: "application/json", upsert: true });
+    .upload(storagePath, body, { contentType: "application/json", upsert: true });
 
   if (uploadErr) {
     await adminClient
@@ -124,13 +125,13 @@ async function createBackupForTables(
     .update({
       status: "completed",
       storage_path: storagePath,
-      size_bytes: blob.size,
+      size_bytes: body.byteLength,
       row_counts: rowCounts,
       completed_at: new Date().toISOString(),
     })
     .eq("id", backupId);
 
-  return { backupId, rowCounts, sizeBytes: blob.size };
+  return { backupId, rowCounts, sizeBytes: body.byteLength };
 }
 
 function topologicalSort(
