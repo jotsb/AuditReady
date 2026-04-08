@@ -129,11 +129,6 @@ export function AdminPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
       <div className="max-w-[1440px] mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">System Administration</h1>
-          <p className="text-sm text-slate-500 dark:text-gray-400 mt-1">Manage all businesses and users across the platform</p>
-        </div>
-
         <SectionLayout
           groups={ADMIN_SECTIONS}
           activeSection={activeSection}
