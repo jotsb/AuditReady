@@ -7,12 +7,42 @@ import { ThemeSettings } from '../components/settings/ThemeSettings';
 import { MFAManagement } from '../components/settings/MFAManagement';
 import { DeletedReceiptsManagement } from '../components/admin/DeletedReceiptsManagement';
 import { usePageTracking } from '../hooks/usePageTracking';
-import { actionTracker } from '../lib/actionTracker';
 import { captureException, captureMessage } from '../lib/sentry';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { SectionLayout, SectionGroup } from '../components/layout/SectionLayout';
 
-type SettingsTab = 'profile' | '2fa' | 'business' | 'businesses' | 'categories' | 'theme' | 'notifications' | 'deleted-receipts';
+type SettingsTab = 'profile' | '2fa' | 'businesses' | 'categories' | 'theme' | 'notifications' | 'deleted-receipts';
+
+const SETTINGS_SECTIONS: SectionGroup[] = [
+  {
+    label: 'Account',
+    items: [
+      { id: 'profile', label: 'Profile', icon: <User size={16} /> },
+      { id: '2fa', label: 'Security', icon: <Shield size={16} /> },
+    ],
+  },
+  {
+    label: 'Organization',
+    items: [
+      { id: 'businesses', label: 'Businesses & Collections', icon: <Building2 size={16} /> },
+      { id: 'categories', label: 'Categories', icon: <Tag size={16} /> },
+    ],
+  },
+  {
+    label: 'Preferences',
+    items: [
+      { id: 'theme', label: 'Appearance', icon: <Palette size={16} /> },
+      { id: 'notifications', label: 'Notifications', icon: <Bell size={16} /> },
+    ],
+  },
+  {
+    label: 'Data',
+    items: [
+      { id: 'deleted-receipts', label: 'Deleted Receipts', icon: <Trash2 size={16} /> },
+    ],
+  },
+];
 
 export function SettingsPage() {
   usePageTracking('Settings', { section: 'settings' });
@@ -51,181 +81,102 @@ export function SettingsPage() {
     };
 
     window.addEventListener('settings-tab-change', handleTabChange as EventListener);
-
     return () => {
       window.removeEventListener('settings-tab-change', handleTabChange as EventListener);
     };
   }, []);
 
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'profile':
+        return <ProfileManagement />;
+      case '2fa':
+        return <MFAManagement />;
+      case 'businesses':
+        return <BusinessCollectionManagement />;
+      case 'categories':
+        return <CategoryManagement businessId={businessId} />;
+      case 'theme':
+        return <ThemeSettings />;
+      case 'notifications':
+        return <NotificationsContent />;
+      case 'deleted-receipts':
+        return <DeletedReceiptsManagement scope="owner" />;
+      default:
+        return <ProfileManagement />;
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700">
-        <div className="border-b border-slate-200 dark:border-gray-700">
-          <nav className="flex -mb-px overflow-x-auto">
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap transition ${
-                activeTab === 'profile'
-                  ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-slate-600 dark:text-gray-400 hover:text-slate-800 dark:hover:text-gray-200 hover:border-slate-300 dark:border-gray-600 dark:hover:border-gray-600'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <User size={18} />
-                Profile
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab('2fa')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap transition ${
-                activeTab === '2fa'
-                  ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-slate-600 dark:text-gray-400 hover:text-slate-800 dark:hover:text-gray-200 hover:border-slate-300 dark:border-gray-600 dark:hover:border-gray-600'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Shield size={18} />
-                Security
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab('businesses')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap transition ${
-                activeTab === 'businesses'
-                  ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-slate-600 dark:text-gray-400 hover:text-slate-800 dark:hover:text-gray-200 hover:border-slate-300 dark:border-gray-600 dark:hover:border-gray-600'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Building2 size={18} />
-                Businesses & Collections
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab('categories')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap transition ${
-                activeTab === 'categories'
-                  ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-slate-600 dark:text-gray-400 hover:text-slate-800 dark:hover:text-gray-200 hover:border-slate-300 dark:border-gray-600 dark:hover:border-gray-600'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Tag size={18} />
-                Categories
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab('theme')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap transition ${
-                activeTab === 'theme'
-                  ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-slate-600 dark:text-gray-400 hover:text-slate-800 dark:hover:text-gray-200 hover:border-slate-300 dark:border-gray-600 dark:hover:border-gray-600'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Palette size={18} />
-                Appearance
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab('notifications')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap transition ${
-                activeTab === 'notifications'
-                  ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-slate-600 dark:text-gray-400 hover:text-slate-800 dark:hover:text-gray-200 hover:border-slate-300 dark:border-gray-600 dark:hover:border-gray-600'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Bell size={18} />
-                Notifications
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab('deleted-receipts')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap transition ${
-                activeTab === 'deleted-receipts'
-                  ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-slate-600 dark:text-gray-400 hover:text-slate-800 dark:hover:text-gray-200 hover:border-slate-300 dark:border-gray-600 dark:hover:border-gray-600'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Trash2 size={18} />
-                Deleted Receipts
-              </div>
-            </button>
-          </nav>
+    <div className="max-w-[1440px] mx-auto">
+      <SectionLayout
+        groups={SETTINGS_SECTIONS}
+        activeSection={activeTab}
+        onSectionChange={(id) => setActiveTab(id as SettingsTab)}
+        accentColor="blue"
+      >
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-slate-200 dark:border-gray-700 shadow-sm p-6">
+          {renderContent()}
         </div>
+      </SectionLayout>
+    </div>
+  );
+}
 
-        <div className="p-6">
-          {activeTab === 'profile' && <ProfileManagement />}
+function NotificationsContent() {
+  return (
+    <div>
+      <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-4">Notifications</h3>
+      <p className="text-sm text-slate-600 dark:text-gray-400 mb-4">
+        Configure email and in-app notification preferences
+      </p>
 
-          {activeTab === '2fa' && <MFAManagement />}
-
-          {activeTab === 'businesses' && <BusinessCollectionManagement />}
-
-          {activeTab === 'categories' && <CategoryManagement businessId={businessId} />}
-
-          {activeTab === 'theme' && <ThemeSettings />}
-
-          {activeTab === 'notifications' && (
-            <div>
-              <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-4">Notifications</h3>
-              <p className="text-sm text-slate-600 dark:text-gray-400 mb-4">
-                Configure email and in-app notification preferences
-              </p>
-
-              <div className="mt-8 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                <h4 className="text-sm font-semibold text-yellow-800 dark:text-yellow-300 mb-2">
-                  Test Sentry Error Tracking
-                </h4>
-                <p className="text-xs text-yellow-700 dark:text-yellow-400 mb-3">
-                  Click these buttons to test if Sentry is receiving errors. Check your Sentry dashboard after clicking.
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      captureMessage('Test message from Settings page', 'info', {
-                        test: true,
-                        timestamp: new Date().toISOString()
-                      });
-                      alert('Test message sent! Check your Sentry dashboard in ~30 seconds.');
-                    }}
-                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-                  >
-                    Send Test Message
-                  </button>
-                  <button
-                    onClick={() => {
-                      try {
-                        throw new Error('Test error from Settings page - this is intentional!');
-                      } catch (error) {
-                        captureException(error as Error, {
-                          test: true,
-                          location: 'SettingsPage',
-                          timestamp: new Date().toISOString()
-                        });
-                        alert('Test error sent! Check your Sentry dashboard in ~30 seconds.');
-                      }
-                    }}
-                    className="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition"
-                  >
-                    Send Test Error
-                  </button>
-                </div>
-                <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-2">
-                  Remove these buttons once you've verified Sentry is working.
-                </p>
-              </div>
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                <p className="text-sm text-blue-800 dark:text-blue-300">
-                  Notification preferences will be implemented in the next phase.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'deleted-receipts' && <DeletedReceiptsManagement scope="owner" />}
+      <div className="mt-8 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+        <h4 className="text-sm font-semibold text-yellow-800 dark:text-yellow-300 mb-2">
+          Test Sentry Error Tracking
+        </h4>
+        <p className="text-xs text-yellow-700 dark:text-yellow-400 mb-3">
+          Click these buttons to test if Sentry is receiving errors. Check your Sentry dashboard after clicking.
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              captureMessage('Test message from Settings page', 'info', {
+                test: true,
+                timestamp: new Date().toISOString(),
+              });
+              alert('Test message sent! Check your Sentry dashboard in ~30 seconds.');
+            }}
+            className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+          >
+            Send Test Message
+          </button>
+          <button
+            onClick={() => {
+              try {
+                throw new Error('Test error from Settings page - this is intentional!');
+              } catch (error) {
+                captureException(error as Error, {
+                  test: true,
+                  location: 'SettingsPage',
+                  timestamp: new Date().toISOString(),
+                });
+                alert('Test error sent! Check your Sentry dashboard in ~30 seconds.');
+              }
+            }}
+            className="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition"
+          >
+            Send Test Error
+          </button>
         </div>
+        <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-2">
+          Remove these buttons once you've verified Sentry is working.
+        </p>
+      </div>
+      <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+        <p className="text-sm text-blue-800 dark:text-blue-300">
+          Notification preferences will be implemented in the next phase.
+        </p>
       </div>
     </div>
   );
