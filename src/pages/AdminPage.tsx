@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Building2, Users, AlertCircle, Activity, Database,
   BarChart3, UserCog, HardDrive, Recycle, Settings,
-  Copy, Heart, Trash2, LayoutDashboard,
+  Copy, Heart, Trash2, LayoutDashboard, ScrollText,
 } from 'lucide-react';
 import { usePageTracking } from '../hooks/usePageTracking';
 import { SectionLayout, SectionGroup } from '../components/layout/SectionLayout';
@@ -22,12 +22,15 @@ import SystemHealthMonitor from '../components/admin/SystemHealthMonitor';
 import DuplicateDetectionManager from '../components/admin/DuplicateDetectionManager';
 import EnhancedErrorLogViewer from '../components/admin/EnhancedErrorLogViewer';
 import DatabaseManagementHub from '../components/admin/database/DatabaseManagementHub';
+import { LoadingSpinner } from '../components/shared/LoadingSpinner';
+
+const SystemLogsPage = lazy(() => import('./SystemLogsPage').then(m => ({ default: m.SystemLogsPage })));
 
 type AdminSection =
   | 'overview' | 'businesses' | 'users' | 'storage'
   | 'logs' | 'analytics' | 'bulk-ops' | 'deleted-receipts'
   | 'cleanup' | 'log-config' | 'system-config' | 'health'
-  | 'database' | 'duplicates' | 'errors';
+  | 'database' | 'duplicates' | 'errors' | 'system-logs';
 
 const ADMIN_SECTIONS: SectionGroup[] = [
   {
@@ -57,6 +60,7 @@ const ADMIN_SECTIONS: SectionGroup[] = [
     label: 'Monitoring',
     items: [
       { id: 'logs', label: 'Audit Logs', icon: <Activity size={16} /> },
+      { id: 'system-logs', label: 'System Logs', icon: <ScrollText size={16} /> },
       { id: 'errors', label: 'Error Logs', icon: <AlertCircle size={16} /> },
       { id: 'bulk-ops', label: 'Bulk Operations', icon: <Users size={16} /> },
       { id: 'health', label: 'System Health', icon: <Heart size={16} /> },
@@ -121,6 +125,8 @@ export function AdminPage() {
         return <DuplicateDetectionManager />;
       case 'errors':
         return <EnhancedErrorLogViewer />;
+      case 'system-logs':
+        return <Suspense fallback={<LoadingSpinner size="lg" />}><SystemLogsPage /></Suspense>;
       default:
         return <AdminOverview />;
     }

@@ -55,16 +55,16 @@ export default function EnhancedErrorLogViewer() {
         query = query.eq('category', categoryFilter);
       }
 
-      const timeFilters: Record<string, string> = {
-        '1h': '1 hour',
-        '24h': '24 hours',
-        '7d': '7 days',
-        '30d': '30 days',
+      const timeOffsets: Record<string, number> = {
+        '1h': 60 * 60 * 1000,
+        '24h': 24 * 60 * 60 * 1000,
+        '7d': 7 * 24 * 60 * 60 * 1000,
+        '30d': 30 * 24 * 60 * 60 * 1000,
       };
 
-      if (timeFilter !== 'all' && timeFilters[timeFilter]) {
-        const interval = timeFilters[timeFilter];
-        query = query.gte('created_at', `now() - interval '${interval}'`);
+      if (timeFilter !== 'all' && timeOffsets[timeFilter]) {
+        const cutoff = new Date(Date.now() - timeOffsets[timeFilter]).toISOString();
+        query = query.gte('created_at', cutoff);
       }
 
       const { data, error: queryError, count } = await query;

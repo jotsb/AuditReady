@@ -15,7 +15,6 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ defa
 const TeamPage = lazy(() => import('./pages/TeamPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage').then(m => ({ default: m.AdminPage })));
 const EnhancedAuditLogsPage = lazy(() => import('./pages/EnhancedAuditLogsPage').then(m => ({ default: m.EnhancedAuditLogsPage })));
-const SystemLogsPage = lazy(() => import('./pages/SystemLogsPage').then(m => ({ default: m.SystemLogsPage })));
 const AcceptInvitePage = lazy(() => import('./pages/AcceptInvitePage'));
 
 function AppContent() {
@@ -32,7 +31,6 @@ function AppContent() {
     if (path === '/team') return 'team';
     if (path === '/settings') return 'settings';
     if (path === '/audit') return 'audit';
-    if (path === '/system-logs') return 'system-logs';
     if (path === '/admin') return 'admin';
 
     return 'dashboard';
@@ -79,8 +77,6 @@ function AppContent() {
         setCurrentView('settings');
       } else if (path === '/audit') {
         setCurrentView('audit');
-      } else if (path === '/system-logs') {
-        setCurrentView('system-logs');
       } else if (path === '/admin') {
         setCurrentView('admin');
       } else {
@@ -156,8 +152,6 @@ function AppContent() {
         return 'Settings';
       case 'audit':
         return 'Audit Logs';
-      case 'system-logs':
-        return 'System Logs';
       case 'admin':
         return 'System Administration';
       default:
@@ -191,8 +185,6 @@ function AppContent() {
         return <SettingsPage />;
       case 'audit':
         return <EnhancedAuditLogsPage />;
-      case 'system-logs':
-        return <SystemLogsPage />;
       case 'admin':
         return <AdminPage />;
       default:

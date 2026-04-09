@@ -24,7 +24,6 @@ const SYSTEM_TABLES = new Set([
 
 const BACKUP_LIMIT = 25;
 const HEARTBEAT_STALE_MS = 2 * 60 * 1000;
-const CONCURRENT_FETCHES = 4;
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -51,7 +50,7 @@ async function logToSystem(
   try {
     await client.from("system_logs").insert({
       level,
-      category: "database_backup",
+      category: "DATABASE",
       message,
       metadata,
       user_id: userId || null,
@@ -189,10 +188,7 @@ async function runBackup(
       total_rows: 0,
     });
 
-    const queue = [...tables];
-    const running: Promise<void>[] = [];
-
-    const processTable = async (table: string) => {
+    for (const table of tables) {
       const safeName = table.replace(/[^a-zA-Z0-9_]/g, "");
 
       await updateHeartbeat(adminClient, backupId, {
@@ -218,28 +214,7 @@ async function runBackup(
       }
 
       tablesCompleted++;
-    };
-
-    while (queue.length > 0 || running.length > 0) {
-      while (running.length < CONCURRENT_FETCHES && queue.length > 0) {
-        const table = queue.shift()!;
-        running.push(processTable(table));
-      }
-      if (running.length > 0) {
-        await Promise.race(running);
-        const settled = await Promise.allSettled(running);
-        const stillPending: Promise<void>[] = [];
-        for (let i = 0; i < settled.length; i++) {
-          if (settled[i].status === "pending") {
-            stillPending.push(running[i]);
-          }
-        }
-        running.length = 0;
-        running.push(...stillPending);
-      }
     }
-
-    await Promise.all(running);
 
     await updateHeartbeat(adminClient, backupId, {
       stage: "compressing",
@@ -248,13 +223,13 @@ async function runBackup(
       total_rows: Object.values(rowCounts).reduce((s, n) => s + n, 0),
     });
 
-    const jsonStr = JSON.stringify(backupData, null, 2);
+    const jsonStr = JSON.stringify(backupData);
     const zip = new JSZip();
     zip.file("backup.json", jsonStr);
     const zipBuffer: Uint8Array = await zip.generateAsync({
       type: "uint8array",
       compression: "DEFLATE",
-      compressionOptions: { level: 9 },
+      compressionOptions: { level: 6 },
     });
 
     const storagePath = `${backupId}/${backupName.replace(/\s+/g, "_")}.zip`;
@@ -442,7 +417,7 @@ async function createBackupForTables(
   const zipBuffer: Uint8Array = await zip.generateAsync({
     type: "uint8array",
     compression: "DEFLATE",
-    compressionOptions: { level: 9 },
+    compressionOptions: { level: 6 },
   });
 
   const storagePath = `${backupId}/${backupName.replace(/\s+/g, "_")}.zip`;
