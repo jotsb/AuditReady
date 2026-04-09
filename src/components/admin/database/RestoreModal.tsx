@@ -1,12 +1,18 @@
 import { useState, useRef } from 'react';
 import {
   RotateCcw, Upload, AlertTriangle, Shield, Loader, CheckCircle,
-  XCircle, Database, Merge, Replace, FileJson, Info
+  XCircle, Database, Merge, Replace, FileJson, Info, Lock
 } from 'lucide-react';
 import {
   restoreFromBackup, restoreFromUpload, parseBackupFile,
   type BackupRecord, type RestoreResult, type ParsedBackupFile
 } from '../../../lib/dbManagementService';
+
+const IMMUTABLE_TABLES = new Set([
+  'system_logs',
+  'audit_logs',
+  'audit_logs_summary',
+]);
 
 interface RestoreModalProps {
   backup: BackupRecord | null;
@@ -31,20 +37,23 @@ export default function RestoreModal({ backup, onClose, onRestored }: RestoreMod
 
   const isUploadMode = !backup;
 
-  const availableTables = backup
+  const allTables = backup
     ? backup.tables_included
     : parsedFile?.tables ?? [];
 
+  const restorableTables = allTables.filter((t) => !IMMUTABLE_TABLES.has(t));
+  const immutableInBackup = allTables.filter((t) => IMMUTABLE_TABLES.has(t));
+
   const backupRowCounts = backup?.row_counts ?? parsedFile?.rowCounts ?? {};
 
-  const totalRows = availableTables.reduce((sum, t) => sum + (backupRowCounts[t] || 0), 0);
+  const totalRows = allTables.reduce((sum, t) => sum + (backupRowCounts[t] || 0), 0);
 
   const hasSource = !!backup || !!parsedFile;
   const canRestore = hasSource && selectedTables.size > 0 && confirmText === 'RESTORE';
 
   useState(() => {
     if (backup) {
-      setSelectedTables(new Set(backup.tables_included));
+      setSelectedTables(new Set(backup.tables_included.filter((t) => !IMMUTABLE_TABLES.has(t))));
     }
   });
 
@@ -56,19 +65,20 @@ export default function RestoreModal({ backup, onClose, onRestored }: RestoreMod
     try {
       const parsed = await parseBackupFile(file);
       setParsedFile(parsed);
-      setSelectedTables(new Set(parsed.tables));
+      setSelectedTables(new Set(parsed.tables.filter((t) => !IMMUTABLE_TABLES.has(t))));
     } catch (err: any) {
       setFileError(err.message);
     }
   };
 
   const toggleTable = (t: string) => {
+    if (IMMUTABLE_TABLES.has(t)) return;
     const next = new Set(selectedTables);
     if (next.has(t)) next.delete(t); else next.add(t);
     setSelectedTables(next);
   };
 
-  const selectAll = () => setSelectedTables(new Set(availableTables));
+  const selectAll = () => setSelectedTables(new Set(restorableTables));
   const clearAll = () => setSelectedTables(new Set());
 
   const handleRestore = async () => {
@@ -164,7 +174,7 @@ export default function RestoreModal({ backup, onClose, onRestored }: RestoreMod
                   <SourceInfoPanel
                     name={backup?.name ?? (parsedFile?.metadata?.name as string) ?? 'Uploaded file'}
                     date={backup?.created_at ?? (parsedFile?.metadata?.created_at as string) ?? ''}
-                    tableCount={availableTables.length}
+                    tableCount={allTables.length}
                     totalRows={totalRows}
                     sizeBytes={backup?.size_bytes}
                   />
@@ -196,15 +206,15 @@ export default function RestoreModal({ backup, onClose, onRestored }: RestoreMod
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Tables ({selectedTables.size}/{availableTables.length})
+                        Tables ({selectedTables.size}/{restorableTables.length} restorable)
                       </label>
                       <div className="flex gap-2">
                         <button onClick={selectAll} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">Select All</button>
                         <button onClick={clearAll} className="text-xs text-gray-500 dark:text-gray-400 hover:underline">Clear</button>
                       </div>
                     </div>
-                    <div className="max-h-44 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg divide-y divide-gray-100 dark:divide-gray-700/50">
-                      {availableTables.map((table) => (
+                    <div className="max-h-52 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg divide-y divide-gray-100 dark:divide-gray-700/50">
+                      {restorableTables.map((table) => (
                         <label
                           key={table}
                           className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
@@ -223,6 +233,29 @@ export default function RestoreModal({ backup, onClose, onRestored }: RestoreMod
                           </span>
                         </label>
                       ))}
+                      {immutableInBackup.length > 0 && (
+                        <>
+                          <div className="px-3 py-1.5 bg-gray-50 dark:bg-gray-900/50">
+                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                              Immutable tables (backed up, not restorable)
+                            </span>
+                          </div>
+                          {immutableInBackup.map((table) => (
+                            <div
+                              key={table}
+                              className="flex items-center justify-between px-3 py-2 opacity-50"
+                            >
+                              <div className="flex items-center gap-2">
+                                <Lock className="w-3.5 h-3.5 text-gray-400" />
+                                <span className="text-sm font-mono text-gray-500 dark:text-gray-400">{table}</span>
+                              </div>
+                              <span className="text-xs text-gray-400 dark:text-gray-500">
+                                {(backupRowCounts[table] || 0).toLocaleString()} rows
+                              </span>
+                            </div>
+                          ))}
+                        </>
+                      )}
                     </div>
                   </div>
 

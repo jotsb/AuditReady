@@ -22,6 +22,12 @@ const SYSTEM_TABLES = new Set([
   "account_lockouts",
 ]);
 
+const IMMUTABLE_TABLES = new Set([
+  "system_logs",
+  "audit_logs",
+  "audit_logs_summary",
+]);
+
 const BACKUP_LIMIT = 25;
 const HEARTBEAT_STALE_MS = 2 * 60 * 1000;
 
@@ -693,12 +699,13 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const tablesToRestore: string[] =
+      const tablesToRestore: string[] = (
         requestedTables && Array.isArray(requestedTables)
           ? requestedTables.filter(
               (t: string) => allBackupTables.includes(t)
             )
-          : allBackupTables;
+          : allBackupTables
+      ).filter((t: string) => !IMMUTABLE_TABLES.has(t));
 
       if (tablesToRestore.length === 0) {
         return jsonResponse(
