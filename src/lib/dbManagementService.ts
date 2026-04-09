@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import JSZip from 'jszip';
 
 async function ensureAdmin(): Promise<void> {
   const { data } = await supabase
@@ -267,12 +268,14 @@ export async function createBackup(
   }
 
   const jsonStr = JSON.stringify(backupData, null, 2);
-  const blob = new Blob([jsonStr], { type: 'application/json' });
-  const storagePath = `${backupId}/${name.replace(/\s+/g, '_')}.json`;
+  const zip = new JSZip();
+  zip.file('backup.json', jsonStr);
+  const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 9 } });
+  const storagePath = `${backupId}/${name.replace(/\s+/g, '_')}.zip`;
 
   const { error: uploadErr } = await supabase.storage
     .from('database-backups')
-    .upload(storagePath, blob, { contentType: 'application/json', upsert: true });
+    .upload(storagePath, zipBlob, { contentType: 'application/zip', upsert: true });
 
   if (uploadErr) {
     await supabase
@@ -287,7 +290,7 @@ export async function createBackup(
     .update({
       status: 'completed',
       storage_path: storagePath,
-      size_bytes: blob.size,
+      size_bytes: zipBlob.size,
       row_counts: rowCounts,
       completed_at: new Date().toISOString(),
     })
@@ -344,33 +347,34 @@ const SYSTEM_TABLES = new Set([
   'failed_login_attempts', 'account_lockouts',
 ]);
 
-export function parseBackupFile(file: File): Promise<ParsedBackupFile> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const raw = JSON.parse(reader.result as string);
-        if (!raw._metadata || typeof raw._metadata !== 'object') {
-          reject(new Error('Invalid backup file: missing _metadata'));
-          return;
-        }
-        const tables: string[] = [];
-        const rowCounts: Record<string, number> = {};
-        for (const key of Object.keys(raw)) {
-          if (key === '_metadata' || SYSTEM_TABLES.has(key)) continue;
-          if (Array.isArray(raw[key])) {
-            tables.push(key);
-            rowCounts[key] = raw[key].length;
-          }
-        }
-        resolve({ metadata: raw._metadata, tables, rowCounts, rawData: raw });
-      } catch {
-        reject(new Error('Invalid JSON file'));
-      }
-    };
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.readAsText(file);
-  });
+export async function parseBackupFile(file: File): Promise<ParsedBackupFile> {
+  let jsonText: string;
+
+  if (file.name.endsWith('.zip') || file.type === 'application/zip') {
+    const zip = await JSZip.loadAsync(file);
+    const jsonFile = zip.file('backup.json');
+    if (!jsonFile) throw new Error('Invalid backup ZIP: missing backup.json');
+    jsonText = await jsonFile.async('string');
+  } else {
+    jsonText = await file.text();
+  }
+
+  const raw = JSON.parse(jsonText);
+  if (!raw._metadata || typeof raw._metadata !== 'object') {
+    throw new Error('Invalid backup file: missing _metadata');
+  }
+
+  const tables: string[] = [];
+  const rowCounts: Record<string, number> = {};
+  for (const key of Object.keys(raw)) {
+    if (key === '_metadata' || SYSTEM_TABLES.has(key)) continue;
+    if (Array.isArray(raw[key])) {
+      tables.push(key);
+      rowCounts[key] = raw[key].length;
+    }
+  }
+
+  return { metadata: raw._metadata, tables, rowCounts, rawData: raw };
 }
 
 export { SYSTEM_TABLES };

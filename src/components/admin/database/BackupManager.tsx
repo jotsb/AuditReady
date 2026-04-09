@@ -297,7 +297,8 @@ function CreateBackupModal({
 }) {
   const [name, setName] = useState(`Backup ${new Date().toLocaleDateString()}`);
   const [description, setDescription] = useState('');
-  const [selectedTables, setSelectedTables] = useState<Set<string>>(new Set(tables.map(t => t.table_name)));
+  const LOG_TABLES = new Set(['system_logs', 'audit_logs', 'audit_logs_summary', 'log_level_config', 'rate_limit_attempts', 'failed_login_attempts', 'account_lockouts']);
+  const [selectedTables, setSelectedTables] = useState<Set<string>>(new Set(tables.filter(t => !LOG_TABLES.has(t.table_name)).map(t => t.table_name)));
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
