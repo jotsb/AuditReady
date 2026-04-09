@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import {
   getBackups, createBackup, downloadBackup, deleteBackup, getTableInfo,
-  type BackupRecord, type TableInfo
+  type BackupRecord, type TableInfo, type BackupProgress
 } from '../../../lib/dbManagementService';
 import { LoadingSpinner } from '../../shared/LoadingSpinner';
 import RestoreModal from './RestoreModal';
@@ -44,7 +44,8 @@ export default function BackupManager() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${backup.name.replace(/\s+/g, '_')}_${new Date(backup.created_at).toISOString().split('T')[0]}.json`;
+      const ext = backup.storage_path?.endsWith('.zip') ? '.zip' : '.json';
+      a.download = `${backup.name.replace(/\s+/g, '_')}_${new Date(backup.created_at).toISOString().split('T')[0]}${ext}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -237,7 +238,12 @@ function BackupRow({
             </span>
           )}
         </div>
-        {backup.description && (
+        {backup.status === 'failed' && backup.error_message && (
+          <p className="text-xs text-red-600 dark:text-red-400 mt-0.5 truncate" title={backup.error_message}>
+            {backup.error_message}
+          </p>
+        )}
+        {backup.status !== 'failed' && backup.description && (
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{backup.description}</p>
         )}
         <div className="flex items-center gap-4 mt-1 text-xs text-gray-400 dark:text-gray-500">
@@ -286,6 +292,18 @@ function BackupRow({
   );
 }
 
+type ModalPhase = 'configure' | 'running' | 'success' | 'failed';
+
+const STAGE_LABELS: Record<BackupProgress['stage'], string> = {
+  initializing: 'Initializing',
+  fetching: 'Fetching table data',
+  compressing: 'Compressing',
+  uploading: 'Uploading',
+  finalizing: 'Finalizing',
+};
+
+const STAGE_ORDER: BackupProgress['stage'][] = ['initializing', 'fetching', 'compressing', 'uploading', 'finalizing'];
+
 function CreateBackupModal({
   tables,
   onClose,
@@ -299,16 +317,13 @@ function CreateBackupModal({
   const [description, setDescription] = useState('');
   const LOG_TABLES = new Set(['system_logs', 'audit_logs', 'audit_logs_summary', 'log_level_config', 'rate_limit_attempts', 'failed_login_attempts', 'account_lockouts']);
   const [selectedTables, setSelectedTables] = useState<Set<string>>(new Set(tables.filter(t => !LOG_TABLES.has(t.table_name)).map(t => t.table_name)));
-  const [creating, setCreating] = useState(false);
+  const [phase, setPhase] = useState<ModalPhase>('configure');
+  const [progress, setProgress] = useState<BackupProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const toggleTable = (tableName: string) => {
     const next = new Set(selectedTables);
-    if (next.has(tableName)) {
-      next.delete(tableName);
-    } else {
-      next.add(tableName);
-    }
+    if (next.has(tableName)) next.delete(tableName); else next.add(tableName);
     setSelectedTables(next);
   };
 
@@ -323,15 +338,29 @@ function CreateBackupModal({
     }
 
     try {
-      setCreating(true);
+      setPhase('running');
       setError(null);
-      await createBackup(name, description, Array.from(selectedTables));
-      onCreated();
+      setProgress(null);
+      await createBackup(name, description, Array.from(selectedTables), setProgress);
+      setPhase('success');
     } catch (err: any) {
-      setError(err.message);
-      setCreating(false);
+      setError(err.message || 'An unexpected error occurred');
+      setPhase('failed');
     }
   };
+
+  const handleRetry = () => {
+    setPhase('configure');
+    setError(null);
+    setProgress(null);
+  };
+
+  const currentStageIndex = progress ? STAGE_ORDER.indexOf(progress.stage) : -1;
+  const progressPercent = progress
+    ? progress.stage === 'fetching' && progress.tableCount
+      ? ((STAGE_ORDER.indexOf('fetching') + (progress.tableIndex || 0) / progress.tableCount) / STAGE_ORDER.length) * 100
+      : ((currentStageIndex + 1) / STAGE_ORDER.length) * 100
+    : 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -339,104 +368,220 @@ function CreateBackupModal({
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Create Database Backup</h3>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Export selected tables as a JSON backup file
+            Export selected tables as a compressed backup file
           </p>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Backup Name
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Description (optional)
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={2}
-              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Tables ({selectedTables.size}/{tables.length})
-              </label>
-              <div className="flex gap-2">
-                <button onClick={selectAll} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
-                  Select All
-                </button>
-                <button onClick={selectNone} className="text-xs text-gray-500 dark:text-gray-400 hover:underline">
-                  Clear
-                </button>
-              </div>
-            </div>
-            <div className="max-h-48 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg divide-y divide-gray-100 dark:divide-gray-700/50">
-              {tables.map((table) => (
-                <label
-                  key={table.table_name}
-                  className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
-                >
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={selectedTables.has(table.table_name)}
-                      onChange={() => toggleTable(table.table_name)}
-                      className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm font-mono text-gray-900 dark:text-white">{table.table_name}</span>
-                  </div>
-                  <span className="text-xs text-gray-400 dark:text-gray-500">
-                    {table.row_estimate.toLocaleString()} rows
-                  </span>
+          {phase === 'configure' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Backup Name
                 </label>
-              ))}
-            </div>
-          </div>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
 
-          {error && (
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg text-sm text-red-700 dark:text-red-300">
-              {error}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Description (optional)
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Tables ({selectedTables.size}/{tables.length})
+                  </label>
+                  <div className="flex gap-2">
+                    <button onClick={selectAll} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                      Select All
+                    </button>
+                    <button onClick={selectNone} className="text-xs text-gray-500 dark:text-gray-400 hover:underline">
+                      Clear
+                    </button>
+                  </div>
+                </div>
+                <div className="max-h-48 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg divide-y divide-gray-100 dark:divide-gray-700/50">
+                  {tables.map((table) => (
+                    <label
+                      key={table.table_name}
+                      className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedTables.has(table.table_name)}
+                          onChange={() => toggleTable(table.table_name)}
+                          className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm font-mono text-gray-900 dark:text-white">{table.table_name}</span>
+                      </div>
+                      <span className="text-xs text-gray-400 dark:text-gray-500">
+                        {table.row_estimate.toLocaleString()} rows
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {error && (
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg text-sm text-red-700 dark:text-red-300 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  {error}
+                </div>
+              )}
+            </>
+          )}
+
+          {phase === 'running' && (
+            <div className="py-8 space-y-6">
+              <div className="flex flex-col items-center">
+                <Loader className="w-10 h-10 text-blue-500 animate-spin mb-4" />
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  {progress?.message || 'Starting backup...'}
+                </p>
+                {progress?.stage === 'fetching' && progress.tableCount && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Table {progress.tableIndex} of {progress.tableCount}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${Math.min(progressPercent, 100)}%` }}
+                  />
+                </div>
+                <div className="flex justify-between">
+                  {STAGE_ORDER.map((stage, idx) => {
+                    const isActive = currentStageIndex === idx;
+                    const isDone = currentStageIndex > idx;
+                    return (
+                      <span
+                        key={stage}
+                        className={`text-[10px] font-medium ${
+                          isActive ? 'text-blue-600 dark:text-blue-400' :
+                          isDone ? 'text-green-600 dark:text-green-400' :
+                          'text-gray-400 dark:text-gray-500'
+                        }`}
+                      >
+                        {isDone ? '\u2713 ' : ''}{STAGE_LABELS[stage]}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <p className="text-xs text-center text-gray-400 dark:text-gray-500">
+                Do not close this window while the backup is in progress.
+              </p>
+            </div>
+          )}
+
+          {phase === 'success' && (
+            <div className="py-8 flex flex-col items-center text-center">
+              <div className="w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4">
+                <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+              </div>
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Backup Created</h4>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                "{name}" has been saved with {selectedTables.size} tables.
+              </p>
+            </div>
+          )}
+
+          {phase === 'failed' && (
+            <div className="py-6 space-y-4">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-14 h-14 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
+                  <XCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
+                </div>
+                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Backup Failed</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  The backup could not be completed.
+                </p>
+              </div>
+
+              <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-red-800 dark:text-red-300 mb-1">Error Details</p>
+                    <p className="text-sm text-red-700 dark:text-red-400 break-words whitespace-pre-wrap">{error}</p>
+                  </div>
+                </div>
+              </div>
+
+              {progress && (
+                <div className="p-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Failed during: <span className="font-medium text-gray-700 dark:text-gray-300">{STAGE_LABELS[progress.stage]}</span>
+                    {progress.tableName && <> (table: <span className="font-mono">{progress.tableName}</span>)</>}
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
 
         <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            disabled={creating}
-            className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 transition"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleCreate}
-            disabled={creating || !name.trim() || selectedTables.size === 0}
-            className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-          >
-            {creating ? (
-              <>
-                <Loader className="w-4 h-4 animate-spin" />
-                Creating...
-              </>
-            ) : (
-              <>
+          {phase === 'configure' && (
+            <>
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreate}
+                disabled={!name.trim() || selectedTables.size === 0}
+                className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
                 <Archive className="w-4 h-4" />
                 Create Backup
-              </>
-            )}
-          </button>
+              </button>
+            </>
+          )}
+          {phase === 'success' && (
+            <button
+              onClick={() => { onCreated(); }}
+              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            >
+              Done
+            </button>
+          )}
+          {phase === 'failed' && (
+            <>
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition"
+              >
+                Close
+              </button>
+              <button
+                onClick={handleRetry}
+                className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Try Again
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -135,12 +135,12 @@ export default function RestoreModal({ backup, onClose, onRestored }: RestoreMod
                   <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
                     <FileJson className="w-10 h-10 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                      Select a .json backup file
+                      Select a .json or .zip backup file
                     </p>
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept=".json,application/json"
+                      accept=".json,.zip,application/json,application/zip"
                       onChange={handleFileSelect}
                       className="hidden"
                     />

@@ -214,16 +214,29 @@ async function fetchAllTableRows(
   return { rows: allRows, error: null };
 }
 
+export type BackupProgress = {
+  stage: 'initializing' | 'fetching' | 'compressing' | 'uploading' | 'finalizing';
+  message: string;
+  tableIndex?: number;
+  tableCount?: number;
+  tableName?: string;
+};
+
 export async function createBackup(
   name: string,
   description: string,
-  tables: string[]
+  tables: string[],
+  onProgress?: (progress: BackupProgress) => void
 ): Promise<string> {
+  const report = (p: BackupProgress) => onProgress?.(p);
+
+  report({ stage: 'initializing', message: 'Verifying permissions...' });
   await ensureAdmin();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('No authenticated user');
 
+  report({ stage: 'initializing', message: 'Creating backup record...' });
   const { data: record, error: insertErr } = await supabase
     .from('database_backups')
     .insert({
@@ -241,64 +254,107 @@ export async function createBackup(
   if (insertErr) throw new Error(`Failed to create backup record: ${insertErr.message}`);
 
   const backupId = record.id;
-  const backupData: Record<string, unknown> = {
-    _metadata: {
-      backup_id: backupId,
-      name,
-      description: description || null,
-      created_at: new Date().toISOString(),
-      created_by: user.id,
-      tables,
-    },
-  };
 
-  const rowCounts: Record<string, number> = {};
-
-  for (const table of tables) {
-    const safeName = table.replace(/[^a-zA-Z0-9_]/g, '');
-    const { rows, error: fetchErr } = await fetchAllTableRows(safeName);
-
-    if (fetchErr) {
-      backupData[safeName] = { error: fetchErr, rows: [] };
-      rowCounts[safeName] = 0;
-    } else {
-      backupData[safeName] = rows;
-      rowCounts[safeName] = rows.length;
-    }
-  }
-
-  const jsonStr = JSON.stringify(backupData, null, 2);
-  const zip = new JSZip();
-  zip.file('backup.json', jsonStr);
-  const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 9 } });
-  const storagePath = `${backupId}/${name.replace(/\s+/g, '_')}.zip`;
-
-  const { error: uploadErr } = await supabase.storage
-    .from('database-backups')
-    .upload(storagePath, zipBlob, { contentType: 'application/zip', upsert: true });
-
-  if (uploadErr) {
+  const markFailed = async (errorMessage: string) => {
     await supabase
       .from('database_backups')
-      .update({ status: 'failed', error_message: uploadErr.message, completed_at: new Date().toISOString() })
+      .update({ status: 'failed', error_message: errorMessage, completed_at: new Date().toISOString() })
       .eq('id', backupId);
-    throw new Error(`Upload failed: ${uploadErr.message}`);
+  };
+
+  try {
+    const backupData: Record<string, unknown> = {
+      _metadata: {
+        backup_id: backupId,
+        name,
+        description: description || null,
+        created_at: new Date().toISOString(),
+        created_by: user.id,
+        tables,
+      },
+    };
+
+    const rowCounts: Record<string, number> = {};
+    const tableErrors: string[] = [];
+
+    for (let i = 0; i < tables.length; i++) {
+      const safeName = tables[i].replace(/[^a-zA-Z0-9_]/g, '');
+      report({
+        stage: 'fetching',
+        message: `Fetching ${safeName}...`,
+        tableIndex: i + 1,
+        tableCount: tables.length,
+        tableName: safeName,
+      });
+
+      const { rows, error: fetchErr } = await fetchAllTableRows(safeName);
+
+      if (fetchErr) {
+        tableErrors.push(`${safeName}: ${fetchErr}`);
+        backupData[safeName] = [];
+        rowCounts[safeName] = 0;
+      } else {
+        backupData[safeName] = rows;
+        rowCounts[safeName] = rows.length;
+      }
+    }
+
+    report({ stage: 'compressing', message: 'Compressing backup data...' });
+    const jsonStr = JSON.stringify(backupData, null, 2);
+    const zip = new JSZip();
+    zip.file('backup.json', jsonStr);
+    const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 9 } });
+    const storagePath = `${backupId}/${name.replace(/\s+/g, '_')}.zip`;
+
+    report({ stage: 'uploading', message: `Uploading backup (${formatBytesUtil(zipBlob.size)})...` });
+    const { error: uploadErr } = await supabase.storage
+      .from('database-backups')
+      .upload(storagePath, zipBlob, { contentType: 'application/zip', upsert: true });
+
+    if (uploadErr) {
+      await markFailed(uploadErr.message);
+      throw new Error(`Upload failed: ${uploadErr.message}`);
+    }
+
+    report({ stage: 'finalizing', message: 'Saving backup metadata...' });
+    const hasTableErrors = tableErrors.length > 0;
+    const finalStatus = hasTableErrors ? 'completed_with_errors' : 'completed';
+    const errorMessage = hasTableErrors ? tableErrors.join('; ') : null;
+
+    const { error: updateErr } = await supabase
+      .from('database_backups')
+      .update({
+        status: finalStatus,
+        storage_path: storagePath,
+        size_bytes: zipBlob.size,
+        row_counts: rowCounts,
+        error_message: errorMessage,
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', backupId);
+
+    if (updateErr) throw new Error(`Failed to finalize backup: ${updateErr.message}`);
+
+    if (hasTableErrors) {
+      throw new Error(`Backup completed but ${tableErrors.length} table(s) had errors: ${tableErrors.join('; ')}`);
+    }
+
+    return backupId;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (!message.startsWith('Backup completed but')) {
+      await markFailed(message);
+    }
+    throw err;
   }
+}
 
-  const { error: updateErr } = await supabase
-    .from('database_backups')
-    .update({
-      status: 'completed',
-      storage_path: storagePath,
-      size_bytes: zipBlob.size,
-      row_counts: rowCounts,
-      completed_at: new Date().toISOString(),
-    })
-    .eq('id', backupId);
-
-  if (updateErr) throw new Error(`Failed to finalize backup: ${updateErr.message}`);
-
-  return backupId;
+function formatBytesUtil(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
 }
 
 export async function downloadBackup(backupId: string): Promise<Blob> {
