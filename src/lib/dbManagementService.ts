@@ -190,37 +190,112 @@ export async function getBackups(): Promise<BackupRecord[]> {
   return data || [];
 }
 
+async function fetchAllTableRows(
+  table: string
+): Promise<{ rows: Record<string, unknown>[]; error: string | null }> {
+  const allRows: Record<string, unknown>[] = [];
+  let from = 0;
+  const pageSize = 1000;
+
+  while (true) {
+    const { data: rows, error } = await supabase
+      .from(table)
+      .select('*')
+      .range(from, from + pageSize - 1);
+
+    if (error) return { rows: [], error: error.message };
+    if (!rows || rows.length === 0) break;
+    allRows.push(...rows);
+    from += pageSize;
+    if (rows.length < pageSize) break;
+  }
+
+  return { rows: allRows, error: null };
+}
+
 export async function createBackup(
   name: string,
   description: string,
   tables: string[]
 ): Promise<string> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error('No active session');
+  await ensureAdmin();
 
-  const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/database-backup`;
-  const response = await fetch(functionUrl, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${session.access_token}`,
-      'Content-Type': 'application/json',
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('No authenticated user');
+
+  const { data: record, error: insertErr } = await supabase
+    .from('database_backups')
+    .insert({
+      name,
+      description: description || null,
+      status: 'in_progress',
+      backup_type: 'manual',
+      tables_included: tables,
+      created_by: user.id,
+      started_at: new Date().toISOString(),
+    })
+    .select('id')
+    .single();
+
+  if (insertErr) throw new Error(`Failed to create backup record: ${insertErr.message}`);
+
+  const backupId = record.id;
+  const backupData: Record<string, unknown> = {
+    _metadata: {
+      backup_id: backupId,
+      name,
+      description: description || null,
+      created_at: new Date().toISOString(),
+      created_by: user.id,
+      tables,
     },
-    body: JSON.stringify({ action: 'create', name, description, tables }),
-  });
+  };
 
-  const text = await response.text();
-  let result: Record<string, unknown>;
-  try {
-    result = JSON.parse(text);
-  } catch {
-    throw new Error(`Backup failed (HTTP ${response.status}): ${text.slice(0, 200)}`);
+  const rowCounts: Record<string, number> = {};
+
+  for (const table of tables) {
+    const safeName = table.replace(/[^a-zA-Z0-9_]/g, '');
+    const { rows, error: fetchErr } = await fetchAllTableRows(safeName);
+
+    if (fetchErr) {
+      backupData[safeName] = { error: fetchErr, rows: [] };
+      rowCounts[safeName] = 0;
+    } else {
+      backupData[safeName] = rows;
+      rowCounts[safeName] = rows.length;
+    }
   }
 
-  if (!response.ok) {
-    throw new Error((result.error as string) || `Backup failed with status ${response.status}`);
+  const jsonStr = JSON.stringify(backupData, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const storagePath = `${backupId}/${name.replace(/\s+/g, '_')}.json`;
+
+  const { error: uploadErr } = await supabase.storage
+    .from('database-backups')
+    .upload(storagePath, blob, { contentType: 'application/json', upsert: true });
+
+  if (uploadErr) {
+    await supabase
+      .from('database_backups')
+      .update({ status: 'failed', error_message: uploadErr.message, completed_at: new Date().toISOString() })
+      .eq('id', backupId);
+    throw new Error(`Upload failed: ${uploadErr.message}`);
   }
 
-  return result.backup_id as string;
+  const { error: updateErr } = await supabase
+    .from('database_backups')
+    .update({
+      status: 'completed',
+      storage_path: storagePath,
+      size_bytes: blob.size,
+      row_counts: rowCounts,
+      completed_at: new Date().toISOString(),
+    })
+    .eq('id', backupId);
+
+  if (updateErr) throw new Error(`Failed to finalize backup: ${updateErr.message}`);
+
+  return backupId;
 }
 
 export async function downloadBackup(backupId: string): Promise<Blob> {
