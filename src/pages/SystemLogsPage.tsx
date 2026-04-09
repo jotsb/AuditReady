@@ -238,12 +238,10 @@ export function SystemLogsPage() {
   };
 
   const loadSystemLogs = async (silent = false) => {
-    const startTime = performance.now();
     try {
       if (!silent) {
         setLoading(true);
         setError('');
-        logger.info('Loading system logs', { page: 'SystemLogsPage' }, 'DATABASE');
       }
 
       const { data: logsData, error: fetchError } = await supabase
@@ -277,21 +275,9 @@ export function SystemLogsPage() {
       setTotalCount(logsWithProfiles.length);
       setLogs(logsWithProfiles);
 
-      const duration = performance.now() - startTime;
-      if (!silent) {
-        logger.info('System logs loaded successfully', {
-          page: 'SystemLogsPage',
-          totalLogs: logsWithProfiles.length,
-          duration: `${duration.toFixed(2)}ms`
-        }, 'PERFORMANCE');
-      }
     } catch (err: any) {
       if (!silent) {
         setError(err.message);
-        logger.error('Failed to load system logs', {
-          page: 'SystemLogsPage',
-          error: err.message
-        }, 'DATABASE');
       }
     } finally {
       if (!silent) {

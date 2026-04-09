@@ -683,7 +683,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const allBackupTables = Object.keys(sourceData).filter(
-        (k) => k !== "_metadata" && !SYSTEM_TABLES.has(k)
+        (k) => k !== "_metadata"
       );
 
       if (allBackupTables.length === 0) {
@@ -696,8 +696,7 @@ Deno.serve(async (req: Request) => {
       const tablesToRestore: string[] =
         requestedTables && Array.isArray(requestedTables)
           ? requestedTables.filter(
-              (t: string) =>
-                allBackupTables.includes(t) && !SYSTEM_TABLES.has(t)
+              (t: string) => allBackupTables.includes(t)
             )
           : allBackupTables;
 

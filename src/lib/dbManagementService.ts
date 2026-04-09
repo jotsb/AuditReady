@@ -323,7 +323,7 @@ export async function parseBackupFile(file: File): Promise<ParsedBackupFile> {
   const tables: string[] = [];
   const rowCounts: Record<string, number> = {};
   for (const key of Object.keys(raw)) {
-    if (key === '_metadata' || SYSTEM_TABLES.has(key)) continue;
+    if (key === '_metadata') continue;
     if (Array.isArray(raw[key])) {
       tables.push(key);
       rowCounts[key] = raw[key].length;

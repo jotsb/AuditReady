@@ -5,7 +5,6 @@ import {
 } from 'lucide-react';
 import {
   restoreFromBackup, restoreFromUpload, parseBackupFile,
-  SYSTEM_TABLES,
   type BackupRecord, type RestoreResult, type ParsedBackupFile
 } from '../../../lib/dbManagementService';
 
@@ -33,7 +32,7 @@ export default function RestoreModal({ backup, onClose, onRestored }: RestoreMod
   const isUploadMode = !backup;
 
   const availableTables = backup
-    ? backup.tables_included.filter((t) => !SYSTEM_TABLES.has(t))
+    ? backup.tables_included
     : parsedFile?.tables ?? [];
 
   const backupRowCounts = backup?.row_counts ?? parsedFile?.rowCounts ?? {};
@@ -45,7 +44,7 @@ export default function RestoreModal({ backup, onClose, onRestored }: RestoreMod
 
   useState(() => {
     if (backup) {
-      setSelectedTables(new Set(backup.tables_included.filter((t) => !SYSTEM_TABLES.has(t))));
+      setSelectedTables(new Set(backup.tables_included));
     }
   });
 
