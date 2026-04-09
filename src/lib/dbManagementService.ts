@@ -84,6 +84,16 @@ export interface TableDataResult {
   page_offset: number;
 }
 
+export interface BackupProgress {
+  stage: string;
+  current_table?: string | null;
+  tables_completed?: number;
+  total_tables?: number;
+  total_rows?: number;
+  compressed_size?: number;
+  uncompressed_size?: number;
+}
+
 export interface BackupRecord {
   id: string;
   name: string;
@@ -102,6 +112,8 @@ export interface BackupRecord {
   restored_from_backup_id: string | null;
   restore_strategy: string | null;
   metadata: Record<string, unknown> | null;
+  last_heartbeat_at: string | null;
+  progress: BackupProgress | null;
 }
 
 export interface RestoreResult {
@@ -118,6 +130,22 @@ export interface ParsedBackupFile {
   tables: string[];
   rowCounts: Record<string, number>;
   rawData: Record<string, unknown>;
+}
+
+const HEARTBEAT_STALE_MS = 2 * 60 * 1000;
+
+export function isBackupStale(backup: BackupRecord): boolean {
+  if (backup.status !== 'in_progress') return false;
+  if (!backup.last_heartbeat_at) return true;
+  return Date.now() - new Date(backup.last_heartbeat_at).getTime() > HEARTBEAT_STALE_MS;
+}
+
+export function isBackupActive(backup: BackupRecord): boolean {
+  return backup.status === 'in_progress' || backup.status === 'pending';
+}
+
+export function isTerminalStatus(status: string): boolean {
+  return status === 'completed' || status === 'completed_with_errors' || status === 'failed';
 }
 
 export async function getTableInfo(): Promise<TableInfo[]> {
@@ -191,170 +219,42 @@ export async function getBackups(): Promise<BackupRecord[]> {
   return data || [];
 }
 
-async function fetchAllTableRows(
-  table: string
-): Promise<{ rows: Record<string, unknown>[]; error: string | null }> {
-  const allRows: Record<string, unknown>[] = [];
-  let from = 0;
-  const pageSize = 1000;
-
-  while (true) {
-    const { data: rows, error } = await supabase
-      .from(table)
-      .select('*')
-      .range(from, from + pageSize - 1);
-
-    if (error) return { rows: [], error: error.message };
-    if (!rows || rows.length === 0) break;
-    allRows.push(...rows);
-    from += pageSize;
-    if (rows.length < pageSize) break;
-  }
-
-  return { rows: allRows, error: null };
+export async function getBackupById(backupId: string): Promise<BackupRecord | null> {
+  const { data, error } = await supabase
+    .from('database_backups')
+    .select('*')
+    .eq('id', backupId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data;
 }
 
-export type BackupProgress = {
-  stage: 'initializing' | 'fetching' | 'compressing' | 'uploading' | 'finalizing';
-  message: string;
-  tableIndex?: number;
-  tableCount?: number;
-  tableName?: string;
-};
+async function callEdgeFunction(action: string, payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('No active session');
+
+  const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/database-backup`;
+  const response = await fetch(functionUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ action, ...payload }),
+  });
+
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || `${action} failed`);
+  return result;
+}
 
 export async function createBackup(
   name: string,
   description: string,
-  tables: string[],
-  onProgress?: (progress: BackupProgress) => void
+  tables: string[]
 ): Promise<string> {
-  const report = (p: BackupProgress) => onProgress?.(p);
-
-  report({ stage: 'initializing', message: 'Verifying permissions...' });
-  await ensureAdmin();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('No authenticated user');
-
-  report({ stage: 'initializing', message: 'Creating backup record...' });
-  const { data: record, error: insertErr } = await supabase
-    .from('database_backups')
-    .insert({
-      name,
-      description: description || null,
-      status: 'in_progress',
-      backup_type: 'manual',
-      tables_included: tables,
-      created_by: user.id,
-      started_at: new Date().toISOString(),
-    })
-    .select('id')
-    .single();
-
-  if (insertErr) throw new Error(`Failed to create backup record: ${insertErr.message}`);
-
-  const backupId = record.id;
-
-  const markFailed = async (errorMessage: string) => {
-    await supabase
-      .from('database_backups')
-      .update({ status: 'failed', error_message: errorMessage, completed_at: new Date().toISOString() })
-      .eq('id', backupId);
-  };
-
-  try {
-    const backupData: Record<string, unknown> = {
-      _metadata: {
-        backup_id: backupId,
-        name,
-        description: description || null,
-        created_at: new Date().toISOString(),
-        created_by: user.id,
-        tables,
-      },
-    };
-
-    const rowCounts: Record<string, number> = {};
-    const tableErrors: string[] = [];
-
-    for (let i = 0; i < tables.length; i++) {
-      const safeName = tables[i].replace(/[^a-zA-Z0-9_]/g, '');
-      report({
-        stage: 'fetching',
-        message: `Fetching ${safeName}...`,
-        tableIndex: i + 1,
-        tableCount: tables.length,
-        tableName: safeName,
-      });
-
-      const { rows, error: fetchErr } = await fetchAllTableRows(safeName);
-
-      if (fetchErr) {
-        tableErrors.push(`${safeName}: ${fetchErr}`);
-        backupData[safeName] = [];
-        rowCounts[safeName] = 0;
-      } else {
-        backupData[safeName] = rows;
-        rowCounts[safeName] = rows.length;
-      }
-    }
-
-    report({ stage: 'compressing', message: 'Compressing backup data...' });
-    const jsonStr = JSON.stringify(backupData, null, 2);
-    const zip = new JSZip();
-    zip.file('backup.json', jsonStr);
-    const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 9 } });
-    const storagePath = `${backupId}/${name.replace(/\s+/g, '_')}.zip`;
-
-    report({ stage: 'uploading', message: `Uploading backup (${formatBytesUtil(zipBlob.size)})...` });
-    const { error: uploadErr } = await supabase.storage
-      .from('database-backups')
-      .upload(storagePath, zipBlob, { contentType: 'application/zip', upsert: true });
-
-    if (uploadErr) {
-      await markFailed(uploadErr.message);
-      throw new Error(`Upload failed: ${uploadErr.message}`);
-    }
-
-    report({ stage: 'finalizing', message: 'Saving backup metadata...' });
-    const hasTableErrors = tableErrors.length > 0;
-    const finalStatus = hasTableErrors ? 'completed_with_errors' : 'completed';
-    const errorMessage = hasTableErrors ? tableErrors.join('; ') : null;
-
-    const { error: updateErr } = await supabase
-      .from('database_backups')
-      .update({
-        status: finalStatus,
-        storage_path: storagePath,
-        size_bytes: zipBlob.size,
-        row_counts: rowCounts,
-        error_message: errorMessage,
-        completed_at: new Date().toISOString(),
-      })
-      .eq('id', backupId);
-
-    if (updateErr) throw new Error(`Failed to finalize backup: ${updateErr.message}`);
-
-    if (hasTableErrors) {
-      throw new Error(`Backup completed but ${tableErrors.length} table(s) had errors: ${tableErrors.join('; ')}`);
-    }
-
-    return backupId;
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    if (!message.startsWith('Backup completed but')) {
-      await markFailed(message);
-    }
-    throw err;
-  }
-}
-
-function formatBytesUtil(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+  const result = await callEdgeFunction('create', { name, description, tables });
+  return result.backup_id as string;
 }
 
 export async function downloadBackup(backupId: string): Promise<Blob> {
@@ -440,27 +340,12 @@ export async function restoreFromBackup(
   strategy: 'merge' | 'replace',
   tables?: string[]
 ): Promise<RestoreResult> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error('No active session');
-
-  const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/database-backup`;
-  const response = await fetch(functionUrl, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${session.access_token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      action: 'restore',
-      backup_id: backupId,
-      strategy,
-      tables: tables || undefined,
-    }),
+  const result = await callEdgeFunction('restore', {
+    backup_id: backupId,
+    strategy,
+    tables: tables || undefined,
   });
-
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error || 'Restore failed');
-  return result as RestoreResult;
+  return result as unknown as RestoreResult;
 }
 
 export async function restoreFromUpload(
@@ -468,25 +353,10 @@ export async function restoreFromUpload(
   strategy: 'merge' | 'replace',
   tables?: string[]
 ): Promise<RestoreResult> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error('No active session');
-
-  const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/database-backup`;
-  const response = await fetch(functionUrl, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${session.access_token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      action: 'restore',
-      backup_data: backupData,
-      strategy,
-      tables: tables || undefined,
-    }),
+  const result = await callEdgeFunction('restore', {
+    backup_data: backupData,
+    strategy,
+    tables: tables || undefined,
   });
-
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error || 'Restore failed');
-  return result as RestoreResult;
+  return result as unknown as RestoreResult;
 }
