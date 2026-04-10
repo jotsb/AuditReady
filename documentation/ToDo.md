@@ -1,33 +1,60 @@
 # Audit Proof - TODO & Implementation Status
 
-**Last Updated:** 2025-11-03 (Self-Hosted Migration & Production Fixes)
+**Last Updated:** 2026-04-10 (Database Management Hub Enhancements + Full Audit)
 **Priority Legend:** 🚨 Critical | 🔴 High | 🟡 Medium | 🟢 Nice to Have | ✅ Completed
 
 ---
 
-## 🚀 Latest Updates (2025-11-11)
+## 🚀 Latest Updates (2026-04-10)
+
+### Database Management Hub - Fully Operational
+
+**Database Administration Tools (Complete):**
+- ✅ **Table Explorer:** Browse all tables with row counts, sizes, RLS status, column details, indexes, and paginated data views
+- ✅ **Schema Viewer:** Foreign key relationships, RLS policies with USING/WITH CHECK clauses, searchable and filterable
+- ✅ **Database Statistics:** Database size, table count, total rows, uptime, cache/index hit ratios, connection metrics, largest tables visualization
+- ✅ **SQL Query Browser:** Read-only query execution (SELECT, EXPLAIN, SHOW), query history with timing, example queries, audit logging
+- ✅ **Backup Manager:** Manual backup creation with table selection, progress tracking with stages, download/restore/delete, restore from file upload
+- ✅ **Database RPC Functions:** `admin_get_table_info`, `admin_get_table_columns`, `admin_get_table_indexes`, `admin_get_foreign_keys`, `admin_get_rls_policies`, `admin_get_database_stats`, `admin_browse_table_data`, `execute_admin_query`, `get_query_history`
+- ✅ **System Health Snapshot:** `get_system_health_snapshot()` function for comprehensive health metrics
+- ✅ **Backup Edge Function:** `database-backup` for async backup creation with compression and storage upload
+- ✅ **Restore Tracking:** Backup restoration with `restored_from_backup_id` and `restore_strategy` (merge/replace)
+- ✅ **Backup Heartbeat:** Real-time progress tracking with `last_heartbeat_at` and `progress` JSONB
+- ✅ **Completed With Errors Status:** Backups can now report partial success via `completed_with_errors` status
+- ✅ **Log Immutability:** Closed gaps in audit log and system log immutability enforcement
+- ✅ **Duplicate Detection Fixes:** Fixed system health snapshot and duplicate detection RPC functions
+
+**Migrations Applied (2026 Series):**
+- `20260123234718_fix_team_member_profile_visibility.sql`
+- `20260123234804_fix_owner_role_management.sql`
+- `20260124041119_add_rate_limit_delete_policy.sql`
+- `20260124041538_add_rate_limit_configuration.sql`
+- `20260126070158_add_receipt_learning_system.sql`
+- `20260407070138_add_database_management_tools.sql`
+- `20260407112207_add_restore_tracking_to_backups.sql`
+- `20260409052507_add_completed_with_errors_status.sql`
+- `20260409055345_add_backup_heartbeat_and_progress.sql`
+- `20260409073808_add_system_health_snapshot_function.sql`
+- `20260409102441_close_log_immutability_gaps.sql`
+- `20260409110356_fix_system_health_and_duplicate_detection.sql`
+
+**Other Recent Fixes:**
+- ✅ **Team Member Profile Visibility:** Fixed RLS so team members can see each other's profiles
+- ✅ **Owner Role Management:** Fixed role management for business owners
+- ✅ **Rate Limit Configuration:** Added rate limit delete policy and configuration management
+- ✅ **Receipt Learning System:** Added vendor corrections and category mapping tables for AI learning
+
+---
+
+## 🚀 Previous Updates (2025-11-11)
 
 ### Team Invitation System Fixes
 
 **Email Invitation URL Fix:**
 - ✅ **Dynamic URL Generation:** Invitation emails now use correct URL based on environment
-  - 🐛 **Issue:** Emails always contained `localhost:5173` URLs regardless of deployment
-  - 🔧 **Solution:** Edge function now detects origin from request headers (`Origin` or `Referer`)
-  - 📊 **Impact:** Invitations work correctly for localhost, IP addresses, and domain names
-  - 🌐 **Environments:** Automatically adapts to Bolt Cloud, self-hosted, or local development
 
 **Navigation Fix for Invitation Flow:**
 - ✅ **Fixed Kong Authentication Error:** "Log In to Accept" button now works correctly
-  - 🐛 **Issue:** Clicking button redirected to `/auth` which hit Kong's Basic auth instead of React app
-  - 🔧 **Solution:** Changed navigation from `/auth` to `/` (root) which always serves React app
-  - 📊 **Impact:** Users can seamlessly accept invitations without authentication errors
-  - 🏗️ **Files Changed:** `src/pages/AcceptInvitePage.tsx`, `supabase/functions/send-invitation-email/index.ts`
-
-**Technical Improvements:**
-- ✅ Enhanced `send-invitation-email` edge function with dynamic origin detection
-- ✅ Updated all invitation navigation paths to avoid proxy conflicts
-- ✅ End-to-end invitation flow fully tested and working
-- 📊 Updated completion count: 173 → 175 tasks (+2 invitation fixes)
 
 ---
 
@@ -66,16 +93,16 @@
 
 ## 📊 Overall Progress
 
-### **Total Progress: 56.5% Complete**
+### **Total Progress: 61.3% Complete**
 ```
-██████████████▓▓░░░░░░░░░░░░░░░░ 175/310 tasks completed
+██████████████████▓▓░░░░░░░░░░░░ 196/320 tasks completed
 ```
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| ✅ **Completed** | **175** | **56.5%** |
-| ⏳ **Pending** | **135** | **43.5%** |
-| **Total Tasks** | **310** | **100%** |
+| ✅ **Completed** | **196** | **61.3%** |
+| ⏳ **Pending** | **124** | **38.7%** |
+| **Total Tasks** | **320** | **100%** |
 
 **Week 1: Security & Protection Complete (2025-10-21):**
 - ✅ **Database Rate Limiting:** Comprehensive system with 3 tables, 5 functions, full RLS
@@ -283,12 +310,13 @@
 |--------|--------|-------|
 | **Core Features** | ✅ **Production Ready** | All essential features complete |
 | **Logging & Monitoring** | ✅ **Production Ready** | 100% system logging, 100% audit logging |
-| **Security** | ✅ **Enterprise Grade** | 85% complete - MFA, RLS, input validation, XSS/CSRF protection, rate limiting |
-| **Performance** | ⚠️ **Basic** | Works but needs optimization for scale |
+| **Security** | ✅ **Enterprise Grade** | 92% complete - MFA, RLS, input validation, XSS/CSRF protection, rate limiting, PII masking, signed URLs |
+| **Performance** | ✅ **Optimized** | Lazy loading, bundle splitting, DB indexes, request batching |
+| **Database Admin** | ✅ **Production Ready** | Full DB management hub with backup/restore, query browser, schema viewer, stats |
 | **Testing** | ❌ **Not Started** | No automated tests yet |
 | **Documentation** | 🟡 **Partial** | Technical docs exist, user docs needed |
 
-**Overall Assessment:** Core application is production-ready for MVP launch with enterprise-grade security (85% coverage: MFA, RLS, input validation, XSS/CSRF protection, rate limiting, audit logging). Security exceeds industry standards. Performance optimization and automated testing should be prioritized post-launch.
+**Overall Assessment:** Application is production-ready with enterprise-grade security (92% coverage), comprehensive database administration tools, full backup/restore capability, and optimized performance. 196 of 320 tasks completed. Automated testing and user documentation are the main remaining gaps.
 
 ---
 
@@ -849,19 +877,84 @@
   - Real-time status indicators (Active/Suspended/Deleted)
   - Last login tracking
   - Location: `src/components/admin/UserManagement.tsx`
-- [ ] 🔴 **Admin Dashboard Enhancements**
-  - User impersonation ("login as" for support)
-  - Database browser/query tool
-  - System health monitoring
-  - Error log viewer
-  - Performance metrics
-  - Storage usage statistics
+- [x] ✅ **Admin Dashboard Enhancements** (Completed 2026-04)
+  - ✅ Database browser/query tool (DatabaseManagementHub with 5 tabs)
+  - ✅ System health monitoring (SystemHealthMonitor with get_system_health_snapshot)
+  - ✅ Error log viewer (EnhancedErrorLogViewer)
+  - ✅ Performance metrics (DatabaseStats with cache/index hit ratios)
+  - ✅ Storage usage statistics (StorageManagement per-business)
+  - ✅ Duplicate detection manager (DuplicateDetectionManager)
+  - ✅ Data cleanup operations (DataCleanupOperations with 3 job types)
+  - ✅ Database backup and restore (BackupManager with edge function)
+  - [ ] 🟡 User impersonation ("login as" for support) - Future
 - [ ] 🟡 **Admin Reports**
   - User activity reports
   - Business growth reports
   - Revenue/usage metrics
   - Extraction accuracy reports
   - System performance reports
+
+### Future: Database Management Hub Enhancements (Planned)
+
+The following features are planned to transform the Database Management Hub from an inspection tool into a full operational command center.
+
+#### 1. Saved Query Library with Snippets 🟡
+- [ ] Create `saved_admin_queries` table for persisting queries per admin user
+- [ ] Add name, description, SQL text, tags, and last-run timestamp fields
+- [ ] Build "Saved Queries" panel alongside existing Query tab
+- [ ] Include built-in starter queries (e.g., "Receipts by extraction status", "Top uploaders this week", "Businesses approaching storage limit", "Orphaned records check")
+- [ ] One-click "Run" button on each saved query with inline results
+- [ ] Allow admins to share queries via a `shared` boolean flag
+
+#### 2. Real-Time Activity Monitor (Live Connections and Queries) 🟡
+- [ ] Add "Activity" tab to Database Management Hub
+- [ ] Poll `pg_stat_activity` via RPC to show running queries (PID, query text, state, duration, username, client address)
+- [ ] Highlight long-running queries (amber >5s, red >30s)
+- [ ] Live-updating connection count badge on tab
+- [ ] "Terminate Query" action via `pg_terminate_backend` with confirmation dialog and audit logging
+
+#### 3. Index Advisor and Table Health Panel 🟡
+- [ ] Add "Health" sub-tab within Statistics section
+- [ ] Query `pg_stat_user_tables` to surface tables with high sequential scan counts relative to index scans
+- [ ] Show tables with significant bloat (`n_dead_tup` vs `n_live_tup` ratio) and recommend VACUUM
+- [ ] Display tables that have never been analyzed/vacuumed with last autovacuum timestamps
+- [ ] One-click "ANALYZE" and "REINDEX" actions via secured RPC functions
+- [ ] Show unused indexes (zero scans) so admins can consider dropping them
+
+#### 4. Data Size and Growth Trends Dashboard 🟡
+- [ ] Create `db_size_snapshots` table for daily size/row count snapshots
+- [ ] Add scheduled RPC or cron trigger for daily auto-capture
+- [ ] Build "Growth" sub-panel in Statistics tab with line charts (7d, 30d, 90d)
+- [ ] Show per-table growth rates ranked by delta values
+- [ ] Include storage projection estimates ("At current rate, reach X GB in Y days")
+
+#### 5. Data Dictionary and Column-Level Documentation 🟢
+- [ ] Add "Dictionary" tab to Database Management Hub
+- [ ] Create `data_dictionary` table (schema, table name, column name, description, data owner, sensitivity level)
+- [ ] Pre-populate from existing Postgres `COMMENT` metadata via `pg_description`
+- [ ] Inline editing for descriptions (saves to both table and Postgres `COMMENT ON`)
+- [ ] Search-across-all-columns feature ("where is tax ID stored?", "which tables have deleted_at?")
+
+#### 6. Row-Level Security (RLS) Policy Tester 🟢
+- [ ] Add "Test RLS" panel within Schema tab
+- [ ] Select a table and pick a user from profiles dropdown
+- [ ] Execute simulated query as that user using `SET ROLE` in read-only transaction
+- [ ] Side-by-side results: "All rows (admin)" vs "User's visible rows (RLS-filtered)"
+- [ ] Dramatically faster debugging of permission issues vs reading USING clauses manually
+
+#### 7. Migration History and Schema Changelog 🟢
+- [ ] Add "Migrations" sub-tab in Schema section
+- [ ] Pull migration history from Supabase migration tracking table
+- [ ] Display timeline of applied migrations with timestamps and human-readable summaries
+- [ ] Visual diff viewer for schema changes between two points in time
+- [ ] "Current pending" indicator if local migrations don't match applied ones
+
+#### 8. Bulk Data Operations Panel 🟢
+- [ ] Add "Bulk Ops" capability in Table Explorer for specific tables
+- [ ] Allow filtered bulk updates on safe, non-critical fields (e.g., category for receipts by vendor pattern)
+- [ ] Dry-run mode showing "This will affect N rows" with sample preview
+- [ ] All operations through secured RPC with full audit logging (before/after snapshots)
+- [ ] Bulk export: select table, apply filters, export as CSV or JSON
 
 ### Phase 1: User Management (HIGH PRIORITY) ✅ COMPLETED
 - [x] ✅ **User Suspension System** (Completed 2025-10-08)
