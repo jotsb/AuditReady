@@ -96,16 +96,20 @@ Complete database administration suite added to the Admin panel, providing syste
 ## 📦 Version 1.2.0 - "Receipt Learning System" (2026-01-26)
 
 ### Overview
-Added AI learning capabilities so the system improves category suggestions over time based on user corrections.
+Added AI learning capabilities so the system improves category suggestions over time based on user corrections. The extraction edge function now applies learned vendor corrections and category mappings automatically.
 
 ### Features
-- **Vendor-Category Mapping:** System learns which categories users assign to specific vendors
-- **Category Suggestions:** Future receipts from known vendors get automatic category recommendations
-- **Vendor Corrections:** Tracks user corrections to vendor names for improved extraction accuracy
-- **Learning Tables:** `category_mappings`, `category_suggestions`, `vendor_corrections` with full RLS
+- **Vendor-Category Mapping:** System learns which categories users assign to specific vendors via `category_mappings` table
+- **Category Suggestions:** Future receipts from known vendors get automatic category recommendations via `category_suggestions` table
+- **Vendor Corrections:** Tracks user corrections to vendor names for improved extraction accuracy via `vendor_corrections` table
+- **Re-evaluate Categories:** New `reevaluate-categories` edge function can re-scan existing receipts when a new category is added
+- **Extraction Integration:** `extract-receipt-data` edge function now queries learned mappings to auto-apply corrections
 
 ### Database Migration
-- `20260126070158_add_receipt_learning_system.sql`
+- `20260126070158_add_receipt_learning_system.sql` - Creates 3 learning tables with RLS, RPC functions for recording corrections and generating suggestions
+
+### Edge Function
+- `reevaluate-categories` - Scans receipts in a business and generates category suggestions based on learned patterns
 
 ---
 
