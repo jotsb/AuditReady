@@ -26,12 +26,6 @@ export class PageLogger {
   constructor(pageName: string) {
     this.pageName = pageName;
     this.startTime = performance.now();
-
-    logger.info(`Page loaded: ${pageName}`, {
-      page: pageName,
-      path: window.location.pathname,
-      search: window.location.search
-    }, 'PAGE_VIEW');
   }
 
   logDataLoad(options: Omit<DataLoadOptions, 'page'>): void {

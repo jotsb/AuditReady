@@ -1,0 +1,362 @@
+import { supabase } from './supabase';
+import JSZip from 'jszip';
+
+async function ensureAdmin(): Promise<void> {
+  const { data } = await supabase
+    .from('system_roles')
+    .select('role')
+    .eq('user_id', (await supabase.auth.getUser()).data.user?.id ?? '')
+    .eq('role', 'admin')
+    .maybeSingle();
+
+  if (!data) throw new Error('Unauthorized: admin access required');
+}
+
+export interface TableInfo {
+  table_name: string;
+  row_estimate: number;
+  size_bytes: number;
+  size_pretty: string;
+  dead_tuples: number;
+  last_vacuum: string | null;
+  last_autovacuum: string | null;
+  last_analyze: string | null;
+  rls_enabled: boolean;
+}
+
+export interface ColumnInfo {
+  column_name: string;
+  data_type: string;
+  udt_name: string;
+  is_nullable: string;
+  column_default: string | null;
+  character_maximum_length: number | null;
+  ordinal_position: number;
+  is_primary_key: boolean;
+}
+
+export interface IndexInfo {
+  index_name: string;
+  index_def: string;
+  size_bytes: number;
+  size_pretty: string;
+}
+
+export interface ForeignKey {
+  constraint_name: string;
+  source_table: string;
+  source_column: string;
+  target_table: string;
+  target_column: string;
+}
+
+export interface RLSPolicy {
+  table_name: string;
+  policy_name: string;
+  permissive: string;
+  roles: string[];
+  cmd: string;
+  qual: string | null;
+  with_check: string | null;
+}
+
+export interface DatabaseStats {
+  database_size: string;
+  database_size_bytes: number;
+  table_count: number;
+  index_count: number;
+  total_rows_estimate: number;
+  dead_tuples: number;
+  cache_hit_ratio: number;
+  index_hit_ratio: number;
+  active_connections: number;
+  idle_connections: number;
+  total_connections: number;
+  max_connections: number;
+  postgres_version: string;
+  uptime: number;
+}
+
+export interface TableDataResult {
+  rows: Record<string, unknown>[];
+  total_count: number;
+  page_limit: number;
+  page_offset: number;
+}
+
+export interface BackupProgress {
+  stage: string;
+  current_table?: string | null;
+  tables_completed?: number;
+  total_tables?: number;
+  total_rows?: number;
+  compressed_size?: number;
+  uncompressed_size?: number;
+}
+
+export interface BackupRecord {
+  id: string;
+  name: string;
+  description: string | null;
+  status: string;
+  backup_type: string;
+  tables_included: string[];
+  size_bytes: number;
+  storage_path: string | null;
+  row_counts: Record<string, number>;
+  error_message: string | null;
+  created_by: string;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+  restored_from_backup_id: string | null;
+  restore_strategy: string | null;
+  metadata: Record<string, unknown> | null;
+  last_heartbeat_at: string | null;
+  progress: BackupProgress | null;
+}
+
+export interface RestoreResult {
+  restore_id: string;
+  pre_restore_backup_id: string | null;
+  status: string;
+  tables_restored: string[];
+  row_counts: Record<string, number>;
+  errors?: Record<string, string>;
+}
+
+export interface ParsedBackupFile {
+  metadata: Record<string, unknown>;
+  tables: string[];
+  rowCounts: Record<string, number>;
+  rawData: Record<string, unknown>;
+}
+
+const HEARTBEAT_STALE_MS = 2 * 60 * 1000;
+
+export function isBackupStale(backup: BackupRecord): boolean {
+  if (backup.status !== 'in_progress') return false;
+  if (!backup.last_heartbeat_at) return true;
+  return Date.now() - new Date(backup.last_heartbeat_at).getTime() > HEARTBEAT_STALE_MS;
+}
+
+export function isBackupActive(backup: BackupRecord): boolean {
+  return backup.status === 'in_progress' || backup.status === 'pending';
+}
+
+export function isTerminalStatus(status: string): boolean {
+  return status === 'completed' || status === 'completed_with_errors' || status === 'failed';
+}
+
+export async function getTableInfo(): Promise<TableInfo[]> {
+  const { data, error } = await supabase.rpc('admin_get_table_info');
+  if (error) throw new Error(error.message);
+  return (data as TableInfo[]) || [];
+}
+
+export async function getTableColumns(tableName: string): Promise<ColumnInfo[]> {
+  const { data, error } = await supabase.rpc('admin_get_table_columns', {
+    p_table_name: tableName,
+  });
+  if (error) throw new Error(error.message);
+  return (data as ColumnInfo[]) || [];
+}
+
+export async function getTableIndexes(tableName: string): Promise<IndexInfo[]> {
+  const { data, error } = await supabase.rpc('admin_get_table_indexes', {
+    p_table_name: tableName,
+  });
+  if (error) throw new Error(error.message);
+  return (data as IndexInfo[]) || [];
+}
+
+export async function getForeignKeys(): Promise<ForeignKey[]> {
+  const { data, error } = await supabase.rpc('admin_get_foreign_keys');
+  if (error) throw new Error(error.message);
+  return (data as ForeignKey[]) || [];
+}
+
+export async function getRLSPolicies(tableName?: string): Promise<RLSPolicy[]> {
+  const { data, error } = await supabase.rpc('admin_get_rls_policies', {
+    p_table_name: tableName || null,
+  });
+  if (error) throw new Error(error.message);
+  return (data as RLSPolicy[]) || [];
+}
+
+export async function getDatabaseStats(): Promise<DatabaseStats> {
+  const { data, error } = await supabase.rpc('admin_get_database_stats');
+  if (error) throw new Error(error.message);
+  return data as DatabaseStats;
+}
+
+export async function browseTableData(
+  tableName: string,
+  limit = 50,
+  offset = 0,
+  orderBy?: string,
+  orderDir: 'ASC' | 'DESC' = 'ASC'
+): Promise<TableDataResult> {
+  const { data, error } = await supabase.rpc('admin_browse_table_data', {
+    p_table_name: tableName,
+    p_limit: limit,
+    p_offset: offset,
+    p_order_by: orderBy || null,
+    p_order_dir: orderDir,
+  });
+  if (error) throw new Error(error.message);
+  return data as TableDataResult;
+}
+
+export async function getBackups(): Promise<BackupRecord[]> {
+  await ensureAdmin();
+  const { data, error } = await supabase
+    .from('database_backups')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function getBackupById(backupId: string): Promise<BackupRecord | null> {
+  const { data, error } = await supabase
+    .from('database_backups')
+    .select('*')
+    .eq('id', backupId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function callEdgeFunction(action: string, payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('No active session');
+
+  const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/database-backup`;
+  const response = await fetch(functionUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ action, ...payload }),
+  });
+
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || `${action} failed`);
+  return result;
+}
+
+export async function createBackup(
+  name: string,
+  description: string,
+  tables: string[]
+): Promise<string> {
+  const result = await callEdgeFunction('create', { name, description, tables });
+  return result.backup_id as string;
+}
+
+export async function downloadBackup(backupId: string): Promise<Blob> {
+  const { data: backup, error: fetchError } = await supabase
+    .from('database_backups')
+    .select('storage_path, name')
+    .eq('id', backupId)
+    .maybeSingle();
+
+  if (fetchError || !backup?.storage_path) {
+    throw new Error('Backup not found or has no file');
+  }
+
+  const { data, error } = await supabase.storage
+    .from('database-backups')
+    .download(backup.storage_path);
+
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function deleteBackup(backupId: string): Promise<void> {
+  const { data: backup } = await supabase
+    .from('database_backups')
+    .select('storage_path')
+    .eq('id', backupId)
+    .maybeSingle();
+
+  if (backup?.storage_path) {
+    await supabase.storage
+      .from('database-backups')
+      .remove([backup.storage_path]);
+  }
+
+  const { error } = await supabase
+    .from('database_backups')
+    .delete()
+    .eq('id', backupId);
+
+  if (error) throw new Error(error.message);
+}
+
+const SYSTEM_TABLES = new Set([
+  'database_backups', 'audit_logs', 'audit_logs_summary', 'system_roles',
+  'system_logs', 'log_level_config', 'system_config', 'rate_limit_attempts',
+  'failed_login_attempts', 'account_lockouts',
+]);
+
+export async function parseBackupFile(file: File): Promise<ParsedBackupFile> {
+  let jsonText: string;
+
+  if (file.name.endsWith('.zip') || file.type === 'application/zip') {
+    const zip = await JSZip.loadAsync(file);
+    const jsonFile = zip.file('backup.json');
+    if (!jsonFile) throw new Error('Invalid backup ZIP: missing backup.json');
+    jsonText = await jsonFile.async('string');
+  } else {
+    jsonText = await file.text();
+  }
+
+  const raw = JSON.parse(jsonText);
+  if (!raw._metadata || typeof raw._metadata !== 'object') {
+    throw new Error('Invalid backup file: missing _metadata');
+  }
+
+  const tables: string[] = [];
+  const rowCounts: Record<string, number> = {};
+  for (const key of Object.keys(raw)) {
+    if (key === '_metadata') continue;
+    if (Array.isArray(raw[key])) {
+      tables.push(key);
+      rowCounts[key] = raw[key].length;
+    }
+  }
+
+  return { metadata: raw._metadata, tables, rowCounts, rawData: raw };
+}
+
+export { SYSTEM_TABLES };
+
+export async function restoreFromBackup(
+  backupId: string,
+  strategy: 'merge' | 'replace',
+  tables?: string[]
+): Promise<RestoreResult> {
+  const result = await callEdgeFunction('restore', {
+    backup_id: backupId,
+    strategy,
+    tables: tables || undefined,
+  });
+  return result as unknown as RestoreResult;
+}
+
+export async function restoreFromUpload(
+  backupData: Record<string, unknown>,
+  strategy: 'merge' | 'replace',
+  tables?: string[]
+): Promise<RestoreResult> {
+  const result = await callEdgeFunction('restore', {
+    backup_data: backupData,
+    strategy,
+    tables: tables || undefined,
+  });
+  return result as unknown as RestoreResult;
+}

@@ -4,6 +4,139 @@
 
 ---
 
+## 📦 Version 1.3.0 - "Database Management Hub" (2026-04-10)
+
+### Overview
+Complete database administration suite added to the Admin panel, providing system administrators with full visibility into the database, query execution, schema inspection, and backup/restore capabilities.
+
+### Major Features
+
+#### 1. Database Management Hub (5 Tabs)
+
+**Table Explorer:**
+- Browse all database tables with row counts, sizes, and RLS status
+- View column details (name, type, nullable, defaults) for any table
+- View table indexes with size and uniqueness information
+- Paginated data browsing with configurable page sizes (10/25/50/100 rows)
+- Search and filter tables by name
+
+**Schema Viewer:**
+- View all foreign key relationships across the database
+- Inspect RLS policies with full USING and WITH CHECK clause details
+- Filter by table name for focused analysis
+- Grouped display by source table for foreign keys
+
+**Database Statistics:**
+- Database size, table count, total row count, PostgreSQL version
+- Uptime, active connections, cache hit ratio, index hit ratio
+- Largest tables visualization with row counts and sizes
+- Real-time refresh capability
+
+**SQL Query Browser:**
+- Read-only query execution (SELECT, EXPLAIN, SHOW statements only)
+- Query execution timing with millisecond precision
+- Query history with timestamps and result counts
+- Built-in example queries for common operations
+- Full audit logging of all executed queries to `database_queries_log`
+
+**Backup Manager:**
+- Create manual backups with optional table selection
+- Real-time progress tracking with stage indicators and heartbeat
+- Download completed backups directly from the browser
+- Restore from existing backup or upload a backup file
+- Restore strategy selection (merge existing or replace all)
+- Delete old backups with confirmation
+- Backup status tracking: pending, in_progress, completed, completed_with_errors, failed
+
+#### 2. System Health Monitoring
+- `get_system_health_snapshot()` RPC function provides comprehensive metrics
+- Database health: size, connections, cache performance
+- User metrics: total, active, suspended, admin counts
+- Receipt metrics: total, pending extraction, failed extraction
+- Storage metrics: total used, file count
+- Error metrics: recent error counts by time window
+
+#### 3. Duplicate Receipt Detection
+- Automatic detection of potential duplicate receipts by vendor, amount, and date
+- Confidence scoring for match quality
+- Merge or dismiss duplicates through the admin interface
+- Fixed RPC functions for reliable detection
+
+### Database Migrations
+
+| Migration | Description |
+|-----------|-------------|
+| `20260407070138_add_database_management_tools.sql` | Core RPC functions for table inspection, schema viewing, query execution, and backup management |
+| `20260407112207_add_restore_tracking_to_backups.sql` | Added `restored_from_backup_id` and `restore_strategy` columns to `database_backups` |
+| `20260409052507_add_completed_with_errors_status.sql` | Added `completed_with_errors` status for partial backup success |
+| `20260409055345_add_backup_heartbeat_and_progress.sql` | Added `last_heartbeat_at` and `progress` JSONB for real-time backup tracking |
+| `20260409073808_add_system_health_snapshot_function.sql` | Created `get_system_health_snapshot()` comprehensive health check function |
+| `20260409102441_close_log_immutability_gaps.sql` | Strengthened immutability protections on audit_logs and system_logs |
+| `20260409110356_fix_system_health_and_duplicate_detection.sql` | Fixed system health snapshot and duplicate detection RPC functions |
+
+### New Components
+- `src/components/admin/database/DatabaseManagementHub.tsx` - Main hub with tab navigation
+- `src/components/admin/database/TableExplorer.tsx` - Table browsing and data viewing
+- `src/components/admin/database/SchemaViewer.tsx` - FK relationships and RLS policies
+- `src/components/admin/database/DatabaseStats.tsx` - Statistics dashboard
+- `src/components/admin/database/DatabaseQueryBrowser.tsx` - SQL query interface
+- `src/components/admin/database/BackupManager.tsx` - Backup creation and restore
+- `src/components/admin/database/RestoreModal.tsx` - Restore configuration dialog
+- `src/lib/dbManagementService.ts` - Service layer for all database admin operations
+
+### Edge Function
+- `database-backup` - Async backup creation with table data export, compression, storage upload, and heartbeat progress reporting
+
+### Build
+- Build successful
+- No TypeScript errors
+
+---
+
+## 📦 Version 1.2.0 - "Receipt Learning System" (2026-01-26)
+
+### Overview
+Added AI learning capabilities so the system improves category suggestions over time based on user corrections. The extraction edge function now applies learned vendor corrections and category mappings automatically.
+
+### Features
+- **Vendor-Category Mapping:** System learns which categories users assign to specific vendors via `category_mappings` table
+- **Category Suggestions:** Future receipts from known vendors get automatic category recommendations via `category_suggestions` table
+- **Vendor Corrections:** Tracks user corrections to vendor names for improved extraction accuracy via `vendor_corrections` table
+- **Re-evaluate Categories:** New `reevaluate-categories` edge function can re-scan existing receipts when a new category is added
+- **Extraction Integration:** `extract-receipt-data` edge function now queries learned mappings to auto-apply corrections
+
+### Database Migration
+- `20260126070158_add_receipt_learning_system.sql` - Creates 3 learning tables with RLS, RPC functions for recording corrections and generating suggestions
+
+### Edge Function
+- `reevaluate-categories` - Scans receipts in a business and generates category suggestions based on learned patterns
+
+---
+
+## 📦 Version 1.1.0 - "Team & Rate Limit Fixes" (2026-01-24)
+
+### Overview
+Critical fixes for team management, profile visibility, and rate limiting configuration.
+
+### Fixes
+
+#### Team Member Profile Visibility
+- Fixed RLS policy so team members can see each other's profile information (name, email)
+- Previously, members could only see their own profile, breaking the team member list display
+- Migration: `20260123234718_fix_team_member_profile_visibility.sql`
+
+#### Owner Role Management
+- Fixed role change restrictions for business owners
+- Owners can no longer accidentally have their role downgraded
+- Migration: `20260123234804_fix_owner_role_management.sql`
+
+#### Rate Limit Configuration
+- Added delete policy for rate limit records so expired entries can be cleaned up
+- Added rate limit configuration management for admin control
+- Migrations: `20260124041119_add_rate_limit_delete_policy.sql`, `20260124041538_add_rate_limit_configuration.sql`
+
+---
+
 ## 🐛 Version 1.0.2 - "Team Invitation Fixes" (2025-11-11)
 
 ### 🎯 Overview

@@ -15,6 +15,25 @@ interface LogOptions {
 }
 
 class Logger {
+  private recentMessages = new Map<string, number>();
+  private readonly DEDUPE_WINDOW_MS = 5000;
+
+  private isDuplicate(key: string): boolean {
+    const now = Date.now();
+    const lastSent = this.recentMessages.get(key);
+    if (lastSent && now - lastSent < this.DEDUPE_WINDOW_MS) {
+      return true;
+    }
+    this.recentMessages.set(key, now);
+    if (this.recentMessages.size > 100) {
+      const cutoff = now - this.DEDUPE_WINDOW_MS;
+      for (const [k, t] of this.recentMessages) {
+        if (t < cutoff) this.recentMessages.delete(k);
+      }
+    }
+    return false;
+  }
+
   private async sendToServer(options: LogOptions): Promise<void> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -40,11 +59,13 @@ class Logger {
 
   debug(message: string, metadata?: Record<string, any>, category: LogCategory = 'CLIENT_ERROR'): void {
     console.debug(message, metadata);
+    if (this.isDuplicate(`debug:${category}:${message}`)) return;
     this.sendToServer({ level: 'DEBUG', category, message, metadata });
   }
 
   info(message: string, metadata?: Record<string, any>, category: LogCategory = 'CLIENT_ERROR'): void {
     console.info(message, metadata);
+    if (this.isDuplicate(`info:${category}:${message}`)) return;
     this.sendToServer({ level: 'INFO', category, message, metadata });
   }
 
@@ -126,6 +147,7 @@ class Logger {
   }
 
   pageView(pageName: string, metadata?: Record<string, any>): void {
+    if (this.isDuplicate(`pageview:${pageName}`)) return;
     this.sendToServer({
       level: 'INFO',
       category: 'PAGE_VIEW',
@@ -144,6 +166,7 @@ class Logger {
   }
 
   navigation(from: string, to: string, metadata?: Record<string, any>): void {
+    if (this.isDuplicate(`nav:${from}:${to}`)) return;
     this.sendToServer({
       level: 'DEBUG',
       category: 'NAVIGATION',

@@ -1,4 +1,4 @@
-import { Home, Receipt, Settings, LogOut, BarChart3, Users, Shield, Activity, Database } from 'lucide-react';
+import { Home, Receipt, Settings, LogOut, BarChart3, Users, Shield, Activity } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface SidebarProps {
@@ -28,7 +28,6 @@ export function Sidebar({ isOpen, currentView, onNavigate }: SidebarProps) {
 
   const adminMenuItems = [
     { id: 'admin', label: 'System Admin', icon: Shield },
-    { id: 'system-logs', label: 'System Logs', icon: Database },
   ];
 
   return (
