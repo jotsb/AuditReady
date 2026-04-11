@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useLogger } from './useLogger';
 import { useDataLoadTracking } from './usePageTracking';
@@ -50,8 +50,6 @@ export function useReceiptsData(selectedCollection: string) {
   const [collectionsLoading, setCollectionsLoading] = useState(true);
   const [receiptsLoading, setReceiptsLoading] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
-
-  const pendingCollectionRef = useRef<string | null>(null);
 
   const loading = collectionsLoading || receiptsLoading;
 
@@ -130,11 +128,6 @@ export function useReceiptsData(selectedCollection: string) {
         setCollections([]);
       } else if (collectionsResult.data && collectionsResult.data.length > 0) {
         setCollections(collectionsResult.data);
-
-        const firstId = collectionsResult.data[0].id;
-        pendingCollectionRef.current = firstId;
-
-        loadReceipts(firstId, 1, 20);
       } else {
         setCollections([]);
       }
@@ -158,19 +151,13 @@ export function useReceiptsData(selectedCollection: string) {
     } finally {
       setCollectionsLoading(false);
     }
-  }, [logger, loadReceipts]);
+  }, [logger]);
 
   const loadReceiptsForPage = useCallback((page: number = 1, itemsPerPage: number = 20) => {
     loadReceipts(selectedCollection, page, itemsPerPage);
   }, [selectedCollection, loadReceipts]);
 
   const reloadReceipts = useCallback(() => loadReceipts(selectedCollection, 1, 20), [selectedCollection, loadReceipts]);
-
-  const getPendingCollection = useCallback(() => {
-    const val = pendingCollectionRef.current;
-    pendingCollectionRef.current = null;
-    return val;
-  }, []);
 
   return {
     receipts,
@@ -184,6 +171,5 @@ export function useReceiptsData(selectedCollection: string) {
     loadReceipts: loadReceiptsForPage,
     reloadReceipts,
     setReceipts,
-    getPendingCollection
   };
 }

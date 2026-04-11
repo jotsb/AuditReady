@@ -37,7 +37,7 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
 
-  const { receipts, collections, businesses, loading, collectionsLoading, receiptsLoading, totalCount, loadCollections, loadReceipts, reloadReceipts, setReceipts, getPendingCollection } = useReceiptsData(selectedCollection);
+  const { receipts, collections, businesses, loading, collectionsLoading, receiptsLoading, totalCount, loadCollections, loadReceipts, reloadReceipts, setReceipts } = useReceiptsData(selectedCollection);
   const { searchQuery, filterCategory, advancedFilters, filteredReceipts, handleSearchChange, handleCategoryFilterChange, setAdvancedFilters, clearAdvancedFilters } = useReceiptFilters(receipts);
   const { selectedReceipts, isSelectMode, selectAll, toggleSelectMode, toggleReceiptSelection, toggleSelectAll, clearSelection } = useReceiptSelection(filteredReceipts);
 
@@ -72,17 +72,13 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
 
   useEffect(() => {
     if (collections.length > 0 && !selectedCollection) {
-      const pending = getPendingCollection();
-      setSelectedCollection(pending || collections[0].id);
+      setSelectedCollection(collections[0].id);
     }
   }, [collections]);
 
   useEffect(() => {
     if (selectedCollection) {
-      const pending = getPendingCollection();
-      if (!pending) {
-        loadReceipts(currentPage, itemsPerPage);
-      }
+      loadReceipts(currentPage, itemsPerPage);
     }
   }, [selectedCollection, currentPage]);
 
