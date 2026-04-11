@@ -348,6 +348,12 @@ Deno.serve(async (req: Request) => {
     if (!openaiResponse.ok) {
       const errorText = await openaiResponse.text();
 
+      let parsedError: any = null;
+      try { parsedError = JSON.parse(errorText); } catch { /* ignore */ }
+
+      const errorCode = parsedError?.error?.code || '';
+      const errorType = parsedError?.error?.type || '';
+
       await supabase.rpc('log_system_event', {
         p_level: 'ERROR',
         p_category: 'EXTERNAL_API',
@@ -356,6 +362,8 @@ Deno.serve(async (req: Request) => {
           filePath,
           collectionId,
           statusCode: openaiResponse.status,
+          errorCode,
+          errorType,
           errorResponse: errorText
         },
         p_user_id: null,
@@ -365,6 +373,31 @@ Deno.serve(async (req: Request) => {
         p_stack_trace: null,
         p_execution_time_ms: apiExecutionTime
       });
+
+      if (openaiResponse.status === 429 || errorCode === 'insufficient_quota') {
+        const userMessage = errorCode === 'insufficient_quota'
+          ? 'The OpenAI API key has exceeded its billing quota. Please check the plan and billing details at https://platform.openai.com/account/billing'
+          : 'The OpenAI API is currently rate-limited. Please wait a moment and try again.';
+
+        return new Response(
+          JSON.stringify({ success: false, error: userMessage, errorCode: 'openai_quota_exceeded' }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (openaiResponse.status === 401) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'The OpenAI API key is invalid or has been revoked. Please check the configuration.', errorCode: 'openai_auth_error' }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (openaiResponse.status >= 500) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'The OpenAI service is temporarily unavailable. Please try again in a few minutes.', errorCode: 'openai_server_error' }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
       throw new Error(`OpenAI API error (${openaiResponse.status}): ${errorText}`);
     }

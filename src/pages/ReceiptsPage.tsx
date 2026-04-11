@@ -319,7 +319,19 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
         operation: 'multi_page_upload'
       });
 
-      alert(`Failed to process multi-page receipt: ${errorMessage}`);
+      const isQuotaError = errorMessage.includes('quota') || errorMessage.includes('billing') || errorMessage.includes('openai_quota_exceeded');
+      const isAuthError = errorMessage.includes('invalid or has been revoked') || errorMessage.includes('openai_auth_error');
+      const isServiceError = errorMessage.includes('temporarily unavailable') || errorMessage.includes('openai_server_error');
+
+      if (isQuotaError) {
+        alert('Receipt extraction is currently unavailable.\n\nThe OpenAI API key has exceeded its billing quota. Please contact your administrator to check the plan and billing details.');
+      } else if (isAuthError) {
+        alert('Receipt extraction is currently unavailable.\n\nThe OpenAI API key is invalid or has been revoked. Please contact your administrator.');
+      } else if (isServiceError) {
+        alert('Receipt extraction is temporarily unavailable.\n\nThe OpenAI service is experiencing issues. Please try again in a few minutes.');
+      } else {
+        alert(`Failed to process multi-page receipt: ${errorMessage}`);
+      }
     } finally {
       setExtracting(false);
     }
@@ -590,7 +602,19 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
         });
       }
 
-      alert(`Failed to process receipt: ${errorMessage}\n\nPlease check your internet connection and try again. If the problem persists, the OpenAI API key may not be configured.`);
+      const isQuotaError = errorMessage.includes('quota') || errorMessage.includes('billing') || errorMessage.includes('openai_quota_exceeded');
+      const isAuthError = errorMessage.includes('invalid or has been revoked') || errorMessage.includes('openai_auth_error');
+      const isServiceError = errorMessage.includes('temporarily unavailable') || errorMessage.includes('openai_server_error');
+
+      if (isQuotaError) {
+        alert('Receipt extraction is currently unavailable.\n\nThe OpenAI API key has exceeded its billing quota. Please contact your administrator to check the plan and billing details.');
+      } else if (isAuthError) {
+        alert('Receipt extraction is currently unavailable.\n\nThe OpenAI API key is invalid or has been revoked. Please contact your administrator.');
+      } else if (isServiceError) {
+        alert('Receipt extraction is temporarily unavailable.\n\nThe OpenAI service is experiencing issues. Please try again in a few minutes.');
+      } else {
+        alert(`Failed to process receipt: ${errorMessage}\n\nPlease check your internet connection and try again.`);
+      }
     } finally {
       setExtracting(false);
     }
