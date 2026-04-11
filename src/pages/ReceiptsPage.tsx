@@ -37,7 +37,7 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
 
-  const { receipts, collections, businesses, loading, totalCount, loadCollections, loadReceipts, reloadReceipts, setReceipts } = useReceiptsData(selectedCollection);
+  const { receipts, collections, businesses, loading, collectionsLoading, receiptsLoading, totalCount, loadCollections, loadReceipts, reloadReceipts, setReceipts, getPendingCollection } = useReceiptsData(selectedCollection);
   const { searchQuery, filterCategory, advancedFilters, filteredReceipts, handleSearchChange, handleCategoryFilterChange, setAdvancedFilters, clearAdvancedFilters } = useReceiptFilters(receipts);
   const { selectedReceipts, isSelectMode, selectAll, toggleSelectMode, toggleReceiptSelection, toggleSelectAll, clearSelection } = useReceiptSelection(filteredReceipts);
 
@@ -67,46 +67,22 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
   usePageTracking('Receipts', { section: 'receipts' });
 
   useEffect(() => {
-    logger.info('ReceiptsPage mounting - loading collections', {
-      page: 'ReceiptsPage',
-      operation: 'component_mount'
-    });
-
     loadCollections();
   }, []);
 
   useEffect(() => {
-    logger.info('Collections state updated', {
-      collectionsCount: collections.length,
-      currentSelectedCollection: selectedCollection,
-      firstCollectionId: collections.length > 0 ? collections[0].id : null,
-      page: 'ReceiptsPage',
-      operation: 'collections_state_updated'
-    });
-
     if (collections.length > 0 && !selectedCollection) {
-      logger.info('Auto-selecting first collection', {
-        collectionId: collections[0].id,
-        collectionName: collections[0].name,
-        page: 'ReceiptsPage',
-        operation: 'auto_select_collection'
-      });
-      setSelectedCollection(collections[0].id);
+      const pending = getPendingCollection();
+      setSelectedCollection(pending || collections[0].id);
     }
   }, [collections]);
 
   useEffect(() => {
-    logger.info('selectedCollection changed', {
-      selectedCollection,
-      hasSelectedCollection: !!selectedCollection,
-      currentPage,
-      collectionsCount: collections.length,
-      page: 'ReceiptsPage',
-      operation: 'selected_collection_changed'
-    });
-
     if (selectedCollection) {
-      loadReceipts(currentPage, itemsPerPage);
+      const pending = getPendingCollection();
+      if (!pending) {
+        loadReceipts(currentPage, itemsPerPage);
+      }
     }
   }, [selectedCollection, currentPage]);
 
@@ -1268,8 +1244,46 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
     );
   }
 
-  // Show onboarding wizard for new users without businesses or collections
-  if (collections.length === 0 && !loading) {
+  if (collectionsLoading) {
+    return (
+      <div className="space-y-6 pb-32">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700 p-6">
+          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-6">
+            <div className="flex-1">
+              <div className="h-4 w-20 bg-slate-200 dark:bg-gray-700 rounded animate-pulse mb-2" />
+              <div className="h-10 w-64 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+            </div>
+            <div className="flex gap-2">
+              <div className="h-10 w-24 bg-slate-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+              <div className="h-10 w-24 bg-slate-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+              <div className="h-10 w-32 bg-slate-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+            </div>
+          </div>
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 h-10 bg-slate-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+            <div className="h-10 w-40 bg-slate-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+            <div className="h-10 w-28 bg-slate-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+          </div>
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-slate-200 dark:border-gray-700">
+          <div className="p-4 space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-slate-200 dark:bg-gray-700 rounded animate-pulse flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-40 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+                  <div className="h-3 w-24 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+                </div>
+                <div className="h-4 w-20 bg-slate-200 dark:bg-gray-700 rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (collections.length === 0) {
     const hasBusiness = businesses.length > 0;
 
     // If no business at all, show onboarding wizard
@@ -1391,7 +1405,7 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-gray-700">
-              {loading ? (
+              {receiptsLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={`skeleton-${i}`} className="dark:bg-gray-800">
                     {isSelectMode && (
@@ -1560,7 +1574,7 @@ export function ReceiptsPage({ quickCaptureAction, onQuickCaptureComplete }: Rec
           </table>
         </div>
 
-        {!loading && filteredReceipts.length === 0 && (
+        {!receiptsLoading && filteredReceipts.length === 0 && (
           <div className="text-center py-12 text-slate-500 dark:text-gray-400">
             {receipts.length === 0 ? 'No receipts yet. Upload your first receipt!' : 'No receipts match your filters.'}
           </div>

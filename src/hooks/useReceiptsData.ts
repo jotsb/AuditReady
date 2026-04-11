@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useLogger } from './useLogger';
 import { useDataLoadTracking } from './usePageTracking';
@@ -47,101 +47,29 @@ export function useReceiptsData(selectedCollection: string) {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [collectionsLoading, setCollectionsLoading] = useState(true);
+  const [receiptsLoading, setReceiptsLoading] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
 
-  const loadCollections = async () => {
-    try {
-      logger.info('Starting collection load', { hook: 'useReceiptsData' });
+  const pendingCollectionRef = useRef<string | null>(null);
 
-      const [collectionsResult, businessesResult] = await Promise.all([
-        supabase
-          .from('collections')
-          .select('*, businesses(name)')
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('businesses')
-          .select('id, name')
-      ]);
+  const loading = collectionsLoading || receiptsLoading;
 
-      logger.info('Collection query result', {
-        hasError: !!collectionsResult.error,
-        error: collectionsResult.error,
-        dataLength: collectionsResult.data?.length || 0,
-        rawData: collectionsResult.data,
-        hook: 'useReceiptsData'
-      });
-
-      logger.info('Business query result', {
-        hasError: !!businessesResult.error,
-        error: businessesResult.error,
-        dataLength: businessesResult.data?.length || 0,
-        hook: 'useReceiptsData'
-      });
-
-      if (collectionsResult.error) {
-        logger.error('Collections query error', collectionsResult.error, {
-          hook: 'useReceiptsData',
-          errorCode: collectionsResult.error.code,
-          errorMessage: collectionsResult.error.message
-        });
-        setCollections([]);
-      } else if (collectionsResult.data && collectionsResult.data.length > 0) {
-        logger.info('Setting collections state', {
-          count: collectionsResult.data.length,
-          firstCollection: collectionsResult.data[0],
-          hook: 'useReceiptsData'
-        });
-        setCollections(collectionsResult.data);
-      } else {
-        logger.warn('No collections found', { hook: 'useReceiptsData' });
-        setCollections([]);
-      }
-
-      if (businessesResult.error) {
-        logger.error('Businesses query error', businessesResult.error, {
-          hook: 'useReceiptsData'
-        });
-        setBusinesses([]);
-      } else if (businessesResult.data) {
-        setBusinesses(businessesResult.data);
-      } else {
-        setBusinesses([]);
-      }
-
-      logger.info('Collections and businesses loaded', {
-        collectionCount: collectionsResult.data?.length || 0,
-        businessCount: businessesResult.data?.length || 0,
-        hook: 'useReceiptsData'
-      });
-    } catch (error) {
-      logger.error('Failed to load collections - exception thrown', error as Error, {
-        hook: 'useReceiptsData'
-      });
-      setCollections([]);
-      setBusinesses([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadReceipts = async (page: number = 1, itemsPerPage: number = 20) => {
-    if (!selectedCollection) return;
+  const loadReceipts = useCallback(async (collectionId: string, page: number = 1, itemsPerPage: number = 20) => {
+    if (!collectionId) return;
 
     try {
-      setLoading(true);
+      setReceiptsLoading(true);
       const start = (page - 1) * itemsPerPage;
       const end = start + itemsPerPage - 1;
 
-      // Use a single query with a LEFT JOIN to get both parent receipts and their first page data
-      // This eliminates the N+1 query pattern
       const { data: receiptsData, error: receiptsError, count } = await supabase
         .from('receipts')
         .select(`
           *,
           first_page:receipts!parent_receipt_id(thumbnail_path, file_path)
         `, { count: 'exact' })
-        .eq('collection_id', selectedCollection)
+        .eq('collection_id', collectionId)
         .eq('extraction_status', 'completed')
         .is('deleted_at', null)
         .or('is_parent.eq.true,parent_receipt_id.is.null')
@@ -150,7 +78,6 @@ export function useReceiptsData(selectedCollection: string) {
 
       if (receiptsError) throw receiptsError;
 
-      // Map the data to include first page thumbnails for multi-page receipts
       const receiptsWithThumbnails = (receiptsData || []).map((receipt: any) => {
         if (receipt.is_parent && receipt.total_pages > 1 && !receipt.thumbnail_path && receipt.first_page && receipt.first_page.length > 0) {
           const firstPage = receipt.first_page[0];
@@ -178,21 +105,85 @@ export function useReceiptsData(selectedCollection: string) {
       logger.error('Failed to load receipts', error as Error);
       setReceipts([]);
     } finally {
-      setLoading(false);
+      setReceiptsLoading(false);
     }
-  };
+  }, [logger, logDataLoad]);
 
-  const reloadReceipts = () => loadReceipts(1, 20);
+  const loadCollections = useCallback(async () => {
+    try {
+      const [collectionsResult, businessesResult] = await Promise.all([
+        supabase
+          .from('collections')
+          .select('*, businesses(name)')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('businesses')
+          .select('id, name')
+      ]);
+
+      if (collectionsResult.error) {
+        logger.error('Collections query error', collectionsResult.error, {
+          hook: 'useReceiptsData',
+          errorCode: collectionsResult.error.code,
+          errorMessage: collectionsResult.error.message
+        });
+        setCollections([]);
+      } else if (collectionsResult.data && collectionsResult.data.length > 0) {
+        setCollections(collectionsResult.data);
+
+        const firstId = collectionsResult.data[0].id;
+        pendingCollectionRef.current = firstId;
+
+        loadReceipts(firstId, 1, 20);
+      } else {
+        setCollections([]);
+      }
+
+      if (businessesResult.error) {
+        logger.error('Businesses query error', businessesResult.error, {
+          hook: 'useReceiptsData'
+        });
+        setBusinesses([]);
+      } else if (businessesResult.data) {
+        setBusinesses(businessesResult.data);
+      } else {
+        setBusinesses([]);
+      }
+    } catch (error) {
+      logger.error('Failed to load collections', error as Error, {
+        hook: 'useReceiptsData'
+      });
+      setCollections([]);
+      setBusinesses([]);
+    } finally {
+      setCollectionsLoading(false);
+    }
+  }, [logger, loadReceipts]);
+
+  const loadReceiptsForPage = useCallback((page: number = 1, itemsPerPage: number = 20) => {
+    loadReceipts(selectedCollection, page, itemsPerPage);
+  }, [selectedCollection, loadReceipts]);
+
+  const reloadReceipts = useCallback(() => loadReceipts(selectedCollection, 1, 20), [selectedCollection, loadReceipts]);
+
+  const getPendingCollection = useCallback(() => {
+    const val = pendingCollectionRef.current;
+    pendingCollectionRef.current = null;
+    return val;
+  }, []);
 
   return {
     receipts,
     collections,
     businesses,
     loading,
+    collectionsLoading,
+    receiptsLoading,
     totalCount,
     loadCollections,
-    loadReceipts,
+    loadReceipts: loadReceiptsForPage,
     reloadReceipts,
-    setReceipts
+    setReceipts,
+    getPendingCollection
   };
 }
