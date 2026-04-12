@@ -8,7 +8,6 @@ import { MFAManagement } from '../components/settings/MFAManagement';
 import { DeletedReceiptsManagement } from '../components/admin/DeletedReceiptsManagement';
 import { usePageTracking } from '../hooks/usePageTracking';
 import { captureException, captureMessage } from '../lib/sentry';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { SectionLayout, SectionGroup } from '../components/layout/SectionLayout';
 
@@ -46,29 +45,10 @@ const SETTINGS_SECTIONS: SectionGroup[] = [
 
 export function SettingsPage() {
   usePageTracking('Settings', { section: 'settings' });
-  const { user } = useAuth();
+  const { user, selectedBusiness } = useAuth();
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
-  const [businessId, setBusinessId] = useState<string | undefined>();
 
-  useEffect(() => {
-    if (user) {
-      loadUserBusiness();
-    }
-  }, [user]);
-
-  const loadUserBusiness = async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from('business_members')
-      .select('business_id')
-      .eq('user_id', user.id)
-      .limit(1)
-      .single();
-
-    if (data) {
-      setBusinessId(data.business_id);
-    }
-  };
+  const businessId = selectedBusiness?.id;
 
   useEffect(() => {
     const handleTabChange = (event: CustomEvent) => {

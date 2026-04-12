@@ -47,108 +47,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = useState<'owner' | 'manager' | 'member' | null>(null);
   const [mfaPending, setMfaPending] = useState(false);
 
-  const checkAdminStatus = async (userId: string) => {
-    const { data } = await supabase
-      .from('system_roles')
-      .select('role')
-      .eq('user_id', userId)
-      .eq('role', 'admin')
-      .maybeSingle();
+  const rolesMapRef = { current: {} as Record<string, string> };
 
-    setIsSystemAdmin(!!data);
-  };
-
-  const loadUserRole = async (userId: string, businessId: string) => {
+  const loadUserContext = async (userId: string) => {
     try {
-      const { data: business } = await supabase
-        .from('businesses')
-        .select('owner_id')
-        .eq('id', businessId)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc('get_user_context', { p_user_id: userId });
 
-      if (business && business.owner_id === userId) {
-        setUserRole('owner');
-        return;
-      }
+      if (error) throw error;
 
-      const { data: memberData } = await supabase
-        .from('business_members')
-        .select('role')
-        .eq('user_id', userId)
-        .eq('business_id', businessId)
-        .maybeSingle();
+      const ctx = data as { is_admin: boolean; businesses: Business[]; roles: Record<string, string> };
 
-      if (memberData) {
-        setUserRole(memberData.role);
-      } else {
-        setUserRole(null);
-      }
-    } catch (error) {
-      logger.error('Error loading user role', error as Error, { userId, businessId });
-      setUserRole(null);
-    }
-  };
+      setIsSystemAdmin(ctx.is_admin);
+      rolesMapRef.current = ctx.roles || {};
 
-  const loadBusinesses = async (userId: string) => {
-    try {
-      const { data: ownedBusinesses, error: ownedError } = await supabase
-        .from('businesses')
-        .select('*')
-        .eq('owner_id', userId)
-        .order('created_at', { ascending: false });
-
-      if (ownedError) throw ownedError;
-
-      const { data: memberData, error: memberError } = await supabase
-        .from('business_members')
-        .select('business_id, businesses(*)')
-        .eq('user_id', userId);
-
-      if (memberError) throw memberError;
-
-      const memberBusinesses = memberData?.map((m: any) => m.businesses).filter(Boolean) || [];
-      const allBusinesses = [...(ownedBusinesses || []), ...memberBusinesses];
-
-      const uniqueBusinesses = Array.from(
-        new Map(allBusinesses.map(b => [b.id, b])).values()
-      );
-
+      const uniqueBusinesses = ctx.businesses || [];
       setBusinesses(uniqueBusinesses);
 
       const savedBusinessId = localStorage.getItem(SELECTED_BUSINESS_KEY);
+      let targetBusiness: Business | null = null;
+
       if (savedBusinessId && uniqueBusinesses.length > 0) {
-        const savedBusiness = uniqueBusinesses.find(b => b.id === savedBusinessId);
-        if (savedBusiness) {
-          setSelectedBusiness(savedBusiness);
-          await loadUserRole(userId, savedBusinessId);
-        } else if (uniqueBusinesses.length > 0) {
-          setSelectedBusiness(uniqueBusinesses[0]);
-          localStorage.setItem(SELECTED_BUSINESS_KEY, uniqueBusinesses[0].id);
-          await loadUserRole(userId, uniqueBusinesses[0].id);
-        }
+        targetBusiness = uniqueBusinesses.find(b => b.id === savedBusinessId) || uniqueBusinesses[0];
       } else if (uniqueBusinesses.length > 0) {
-        setSelectedBusiness(uniqueBusinesses[0]);
-        localStorage.setItem(SELECTED_BUSINESS_KEY, uniqueBusinesses[0].id);
-        await loadUserRole(userId, uniqueBusinesses[0].id);
+        targetBusiness = uniqueBusinesses[0];
+      }
+
+      if (targetBusiness) {
+        setSelectedBusiness(targetBusiness);
+        localStorage.setItem(SELECTED_BUSINESS_KEY, targetBusiness.id);
+        const role = ctx.roles[targetBusiness.id] as 'owner' | 'manager' | 'member' | undefined;
+        setUserRole(role || null);
       }
     } catch (error) {
-      logger.error('Error loading businesses', error as Error, { userId });
+      logger.error('Error loading user context', error as Error, { userId });
     }
   };
 
   const refreshBusinesses = async () => {
     if (user) {
-      await loadBusinesses(user.id);
+      await loadUserContext(user.id);
     }
   };
 
-  const selectBusiness = async (business: Business | null) => {
+  const selectBusiness = (business: Business | null) => {
     setSelectedBusiness(business);
     if (business) {
       localStorage.setItem(SELECTED_BUSINESS_KEY, business.id);
-      if (user) {
-        await loadUserRole(user.id, business.id);
-      }
+      const role = rolesMapRef.current[business.id] as 'owner' | 'manager' | 'member' | undefined;
+      setUserRole(role || null);
     } else {
       localStorage.removeItem(SELECTED_BUSINESS_KEY);
       setUserRole(null);
@@ -156,11 +102,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        checkAdminStatus(session.user.id);
-        loadBusinesses(session.user.id);
+        await loadUserContext(session.user.id);
         setUserContext({
           id: session.user.id,
           email: session.user.email,
@@ -173,19 +118,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       (async () => {
-        // Check if we're in an MFA pending state - if so, don't update user yet
         const mfaPendingEmail = sessionStorage.getItem('mfa_pending_email');
-        // Only log auth state changes that are errors or significant events
         if (mfaPendingEmail && session?.user) {
-          // User just signed in but needs MFA verification - don't treat as fully authenticated
           return;
         }
 
-        // Removed excessive DEBUG logs for normal auth state changes
         setUser(session?.user ?? null);
         if (session?.user) {
-          await checkAdminStatus(session.user.id);
-          await loadBusinesses(session.user.id);
+          await loadUserContext(session.user.id);
           setUserContext({
             id: session.user.id,
             email: session.user.email,
@@ -369,12 +309,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setMfaPending(false);
     sessionStorage.removeItem('mfa_pending_email');
 
-    // Now that MFA is complete, update user state and load businesses
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
       setUser(session.user);
-      await checkAdminStatus(session.user.id);
-      await loadBusinesses(session.user.id);
+      await loadUserContext(session.user.id);
       logger.auth('mfa_verification_complete', true, { userId: session.user.id });
     }
   };

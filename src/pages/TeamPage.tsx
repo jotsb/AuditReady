@@ -50,14 +50,12 @@ export default function TeamPage() {
   const itemsPerPage = 10;
 
   useEffect(() => {
-    loadTeamData();
-  }, [user, selectedBusiness]);
-
-  useEffect(() => {
     if (user && selectedBusiness) {
       loadTeamData();
+    } else {
+      setLoading(false);
     }
-  }, [currentMembersPage, currentInvitesPage]);
+  }, [user, selectedBusiness, currentMembersPage, currentInvitesPage]);
 
   const loadTeamData = async () => {
     if (!user || !selectedBusiness) {
@@ -74,31 +72,17 @@ export default function TeamPage() {
 
       setBusinessId(selectedBusiness.id);
       setUserRole(contextUserRole);
-
-      const { data: businessData } = await supabase
-        .from('businesses')
-        .select('owner_id')
-        .eq('id', selectedBusiness.id)
-        .maybeSingle<{ owner_id: string }>();
-
-      if (businessData) {
-        setBusinessOwnerId(businessData.owner_id);
-      }
+      setBusinessOwnerId(selectedBusiness.owner_id);
 
       const membersStartIndex = (currentMembersPage - 1) * itemsPerPage;
       const membersEndIndex = membersStartIndex + itemsPerPage - 1;
       const invitesStartIndex = (currentInvitesPage - 1) * itemsPerPage;
       const invitesEndIndex = invitesStartIndex + itemsPerPage - 1;
 
-      const [membersCountResult, membersResult, invitationsCountResult, invitationsResult] = await Promise.all([
+      const [membersResult, invitationsCountResult, invitationsResult] = await Promise.all([
         supabase
           .from('business_members')
-          .select('*', { count: 'exact', head: true })
-          .eq('business_id', selectedBusiness.id),
-
-        supabase
-          .from('business_members')
-          .select('id, user_id, role, joined_at')
+          .select('id, user_id, role, joined_at, profiles:profiles!business_members_user_id_fkey(full_name, email)', { count: 'exact' })
           .eq('business_id', selectedBusiness.id)
           .order('joined_at', { ascending: false })
           .range(membersStartIndex, membersEndIndex),
@@ -120,59 +104,32 @@ export default function TeamPage() {
 
       if (membersResult.error) {
         logger.error('Failed to fetch team members', membersResult.error, { businessId: selectedBusiness.id });
-        logger.database('select', 'business_members', false, { businessId: selectedBusiness.id, error: membersResult.error.message });
         throw membersResult.error;
       }
       if (invitationsResult.error) {
         logger.error('Failed to fetch invitations', invitationsResult.error, { businessId: selectedBusiness.id });
-        logger.database('select', 'invitations', false, { businessId: selectedBusiness.id, error: invitationsResult.error.message });
         throw invitationsResult.error;
       }
 
-      const membersList = membersResult.data || [];
+      const enrichedMembers = (membersResult.data || []).map((member: any) => ({
+        ...member,
+        profiles: member.profiles || { full_name: 'Unknown', email: 'Unknown' }
+      }));
 
-      // Batch fetch all profiles in a single query instead of one-by-one
-      if (membersList.length > 0) {
-        const userIds = membersList.map((m: any) => m.user_id);
-
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('id, full_name, email')
-          .in('id', userIds) as { data: { id: string; full_name: string; email: string }[] | null };
-
-        const profilesMap = new Map(
-          (profilesData || []).map(p => [p.id, { full_name: p.full_name, email: p.email }])
-        );
-
-        const enrichedMembers = membersList.map((member: any) => ({
-          ...member,
-          profiles: profilesMap.get(member.user_id) || {
-            full_name: 'Unknown',
-            email: 'Unknown'
-          }
-        }));
-
-        setMembers(enrichedMembers as TeamMember[]);
-      } else {
-        setMembers([]);
-      }
+      setMembers(enrichedMembers as TeamMember[]);
       setInvitations(invitationsResult.data || []);
-      setTotalMembers(membersCountResult.count || 0);
+      setTotalMembers(membersResult.count || 0);
       setTotalInvites(invitationsCountResult.count || 0);
 
       const executionTime = performance.now() - startTime;
       logger.performance('loadTeamData', executionTime, {
-        membersCount: membersCountResult.count || 0,
+        membersCount: membersResult.count || 0,
         invitesCount: invitationsCountResult.count || 0
       });
       logger.info('Team data loaded successfully', {
-        membersCount: membersCountResult.count || 0,
+        membersCount: membersResult.count || 0,
         invitesCount: invitationsCountResult.count || 0
       }, 'DATABASE');
-      logger.database('select', 'team_data', true, {
-        membersCount: membersCountResult.count || 0,
-        invitesCount: invitationsCountResult.count || 0
-      });
     } catch (err: any) {
       logger.error('Error loading team data', err, { userId: user.id });
       setError(err.message);

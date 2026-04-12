@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Activity, Filter, Download, AlertCircle, Sliders, Zap, Pause, Play, ArrowUp, RefreshCw } from 'lucide-react';
 import { SplunkLogEntry } from '../shared/SplunkLogEntry';
@@ -20,6 +20,7 @@ interface AuditLog {
   status: 'success' | 'failure' | 'denied';
   error_message: string | null;
   created_at: string;
+  business_id: string | null;
   profiles?: {
     full_name: string;
     email: string;
@@ -33,68 +34,122 @@ interface AuditLogsViewProps {
   showBorder?: boolean;
 }
 
+const EMPTY_FILTERS: LogFilters = {
+  searchTerm: '',
+  actions: [],
+  resources: [],
+  statuses: [],
+  roles: [],
+  startDate: '',
+  endDate: '',
+  ipAddress: '',
+  userEmail: ''
+};
+
 const AUDIT_PRESETS = [
   {
     name: 'Failed Actions',
-    icon: '⚠️',
+    icon: '!',
     description: 'All failed operations',
-    filters: { statuses: ['failure'], actions: [], resources: [], roles: [], searchTerm: '', startDate: '', endDate: '', ipAddress: '', userEmail: '' }
+    filters: { ...EMPTY_FILTERS, statuses: ['failure'] }
   },
   {
     name: 'Security Events',
-    icon: '🔒',
+    icon: 'S',
     description: 'Access denied and authentication failures',
-    filters: { statuses: ['denied', 'failure'], actions: [], resources: [], roles: [], searchTerm: 'auth', startDate: '', endDate: '', ipAddress: '', userEmail: '' }
+    filters: { ...EMPTY_FILTERS, statuses: ['denied', 'failure'], searchTerm: 'auth' }
   },
   {
     name: 'Admin Activity',
-    icon: '👑',
+    icon: 'A',
     description: 'Actions by system administrators',
-    filters: { roles: ['system_admin'], statuses: [], actions: [], resources: [], searchTerm: '', startDate: '', endDate: '', ipAddress: '', userEmail: '' }
+    filters: { ...EMPTY_FILTERS, roles: ['system_admin'] }
   },
   {
     name: 'User Management',
-    icon: '👥',
+    icon: 'U',
     description: 'User creation, updates, and deletions',
-    filters: { resources: ['user', 'business_member'], statuses: [], actions: [], roles: [], searchTerm: '', startDate: '', endDate: '', ipAddress: '', userEmail: '' }
+    filters: { ...EMPTY_FILTERS, resources: ['user', 'business_member'] }
   },
   {
     name: 'Last 24 Hours',
-    icon: '⏰',
+    icon: 'T',
     description: 'Recent activity from yesterday',
     filters: {
+      ...EMPTY_FILTERS,
       startDate: new Date(Date.now() - 86400000).toISOString().split('T')[0],
-      endDate: new Date().toISOString().split('T')[0],
-      statuses: [], actions: [], resources: [], roles: [], searchTerm: '', ipAddress: '', userEmail: ''
+      endDate: new Date().toISOString().split('T')[0]
     }
   },
   {
     name: 'Business Operations',
-    icon: '🏢',
+    icon: 'B',
     description: 'Business and collection changes',
-    filters: { resources: ['business', 'collection'], statuses: [], actions: [], roles: [], searchTerm: '', startDate: '', endDate: '', ipAddress: '', userEmail: '' }
+    filters: { ...EMPTY_FILTERS, resources: ['business', 'collection'] }
   },
   {
     name: 'Data Modifications',
-    icon: '✏️',
+    icon: 'D',
     description: 'Updates and deletions',
-    filters: { actions: ['update', 'delete'], statuses: [], resources: [], roles: [], searchTerm: '', startDate: '', endDate: '', ipAddress: '', userEmail: '' }
+    filters: { ...EMPTY_FILTERS, actions: ['update', 'delete'] }
   },
   {
     name: 'Last Week',
-    icon: '📅',
+    icon: 'W',
     description: 'Activity from past 7 days',
     filters: {
+      ...EMPTY_FILTERS,
       startDate: new Date(Date.now() - 604800000).toISOString().split('T')[0],
-      endDate: new Date().toISOString().split('T')[0],
-      statuses: [], actions: [], resources: [], roles: [], searchTerm: '', ipAddress: '', userEmail: ''
+      endDate: new Date().toISOString().split('T')[0]
     }
   }
 ];
 
+const ACTION_OPTIONS = ['create', 'update', 'delete', 'view', 'export', 'login', 'logout', 'invite', 'approve', 'reject'];
+const RESOURCE_OPTIONS = ['receipt', 'collection', 'business', 'business_member', 'user', 'invitation', 'export_job', 'category'];
+const ROLE_OPTIONS = ['owner', 'manager', 'member', 'system_admin'];
+
+function buildServerQuery(scope: string, businessId: string | undefined, filters: LogFilters, page: number, itemsPerPage: number) {
+  const start = (page - 1) * itemsPerPage;
+  const end = start + itemsPerPage - 1;
+
+  let query = supabase
+    .from('audit_logs')
+    .select('*, profiles(full_name, email)', { count: 'exact' });
+
+  if (scope === 'business' && businessId) {
+    query = query.eq('business_id', businessId);
+  }
+
+  if (filters.actions.length > 0) {
+    query = query.in('action', filters.actions);
+  }
+  if (filters.resources.length > 0) {
+    query = query.in('resource_type', filters.resources);
+  }
+  if (filters.statuses.length > 0) {
+    query = query.in('status', filters.statuses);
+  }
+  if (filters.roles.length > 0) {
+    query = query.in('actor_role', filters.roles);
+  }
+  if (filters.startDate) {
+    query = query.gte('created_at', filters.startDate);
+  }
+  if (filters.endDate) {
+    query = query.lte('created_at', filters.endDate + 'T23:59:59');
+  }
+  if (filters.ipAddress) {
+    query = query.ilike('ip_address', `%${filters.ipAddress}%`);
+  }
+
+  query = query.order('created_at', { ascending: false }).range(start, end);
+
+  return query;
+}
+
 export function AuditLogsView({ scope, businessId, showTitle = true, showBorder = true }: AuditLogsViewProps) {
   const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [filteredLogs, setFilteredLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(false);
@@ -110,29 +165,63 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
   const pendingLogsRef = useRef<AuditLog[]>([]);
   const batchTimeoutRef = useRef<NodeJS.Timeout>();
   const isAtTopRef = useRef(true);
+  const filtersRef = useRef<LogFilters>(EMPTY_FILTERS);
 
-  const [filters, setFilters] = useState<LogFilters>({
-    searchTerm: '',
-    actions: [],
-    resources: [],
-    statuses: [],
-    roles: [],
-    startDate: '',
-    endDate: '',
-    ipAddress: '',
-    userEmail: ''
-  });
+  const [filters, setFilters] = useState<LogFilters>(EMPTY_FILTERS);
 
-  useEffect(() => {
-    if (scope === 'system' || (scope === 'business' && businessId)) {
-      setCurrentPage(1);
-      loadAuditLogs();
+  const loadAuditLogs = useCallback(async (page: number, activeFilters: LogFilters) => {
+    if (scope === 'business' && !businessId) return;
+
+    const startTime = performance.now();
+    try {
+      setLoading(true);
+      setError('');
+
+      const { data, error: fetchError, count } = await buildServerQuery(scope, businessId, activeFilters, page, itemsPerPage);
+
+      if (fetchError) throw fetchError;
+
+      setLogs(data || []);
+      setTotalCount(count || 0);
+
+      const duration = performance.now() - startTime;
+      logger.info('Audit logs loaded', {
+        component: 'AuditLogsView',
+        scope,
+        count: count || 0,
+        page,
+        duration: `${duration.toFixed(0)}ms`
+      }, 'PERFORMANCE');
+    } catch (err: any) {
+      setError(err.message);
+      logger.error('Failed to load audit logs', {
+        component: 'AuditLogsView',
+        scope,
+        error: err.message
+      }, 'DATABASE');
+    } finally {
+      setLoading(false);
     }
   }, [scope, businessId]);
 
   useEffect(() => {
-    applyFilters();
-  }, [logs, filters]);
+    if (scope === 'system' || (scope === 'business' && businessId)) {
+      setCurrentPage(1);
+      loadAuditLogs(1, filters);
+    }
+  }, [scope, businessId]);
+
+  useEffect(() => {
+    filtersRef.current = filters;
+    setCurrentPage(1);
+    loadAuditLogs(1, filters);
+  }, [filters, loadAuditLogs]);
+
+  useEffect(() => {
+    if (currentPage > 1) {
+      loadAuditLogs(currentPage, filtersRef.current);
+    }
+  }, [currentPage, loadAuditLogs]);
 
   useEffect(() => {
     if (!autoRefresh) {
@@ -142,19 +231,12 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
     if (scope === 'business' && !businessId) return;
 
     setRealtimeStatus('connecting');
-    console.log('[Realtime Audit] Initializing subscription for audit_logs');
 
     const channel = supabase
       .channel('audit-logs-realtime')
       .on('postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'audit_logs'
-        },
+        { event: 'INSERT', schema: 'public', table: 'audit_logs' },
         async (payload) => {
-          console.log('[Realtime Audit] Received log:', payload.new.id);
-
           if (isPaused) {
             setNewLogsCount(prev => prev + 1);
             return;
@@ -162,19 +244,8 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
 
           const newLog = payload.new as AuditLog;
 
-          if (scope === 'business' && businessId) {
-            let includeLog = false;
-            if (newLog.resource_type === 'business' && newLog.resource_id === businessId) {
-              includeLog = true;
-            } else if (newLog.resource_type === 'collection' && newLog.details?.business_id === businessId) {
-              includeLog = true;
-            } else if (newLog.resource_type === 'receipt' && newLog.details?.collection_id) {
-              includeLog = true;
-            } else if (newLog.resource_type === 'business_member' && newLog.details?.business_id === businessId) {
-              includeLog = true;
-            }
-
-            if (!includeLog) return;
+          if (scope === 'business' && businessId && newLog.business_id !== businessId) {
+            return;
           }
 
           const { data: profile } = await supabase
@@ -197,9 +268,7 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
             const logsToAdd = [...pendingLogsRef.current];
             pendingLogsRef.current = [];
 
-            console.log('[Realtime Audit] Adding logs to UI:', logsToAdd.length, 'isAtTop:', isAtTopRef.current);
-
-            setLogs(prev => [...logsToAdd, ...prev]);
+            setLogs(prev => [...logsToAdd, ...prev].slice(0, itemsPerPage));
             setTotalCount(prev => prev + logsToAdd.length);
 
             if (!isAtTopRef.current) {
@@ -209,20 +278,12 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
         }
       )
       .subscribe((status) => {
-        console.log('[Realtime Audit] Status changed:', status);
-
         if (status === 'SUBSCRIBED') {
           setRealtimeStatus('connected');
-          console.log('[Realtime Audit] Connected successfully');
-        } else if (status === 'CHANNEL_ERROR') {
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           setRealtimeStatus('error');
-          console.error('[Realtime Audit] Channel error');
-        } else if (status === 'TIMED_OUT') {
-          setRealtimeStatus('error');
-          console.error('[Realtime Audit] Connection timed out');
         } else if (status === 'CLOSED') {
           setRealtimeStatus('disconnected');
-          console.log('[Realtime Audit] Connection closed');
         }
       });
 
@@ -258,124 +319,9 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
     }
   };
 
-  const loadAuditLogs = async () => {
-    if (scope === 'business' && !businessId) return;
-
-    const startTime = performance.now();
-    try {
-      setLoading(true);
-      setError('');
-
-      logger.info('Loading audit logs', {
-        component: 'AuditLogsView',
-        scope,
-        businessId,
-        currentPage
-      }, 'DATABASE');
-
-      const { data: allData, error: fetchError } = await supabase
-        .from('audit_logs')
-        .select('*, profiles(full_name, email)')
-        .order('created_at', { ascending: false });
-
-      if (fetchError) throw fetchError;
-
-      let scopedLogs = allData || [];
-
-      if (scope === 'business' && businessId) {
-        scopedLogs = allData?.filter(log => {
-          if (log.resource_type === 'business') {
-            return log.resource_id === businessId;
-          }
-          if (log.resource_type === 'collection') {
-            return log.details?.business_id === businessId;
-          }
-          if (log.resource_type === 'receipt' && log.details?.collection_id) {
-            return true;
-          }
-          if (log.resource_type === 'business_member') {
-            return log.details?.business_id === businessId;
-          }
-          return false;
-        }) || [];
-      }
-
-      setTotalCount(scopedLogs.length);
-      setLogs(scopedLogs);
-
-      const duration = performance.now() - startTime;
-      logger.info('Audit logs loaded successfully', {
-        component: 'AuditLogsView',
-        scope,
-        totalLogs: scopedLogs.length,
-        duration: `${duration.toFixed(2)}ms`
-      }, 'PERFORMANCE');
-
-    } catch (err: any) {
-      setError(err.message);
-      logger.error('Failed to load audit logs', {
-        component: 'AuditLogsView',
-        scope,
-        error: err.message
-      }, 'DATABASE');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const applyFilters = () => {
-    let filtered = [...logs];
-
-    if (filters.searchTerm) {
-      const term = filters.searchTerm.toLowerCase();
-      filtered = filtered.filter(log =>
-        log.action.toLowerCase().includes(term) ||
-        log.resource_type.toLowerCase().includes(term) ||
-        log.profiles?.full_name?.toLowerCase().includes(term) ||
-        log.profiles?.email?.toLowerCase().includes(term) ||
-        log.ip_address?.toLowerCase().includes(term) ||
-        JSON.stringify(log.details).toLowerCase().includes(term)
-      );
-    }
-
-    if (filters.actions.length > 0) {
-      filtered = filtered.filter(log => filters.actions.includes(log.action));
-    }
-
-    if (filters.resources.length > 0) {
-      filtered = filtered.filter(log => filters.resources.includes(log.resource_type));
-    }
-
-    if (filters.statuses.length > 0) {
-      filtered = filtered.filter(log => filters.statuses.includes(log.status));
-    }
-
-    if (filters.roles.length > 0) {
-      filtered = filtered.filter(log => filters.roles.includes(log.actor_role));
-    }
-
-    if (filters.startDate) {
-      filtered = filtered.filter(log => new Date(log.created_at) >= new Date(filters.startDate));
-    }
-    if (filters.endDate) {
-      filtered = filtered.filter(log => new Date(log.created_at) <= new Date(filters.endDate + 'T23:59:59'));
-    }
-
-    if (filters.ipAddress) {
-      filtered = filtered.filter(log => log.ip_address?.includes(filters.ipAddress));
-    }
-
-    if (filters.userEmail) {
-      filtered = filtered.filter(log => log.profiles?.email?.toLowerCase().includes(filters.userEmail.toLowerCase()));
-    }
-
-    setFilteredLogs(filtered);
-    setCurrentPage(1);
-  };
-
   const exportToCSV = () => {
     const headers = ['Timestamp', 'User', 'Email', 'Role', 'Action', 'Resource Type', 'Status', 'IP Address', 'Details'];
-    const rows = filteredLogs.map(log => [
+    const rows = logs.map(log => [
       new Date(log.created_at).toLocaleString(),
       log.profiles?.full_name || 'Unknown',
       log.profiles?.email || 'N/A',
@@ -403,27 +349,13 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
     logger.info('Exported audit logs to CSV', {
       component: 'AuditLogsView',
       scope,
-      exportedCount: filteredLogs.length
+      exportedCount: logs.length
     }, 'USER_ACTION');
   };
 
   const clearFilters = () => {
-    setFilters({
-      searchTerm: '',
-      actions: [],
-      resources: [],
-      statuses: [],
-      roles: [],
-      startDate: '',
-      endDate: '',
-      ipAddress: '',
-      userEmail: ''
-    });
+    setFilters(EMPTY_FILTERS);
   };
-
-  const actionOptions = [...new Set(logs.map(log => log.action))].sort();
-  const resourceOptions = [...new Set(logs.map(log => log.resource_type))].sort();
-  const roleOptions = [...new Set(logs.map(log => log.actor_role).filter(Boolean))].sort();
 
   const hasActiveFilters =
     filters.searchTerm ||
@@ -436,9 +368,7 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
     filters.ipAddress ||
     filters.userEmail;
 
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   if (scope === 'business' && !businessId && !loading) {
     return (
@@ -508,7 +438,6 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
         </div>
       )}
 
-      {/* Filter Controls */}
       <div className={`bg-white dark:bg-gray-800 ${showBorder ? 'rounded-lg shadow-md' : ''} p-4`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -537,7 +466,7 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
 
           <button
             onClick={exportToCSV}
-            disabled={filteredLogs.length === 0}
+            disabled={logs.length === 0}
             className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download size={18} />
@@ -545,7 +474,6 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
           </button>
         </div>
 
-        {/* Active Filters Display */}
         {hasActiveFilters && (
           <div className="mt-4 flex flex-wrap gap-2">
             {filters.actions.length > 0 && (
@@ -561,7 +489,7 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
               </span>
             )}
             {filters.statuses.length > 0 && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-sm">
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full text-sm">
                 {filters.statuses.length} status{filters.statuses.length !== 1 ? 'es' : ''}
               </span>
             )}
@@ -589,11 +517,14 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
         )}
       </div>
 
-      {/* Logs Display */}
       <div className={`bg-white dark:bg-gray-800 ${showBorder ? 'rounded-lg shadow-md' : ''} overflow-hidden`}>
         <div className="px-6 py-4 bg-slate-50 dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700">
           <p className="text-sm text-slate-600 dark:text-gray-400">
-            Showing {filteredLogs.length} of {totalCount} total logs
+            {totalCount > 0 ? (
+              <>Showing {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} logs</>
+            ) : (
+              <>0 logs</>
+            )}
             {hasActiveFilters && ' (filtered)'}
           </p>
         </div>
@@ -614,12 +545,12 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
             <div className="bg-white dark:bg-gray-800">
               <div className="hidden lg:grid lg:grid-cols-[auto_minmax(140px,1fr)_auto_minmax(120px,1fr)_minmax(100px,1fr)_minmax(120px,1.5fr)_auto] gap-2 px-4 py-2 bg-slate-100 dark:bg-gray-700 border-b border-slate-300 dark:border-gray-600 text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase sticky top-0 z-10">
                 <div className="flex items-center justify-center w-6"></div>
-                <div className="">Time</div>
-                <div className="">Status</div>
-                <div className="">Action</div>
-                <div className="">Resource</div>
-                <div className="">User</div>
-                <div className="">IP</div>
+                <div>Time</div>
+                <div>Status</div>
+                <div>Action</div>
+                <div>Resource</div>
+                <div>User</div>
+                <div>IP</div>
               </div>
               {Array.from({ length: 5 }).map((_, i) => (
                 <div key={`skeleton-${i}`} className="p-4 border-b border-slate-200 dark:border-gray-700">
@@ -640,7 +571,7 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
                 </div>
               ))}
             </div>
-          ) : filteredLogs.length === 0 ? (
+          ) : logs.length === 0 ? (
             <div className="px-6 py-12 text-center">
               <Activity className="mx-auto mb-3 text-slate-300" size={48} />
               <p className="text-slate-500 dark:text-gray-400 font-medium">No audit logs found</p>
@@ -652,22 +583,22 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
             <div className="bg-white dark:bg-gray-800">
               <div className="hidden lg:grid lg:grid-cols-[auto_minmax(140px,1fr)_auto_minmax(120px,1fr)_minmax(100px,1fr)_minmax(120px,1.5fr)_auto] gap-2 px-4 py-2 bg-slate-100 dark:bg-gray-700 border-b border-slate-300 dark:border-gray-600 text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase sticky top-0 z-10">
                 <div className="flex items-center justify-center w-6"></div>
-                <div className="">Time</div>
-                <div className="">Status</div>
-                <div className="">Action</div>
-                <div className="">Resource</div>
-                <div className="">User</div>
-                <div className="">IP</div>
+                <div>Time</div>
+                <div>Status</div>
+                <div>Action</div>
+                <div>Resource</div>
+                <div>User</div>
+                <div>IP</div>
               </div>
 
-              {paginatedLogs.map((log) => (
+              {logs.map((log) => (
                 <SplunkLogEntry key={log.id} log={{ ...log, type: 'audit' as const }} />
               ))}
             </div>
           )}
         </div>
 
-        {filteredLogs.length > itemsPerPage && (
+        {totalPages > 1 && (
           <div className="flex flex-col items-center gap-3 px-6 py-4 border-t border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 flex-shrink-0">
             <div className="flex gap-2">
               <button
@@ -678,9 +609,8 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
                 Previous
               </button>
               <div className="flex items-center gap-1">
-                {Array.from({ length: Math.ceil(filteredLogs.length / itemsPerPage) }, (_, i) => i + 1)
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
                   .filter(page => {
-                    const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
                     if (totalPages <= 7) return true;
                     if (page === 1 || page === totalPages) return true;
                     if (page >= currentPage - 1 && page <= currentPage + 1) return true;
@@ -706,21 +636,20 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
                   })}
               </div>
               <button
-                onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredLogs.length / itemsPerPage), p + 1))}
-                disabled={currentPage >= Math.ceil(filteredLogs.length / itemsPerPage)}
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
                 className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
               >
                 Next
               </button>
             </div>
             <div className="text-sm text-slate-600 dark:text-gray-400">
-              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredLogs.length)} of {filteredLogs.length} logs
+              Page {currentPage} of {totalPages}
             </div>
           </div>
         )}
       </div>
 
-      {/* Advanced Filter Panel */}
       {showAdvancedFilters && (
         <AdvancedLogFilterPanel
           filterType="audit"
@@ -728,9 +657,9 @@ export function AuditLogsView({ scope, businessId, showTitle = true, showBorder 
           onChange={setFilters}
           onClear={clearFilters}
           onClose={() => setShowAdvancedFilters(false)}
-          actionOptions={actionOptions}
-          resourceOptions={resourceOptions}
-          roleOptions={roleOptions}
+          actionOptions={ACTION_OPTIONS}
+          resourceOptions={RESOURCE_OPTIONS}
+          roleOptions={ROLE_OPTIONS}
           presets={AUDIT_PRESETS}
         />
       )}
